@@ -1,0 +1,1076 @@
+{
+  "sources": {
+    "game": {
+      "repository": "https://github.com/openscreeps/game",
+      "commit": "fd9cde57de20a1e37a0108c46ca78314c8b9bc36"
+    },
+    "engine": {
+      "repository": "https://github.com/openscreeps/engine",
+      "commit": "55883bef45d0d1c3c8c16e497fca56fe0b43ff11"
+    },
+    "openscreeps": {
+      "repository": "https://github.com/openscreeps/server",
+      "commit": "3954fd26f107a4b508ccaf6b5f64e4aa951d9e91"
+    },
+    "client": {
+      "repository": "https://github.com/screepers/node-screeps-api",
+      "commit": "0f861874ff119b7ba37d0d1a4beb90f096209f4e"
+    },
+    "backend": {
+      "repository": "https://github.com/screeps/backend-local",
+      "commit": "9d079282303ec04e577ac2bb97f64312b25e4ccd"
+    }
+  },
+  "exclusions": [
+    {
+      "method": "get",
+      "path": "/api/authmod",
+      "reason": "Private-server authentication-mod extension; official client synthesizes its result without an HTTP request, and OpenScreeps does not implement it."
+    },
+    {
+      "method": "get",
+      "path": "/api/warpath/battles",
+      "reason": "Client explicitly documents this third-party extension as unavailable on official servers; OpenScreeps does not implement it either."
+    }
+  ],
+  "routes": [
+    {
+      "method": "get",
+      "path": "/",
+      "source": ".sources/server/src/http.ts",
+      "line": 33
+    },
+    {
+      "method": "post",
+      "path": "/admin",
+      "source": ".sources/server/src/admin.ts",
+      "line": 60
+    },
+    {
+      "method": "get",
+      "path": "/admin/status",
+      "source": ".sources/server/src/admin.ts",
+      "line": 55
+    },
+    {
+      "method": "get",
+      "path": "/api/auth/me",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 453
+    },
+    {
+      "method": "get",
+      "path": "/api/auth/me",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 12
+    },
+    {
+      "method": "get",
+      "path": "/api/auth/query-token",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 466
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/signin",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 428
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/signin",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 18
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/steam-ticket",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 443
+    },
+    {
+      "method": "post",
+      "path": "/api/auth/steam-ticket",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 24
+    },
+    {
+      "method": "get",
+      "path": "/api/authmod",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 367
+    },
+    {
+      "method": "get",
+      "path": "/api/experimental/nukes",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1824
+    },
+    {
+      "method": "get",
+      "path": "/api/experimental/pvp",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1814
+    },
+    {
+      "method": "post",
+      "path": "/api/game/add-global-intent",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 120
+    },
+    {
+      "method": "post",
+      "path": "/api/game/add-object-intent",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 812
+    },
+    {
+      "method": "post",
+      "path": "/api/game/add-object-intent",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 114
+    },
+    {
+      "method": "post",
+      "path": "/api/game/change-flag-color",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 735
+    },
+    {
+      "method": "post",
+      "path": "/api/game/change-flag-color",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 102
+    },
+    {
+      "method": "post",
+      "path": "/api/game/check-unique-flag-name",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 709
+    },
+    {
+      "method": "post",
+      "path": "/api/game/check-unique-flag-name",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 96
+    },
+    {
+      "method": "post",
+      "path": "/api/game/check-unique-object-name",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 600
+    },
+    {
+      "method": "post",
+      "path": "/api/game/check-unique-object-name",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 66
+    },
+    {
+      "method": "post",
+      "path": "/api/game/create-construction",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 847
+    },
+    {
+      "method": "post",
+      "path": "/api/game/create-construction",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 78
+    },
+    {
+      "method": "post",
+      "path": "/api/game/create-flag",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 665
+    },
+    {
+      "method": "post",
+      "path": "/api/game/create-flag",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 84
+    },
+    {
+      "method": "post",
+      "path": "/api/game/create-invader",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 911
+    },
+    {
+      "method": "post",
+      "path": "/api/game/create-invader",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 132
+    },
+    {
+      "method": "post",
+      "path": "/api/game/gen-unique-flag-name",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 686
+    },
+    {
+      "method": "post",
+      "path": "/api/game/gen-unique-flag-name",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 90
+    },
+    {
+      "method": "post",
+      "path": "/api/game/gen-unique-object-name",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 577
+    },
+    {
+      "method": "post",
+      "path": "/api/game/gen-unique-object-name",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 60
+    },
+    {
+      "method": "post",
+      "path": "/api/game/map-stats",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 555
+    },
+    {
+      "method": "post",
+      "path": "/api/game/map-stats",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 12
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/my-orders",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1127
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/my-orders",
+      "source": ".sources/server/src/api/market.ts",
+      "line": 24
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/orders",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1140
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/orders",
+      "source": ".sources/server/src/api/market.ts",
+      "line": 18
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/orders-index",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1117
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/orders-index",
+      "source": ".sources/server/src/api/market.ts",
+      "line": 12
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/stats",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1159
+    },
+    {
+      "method": "get",
+      "path": "/api/game/market/stats",
+      "source": ".sources/server/src/api/market.ts",
+      "line": 30
+    },
+    {
+      "method": "post",
+      "path": "/api/game/place-spawn",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 626
+    },
+    {
+      "method": "post",
+      "path": "/api/game/place-spawn",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 72
+    },
+    {
+      "method": "post",
+      "path": "/api/game/power-creeps/cancel-delete",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 30
+    },
+    {
+      "method": "post",
+      "path": "/api/game/power-creeps/create",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 18
+    },
+    {
+      "method": "post",
+      "path": "/api/game/power-creeps/delete",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 24
+    },
+    {
+      "method": "post",
+      "path": "/api/game/power-creeps/experimentation",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 48
+    },
+    {
+      "method": "get",
+      "path": "/api/game/power-creeps/list",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 12
+    },
+    {
+      "method": "post",
+      "path": "/api/game/power-creeps/rename",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 42
+    },
+    {
+      "method": "post",
+      "path": "/api/game/power-creeps/upgrade",
+      "source": ".sources/server/src/api/power.ts",
+      "line": 36
+    },
+    {
+      "method": "post",
+      "path": "/api/game/remove-flag",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 755
+    },
+    {
+      "method": "post",
+      "path": "/api/game/remove-flag",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 108
+    },
+    {
+      "method": "post",
+      "path": "/api/game/remove-invader",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 933
+    },
+    {
+      "method": "post",
+      "path": "/api/game/remove-invader",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 138
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-decorations",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 988
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-decorations",
+      "source": ".sources/server/src/api/platform.ts",
+      "line": 51
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-objects",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1007
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-overview",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1097
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-overview",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 54
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-status",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1070
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-status",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 48
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-terrain",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1027
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-terrain",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1051
+    },
+    {
+      "method": "get",
+      "path": "/api/game/room-terrain",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 36
+    },
+    {
+      "method": "post",
+      "path": "/api/game/rooms",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 42
+    },
+    {
+      "method": "post",
+      "path": "/api/game/set-notify-when-attacked",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 867
+    },
+    {
+      "method": "post",
+      "path": "/api/game/set-notify-when-attacked",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 126
+    },
+    {
+      "method": "get",
+      "path": "/api/game/shards/info",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1171
+    },
+    {
+      "method": "get",
+      "path": "/api/game/tick",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 24
+    },
+    {
+      "method": "get",
+      "path": "/api/game/time",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 951
+    },
+    {
+      "method": "get",
+      "path": "/api/game/time",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 18
+    },
+    {
+      "method": "get",
+      "path": "/api/game/world-size",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 969
+    },
+    {
+      "method": "get",
+      "path": "/api/game/world-size",
+      "source": ".sources/server/src/api/game.ts",
+      "line": 30
+    },
+    {
+      "method": "get",
+      "path": "/api/leaderboard/find",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1215
+    },
+    {
+      "method": "get",
+      "path": "/api/leaderboard/find",
+      "source": ".sources/server/src/api/leaderboard.ts",
+      "line": 24
+    },
+    {
+      "method": "get",
+      "path": "/api/leaderboard/list",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1195
+    },
+    {
+      "method": "get",
+      "path": "/api/leaderboard/list",
+      "source": ".sources/server/src/api/leaderboard.ts",
+      "line": 18
+    },
+    {
+      "method": "get",
+      "path": "/api/leaderboard/seasons",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1230
+    },
+    {
+      "method": "get",
+      "path": "/api/leaderboard/seasons",
+      "source": ".sources/server/src/api/leaderboard.ts",
+      "line": 12
+    },
+    {
+      "method": "get",
+      "path": "/api/register/check-email",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 482
+    },
+    {
+      "method": "get",
+      "path": "/api/register/check-email",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 37
+    },
+    {
+      "method": "get",
+      "path": "/api/register/check-username",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 498
+    },
+    {
+      "method": "get",
+      "path": "/api/register/check-username",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 43
+    },
+    {
+      "method": "post",
+      "path": "/api/register/set-username",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 510
+    },
+    {
+      "method": "post",
+      "path": "/api/register/set-username",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 49
+    },
+    {
+      "method": "post",
+      "path": "/api/register/submit",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 530
+    },
+    {
+      "method": "get",
+      "path": "/api/scoreboard/list",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1858
+    },
+    {
+      "method": "get",
+      "path": "/api/seasons",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1242
+    },
+    {
+      "method": "get",
+      "path": "/api/seasons/current",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1259
+    },
+    {
+      "method": "post",
+      "path": "/api/servers/list",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 413
+    },
+    {
+      "method": "get",
+      "path": "/api/steam/news",
+      "source": ".sources/server/src/api/platform.ts",
+      "line": 18
+    },
+    {
+      "method": "post",
+      "path": "/api/user/activate-ptr",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1272
+    },
+    {
+      "method": "post",
+      "path": "/api/user/badge",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1283
+    },
+    {
+      "method": "post",
+      "path": "/api/user/badge",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 168
+    },
+    {
+      "method": "get",
+      "path": "/api/user/badge-svg",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 174
+    },
+    {
+      "method": "get",
+      "path": "/api/user/branches",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1417
+    },
+    {
+      "method": "get",
+      "path": "/api/user/branches",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 94
+    },
+    {
+      "method": "post",
+      "path": "/api/user/clone-branch",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1338
+    },
+    {
+      "method": "post",
+      "path": "/api/user/clone-branch",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 118
+    },
+    {
+      "method": "get",
+      "path": "/api/user/code",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1431
+    },
+    {
+      "method": "get",
+      "path": "/api/user/code",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 106
+    },
+    {
+      "method": "post",
+      "path": "/api/user/code",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1445
+    },
+    {
+      "method": "post",
+      "path": "/api/user/code",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 100
+    },
+    {
+      "method": "post",
+      "path": "/api/user/console",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1792
+    },
+    {
+      "method": "post",
+      "path": "/api/user/console",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 155
+    },
+    {
+      "method": "post",
+      "path": "/api/user/cpu-shards",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1294
+    },
+    {
+      "method": "post",
+      "path": "/api/user/decorations/activate",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1505
+    },
+    {
+      "method": "post",
+      "path": "/api/user/decorations/convert",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1478
+    },
+    {
+      "method": "post",
+      "path": "/api/user/decorations/deactivate",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1516
+    },
+    {
+      "method": "get",
+      "path": "/api/user/decorations/inventory",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1455
+    },
+    {
+      "method": "get",
+      "path": "/api/user/decorations/inventory",
+      "source": ".sources/server/src/api/platform.ts",
+      "line": 63
+    },
+    {
+      "method": "post",
+      "path": "/api/user/decorations/pixelize",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1493
+    },
+    {
+      "method": "get",
+      "path": "/api/user/decorations/themes",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1466
+    },
+    {
+      "method": "get",
+      "path": "/api/user/decorations/themes",
+      "source": ".sources/server/src/api/platform.ts",
+      "line": 70
+    },
+    {
+      "method": "post",
+      "path": "/api/user/delete-branch",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1349
+    },
+    {
+      "method": "post",
+      "path": "/api/user/delete-branch",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 124
+    },
+    {
+      "method": "post",
+      "path": "/api/user/email",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1381
+    },
+    {
+      "method": "post",
+      "path": "/api/user/email",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 186
+    },
+    {
+      "method": "get",
+      "path": "/api/user/find",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1701
+    },
+    {
+      "method": "get",
+      "path": "/api/user/find",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1713
+    },
+    {
+      "method": "get",
+      "path": "/api/user/find",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 162
+    },
+    {
+      "method": "get",
+      "path": "/api/user/memory",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1547
+    },
+    {
+      "method": "get",
+      "path": "/api/user/memory",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 131
+    },
+    {
+      "method": "post",
+      "path": "/api/user/memory",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1570
+    },
+    {
+      "method": "post",
+      "path": "/api/user/memory",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 137
+    },
+    {
+      "method": "get",
+      "path": "/api/user/memory-segment",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1608
+    },
+    {
+      "method": "get",
+      "path": "/api/user/memory-segment",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 143
+    },
+    {
+      "method": "post",
+      "path": "/api/user/memory-segment",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1635
+    },
+    {
+      "method": "post",
+      "path": "/api/user/memory-segment",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 149
+    },
+    {
+      "method": "get",
+      "path": "/api/user/messages/index",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1656
+    },
+    {
+      "method": "get",
+      "path": "/api/user/messages/index",
+      "source": ".sources/server/src/api/messages.ts",
+      "line": 24
+    },
+    {
+      "method": "get",
+      "path": "/api/user/messages/list",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1646
+    },
+    {
+      "method": "get",
+      "path": "/api/user/messages/list",
+      "source": ".sources/server/src/api/messages.ts",
+      "line": 18
+    },
+    {
+      "method": "post",
+      "path": "/api/user/messages/mark-read",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1689
+    },
+    {
+      "method": "post",
+      "path": "/api/user/messages/mark-read",
+      "source": ".sources/server/src/api/messages.ts",
+      "line": 30
+    },
+    {
+      "method": "post",
+      "path": "/api/user/messages/send",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1678
+    },
+    {
+      "method": "post",
+      "path": "/api/user/messages/send",
+      "source": ".sources/server/src/api/messages.ts",
+      "line": 12
+    },
+    {
+      "method": "get",
+      "path": "/api/user/messages/unread-count",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1666
+    },
+    {
+      "method": "get",
+      "path": "/api/user/messages/unread-count",
+      "source": ".sources/server/src/api/messages.ts",
+      "line": 36
+    },
+    {
+      "method": "get",
+      "path": "/api/user/money-history",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1769
+    },
+    {
+      "method": "get",
+      "path": "/api/user/money-history",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 204
+    },
+    {
+      "method": "get",
+      "path": "/api/user/name",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1802
+    },
+    {
+      "method": "post",
+      "path": "/api/user/notify-prefs",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1360
+    },
+    {
+      "method": "post",
+      "path": "/api/user/notify-prefs",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 180
+    },
+    {
+      "method": "get",
+      "path": "/api/user/overview",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1758
+    },
+    {
+      "method": "get",
+      "path": "/api/user/overview",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 217
+    },
+    {
+      "method": "post",
+      "path": "/api/user/respawn",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1305
+    },
+    {
+      "method": "post",
+      "path": "/api/user/respawn",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 81
+    },
+    {
+      "method": "get",
+      "path": "/api/user/respawn-prohibited-rooms",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1526
+    },
+    {
+      "method": "get",
+      "path": "/api/user/respawn-prohibited-rooms",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 75
+    },
+    {
+      "method": "get",
+      "path": "/api/user/rooms",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1740
+    },
+    {
+      "method": "get",
+      "path": "/api/user/rooms",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 87
+    },
+    {
+      "method": "post",
+      "path": "/api/user/set-active-branch",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1320
+    },
+    {
+      "method": "post",
+      "path": "/api/user/set-active-branch",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 112
+    },
+    {
+      "method": "post",
+      "path": "/api/user/set-steam-visible",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 192
+    },
+    {
+      "method": "get",
+      "path": "/api/user/stats",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1729
+    },
+    {
+      "method": "get",
+      "path": "/api/user/stats",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 211
+    },
+    {
+      "method": "post",
+      "path": "/api/user/tutorial-done",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1370
+    },
+    {
+      "method": "post",
+      "path": "/api/user/tutorial-done",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 198
+    },
+    {
+      "method": "get",
+      "path": "/api/user/world-start-room",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1396
+    },
+    {
+      "method": "get",
+      "path": "/api/user/world-start-room",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 63
+    },
+    {
+      "method": "get",
+      "path": "/api/user/world-status",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1406
+    },
+    {
+      "method": "get",
+      "path": "/api/user/world-status",
+      "source": ".sources/server/src/api/accounts.ts",
+      "line": 69
+    },
+    {
+      "method": "get",
+      "path": "/api/version",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 350
+    },
+    {
+      "method": "get",
+      "path": "/api/version",
+      "source": ".sources/server/src/http.ts",
+      "line": 22
+    },
+    {
+      "method": "get",
+      "path": "/api/warpath/battles",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 1840
+    },
+    {
+      "method": "get",
+      "path": "/api/xsolla/active-promotion",
+      "source": ".sources/server/src/api/platform.ts",
+      "line": 34
+    },
+    {
+      "method": "get",
+      "path": "/assets/{path}",
+      "source": ".sources/server/src/http.ts",
+      "line": 59
+    },
+    {
+      "method": "get",
+      "path": "/health",
+      "source": ".sources/server/src/http.ts",
+      "line": 54
+    },
+    {
+      "method": "get",
+      "path": "/room-history",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 398
+    },
+    {
+      "method": "get",
+      "path": "/room-history",
+      "source": ".sources/server/src/http.ts",
+      "line": 39
+    },
+    {
+      "method": "get",
+      "path": "/room-history/{shard}/{room}/{tick}.json",
+      "source": ".sources/client/src/ScreepsHttpClient.ts",
+      "line": 395
+    }
+  ]
+}

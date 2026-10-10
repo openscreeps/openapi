@@ -1,0 +1,7 @@
+extends:
+  - recommended
+rules:
+  # Reusable public schemas need not all be referenced by an operation.
+  no-unused-components: off
+  # Some game endpoints report logical failures only through HTTP 200.
+  operation-4xx-response: off

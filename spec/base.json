@@ -1,0 +1,196 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Screeps World and OpenScreeps HTTP API",
+    "version": "0.1.0",
+    "summary": "Source-derived contracts with explicit server compatibility",
+    "description": "Community-maintained HTTP contracts, not an official Screeps specification. Coverage is pinned to sources.json and coverage.json. Each operation declares x-availability and cites source evidence. A supported marker means the pinned implementation or reference client documents the operation, not that every operation was exercised live. Shapes shared by differing implementations are unions; read x-compatibility and descriptions before using a server-specific field. WebSocket/SockJS channels and the in-game JavaScript API are not HTTP operations and are outside this document. Never infer gameplay success from HTTP 200: inspect error and ok. Endpoints can have destructive effects; specification examples are not authorization to invoke them.",
+    "contact": {
+      "name": "OpenScreeps",
+      "url": "https://github.com/openscreeps/openapi/issues"
+    },
+    "license": {
+      "name": "ISC",
+      "identifier": "ISC"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://screeps.com",
+      "description": "Official Screeps World; shard query/body fields route shard-specific operations."
+    },
+    {
+      "url": "http://{host}:{port}",
+      "description": "OpenScreeps standalone server; configure host and port for your deployment. Check x-availability before calling.",
+      "variables": {
+        "host": {
+          "default": "localhost",
+          "description": "Your standalone server hostname or IP address."
+        },
+        "port": { "default": "21025", "description": "The standalone server HTTP port." }
+      }
+    }
+  ],
+  "externalDocs": {
+    "description": "Pinned source provenance, coverage and compatibility policy",
+    "url": "https://github.com/openscreeps/openapi#coverage-and-evidence"
+  },
+  "paths": {},
+  "components": {
+    "securitySchemes": {
+      "Token": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Token",
+        "description": "Official API token or server-issued session token. OpenScreeps refreshes successful authenticated responses in X-Token; preserve rotated tokens. Never send tokens to untrusted hosts or follow authenticated cross-host redirects."
+      },
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "OpenScreeps player-session alternative to X-Token. Do not assume official servers accept it."
+      },
+      "AdminToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "OpenScreeps administrator secret (at least 32 characters), distinct from all player tokens. Disabled unless SCREEPS_ADMIN_TOKEN is configured."
+      }
+    },
+    "parameters": {
+      "Shard": {
+        "name": "shard",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "$ref": "#/components/schemas/ShardName"
+        },
+        "description": "Official shard routing where the operation accepts it. OpenScreeps serves one world; this field does not select a different world."
+      },
+      "ServerPassword": {
+        "name": "X-Server-Password",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Required by OpenScreeps ApiGuard routes only when the host configures SERVER_PASSWORD; independent of player authentication. Missing/wrong value returns the API error envelope, usually HTTP 200."
+      },
+      "LegacyUsername": {
+        "name": "X-Username",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Legacy Screeps API clients send the token value here as well as X-Token. OpenScreeps does not require this header."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid HTTP input.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing, expired or invalid credentials.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Request limit exceeded.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Server failed to process the request.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      },
+      "Success": {
+        "description": "Success or a logical API failure; inspect the body even when HTTP status is 200.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Ok"
+                },
+                {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Ok": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "EmptySuccess": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": ["error"],
+        "additionalProperties": true
+      },
+      "RoomName": {
+        "type": "string",
+        "pattern": "^[WE][0-9]+[NS][0-9]+$",
+        "examples": ["W8N2"]
+      },
+      "ShardName": {
+        "type": "string",
+        "examples": ["shard3"]
+      },
+      "UserId": {
+        "type": "string"
+      },
+      "JsonValue": {
+        "description": "Arbitrary JSON value deliberately unconstrained (for example user-owned Memory)."
+      }
+    }
+  }
+}

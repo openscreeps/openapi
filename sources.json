@@ -1,0 +1,22 @@
+{
+  "game": {
+    "repository": "https://github.com/openscreeps/game",
+    "commit": "fd9cde57de20a1e37a0108c46ca78314c8b9bc36"
+  },
+  "engine": {
+    "repository": "https://github.com/openscreeps/engine",
+    "commit": "55883bef45d0d1c3c8c16e497fca56fe0b43ff11"
+  },
+  "openscreeps": {
+    "repository": "https://github.com/openscreeps/server",
+    "commit": "3954fd26f107a4b508ccaf6b5f64e4aa951d9e91"
+  },
+  "client": {
+    "repository": "https://github.com/screepers/node-screeps-api",
+    "commit": "0f861874ff119b7ba37d0d1a4beb90f096209f4e"
+  },
+  "backend": {
+    "repository": "https://github.com/screeps/backend-local",
+    "commit": "9d079282303ec04e577ac2bb97f64312b25e4ccd"
+  }
+}

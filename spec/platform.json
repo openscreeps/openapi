@@ -1,0 +1,989 @@
+{
+  "paths": {
+    "/api/version": {
+      "get": {
+        "operationId": "platformVersion",
+        "summary": "Read server capabilities",
+        "description": "Reports the protocol and server capabilities. OpenScreeps advertises protocol 14, one world, no inventory feature, packageVersion and useNativeAuth. Official fields such as package, features and shards are not guaranteed on a standalone server.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlatformVersion"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "supported"
+        },
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/version",
+            "date": "2026-10-10",
+            "notes": "Live official features use optional menuData, not the reference client's required menuItems. Official historyChunkSize is 100."
+          }
+        ],
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L15-L31",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/base.ts#L103-L151"
+        ]
+      }
+    },
+    "/api/servers/list": {
+      "post": {
+        "operationId": "platformServersList",
+        "summary": "List community servers",
+        "description": "Official curated list of community-run servers. No body or player authentication required; not hosted by OpenScreeps.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "servers": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PlatformServer"
+                          }
+                        }
+                      },
+                      "required": ["ok", "servers"],
+                      "additionalProperties": true
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "unsupported"
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L402-L414",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/servers.ts#L1-L27"
+        ]
+      }
+    },
+    "/api/steam/news": {
+      "get": {
+        "operationId": "platformSteamNews",
+        "summary": "Read Screeps Steam announcement feed",
+        "description": "OpenScreeps relays Valve ISteamNews/GetNewsForApp/v2 for Screeps, requesting one item, caching for five minutes and coalescing concurrent requests. appnews is passed through; item fields vary with Valve. Upstream failure returns 502, not a fabricated empty feed.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "appnews": {
+                          "type": "object",
+                          "properties": {
+                            "appid": {
+                              "type": "integer"
+                            },
+                            "newsitems": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/PlatformNewsItem"
+                              }
+                            },
+                            "count": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": ["newsitems"],
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": ["ok", "appnews"],
+                      "additionalProperties": true
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "502": {
+            "description": "Steam news unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "supported"
+        },
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L11-L23",
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/steam-news.ts#L12-L50"
+        ]
+      }
+    },
+    "/api/xsolla/active-promotion": {
+      "get": {
+        "operationId": "platformActivePromotion",
+        "summary": "Read item-shop promotion",
+        "description": "Official Screeps may return discount and dateUntil during a sale. OpenScreeps always returns only ok: 1: it sells no items and does not relay purchases to an inventory. The official promotion field value types are not established by the pinned source and deliberately remain unconstrained.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "discount": {
+                          "description": "Official promotion amount; upstream field type not established by pinned source."
+                        },
+                        "dateUntil": {
+                          "description": "Official promotion end; upstream representation not established by pinned source."
+                        }
+                      },
+                      "required": ["ok"],
+                      "additionalProperties": true
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "supported"
+        },
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L25-L38"
+        ]
+      }
+    },
+    "/api/experimental/pvp": {
+      "get": {
+        "operationId": "platformExperimentalPvp",
+        "summary": "Find recently active combat rooms",
+        "description": "Experimental official endpoint, including attacks against NPCs. The client defaults interval to 100; its documentation does not establish precise interval units or filtering direction. OpenScreeps does not implement this route.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Experimental filter; reference client default is 100; precise upstream units are undocumented."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "pvp": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "$ref": "#/components/schemas/PlatformPvpShard"
+                          }
+                        }
+                      },
+                      "required": ["ok", "pvp"],
+                      "additionalProperties": true
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "unsupported"
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1805-L1815",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/experimental.ts#L4-L24"
+        ]
+      }
+    },
+    "/api/experimental/nukes": {
+      "get": {
+        "operationId": "platformExperimentalNukes",
+        "summary": "List active nuclear launches",
+        "description": "Experimental official endpoint returning raw nuke objects grouped by shard. Read-only; it does not launch a nuke. OpenScreeps does not implement it.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "nukes": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/PlatformNuke"
+                            }
+                          }
+                        }
+                      },
+                      "required": ["ok", "nukes"],
+                      "additionalProperties": true
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "unsupported"
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1817-L1825",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/experimental.ts#L26-L34",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/rooms.ts#L646-L652"
+        ]
+      }
+    },
+    "/room-history": {
+      "get": {
+        "operationId": "platformRoomHistory",
+        "summary": "Read standalone room-history chunk",
+        "description": "OpenScreeps returns timestamp, room, base and contiguous tick-keyed object diffs, without the usual ok wrapper. An object id maps to a new object, partial update, or null deletion. time must identify a retained frame; at most historyChunkSize frames are returned. Unlike the official static-history path, this route uses query parameters.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "room",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RoomName"
+            },
+            "description": "Room name."
+          },
+          {
+            "name": "time",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Base game tick, normally aligned to the advertised historyChunkSize."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlatformHistory"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "description": "Requested history frame was not retained.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unsupported",
+          "openscreeps": "supported"
+        },
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/http.ts#L39-L47",
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L34-L46",
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/realtime/diff.ts#L1-L35"
+        ]
+      }
+    },
+    "/room-history/{shard}/{room}/{tick}.json": {
+      "get": {
+        "operationId": "platformOfficialRoomHistory",
+        "summary": "Read official room-history chunk",
+        "description": "Official static history route. The reference client rounds tick down to a 100-tick chunk boundary; inspect /api/version for the current historyChunkSize. History consists of an initial object state followed by tick-keyed diffs, not complete independent room snapshots. Missing/expired chunks return 404, potentially non-JSON from the static host.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "shard",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ShardName"
+            },
+            "description": "Shard name."
+          },
+          {
+            "name": "room",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/RoomName"
+            },
+            "description": "Room name."
+          },
+          {
+            "name": "tick",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "First tick in the history chunk."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlatformHistory"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "description": "History chunk not found; a static hosting error body is not guaranteed to be JSON."
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported",
+          "openscreeps": "unsupported"
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L370-L398",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/base.ts#L187-L209"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "platformHealth",
+        "summary": "Read standalone server health",
+        "description": "OpenScreeps health probe. Returns the committed game time and pause state. An unhealthy kernel or failed read returns 503.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful result or logical API failure. Inspect error even on HTTP 200.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "integer",
+                          "const": 1
+                        },
+                        "time": {
+                          "type": "integer"
+                        },
+                        "paused": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["ok", "time", "paused"],
+                      "additionalProperties": true
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
+            "description": "Server unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unsupported",
+          "openscreeps": "supported"
+        },
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/http.ts#L54-L57",
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L49-L59"
+        ]
+      }
+    },
+    "/": {
+      "get": {
+        "operationId": "platformRoot",
+        "summary": "Read standalone landing page",
+        "description": "OpenScreeps static landing page for game clients. This operation does not describe the official Screeps web application.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "HTML landing page.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unsupported",
+          "openscreeps": "supported"
+        },
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/http.ts#L29-L37"
+        ]
+      }
+    },
+    "/assets/{path}": {
+      "get": {
+        "operationId": "platformAsset",
+        "summary": "Read standalone client or terrain asset",
+        "description": "OpenScreeps wildcard asset route. map/W1N1.png renders room terrain at 150×150; map/zoom2/W0N0.png renders an aligned 4×4-room sector at 200×200. Other files come from the optional operator asset directory, with traversal and symlink containment checks. The path can contain slashes; some generated clients encode them, so preserve the wildcard path when using this endpoint. This specification does not claim that official assets use the same URL scheme.",
+        "tags": ["Platform"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "examples": ["map/W1N1.png"]
+            },
+            "description": "Relative wildcard asset path, potentially containing slash-delimited segments."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Asset bytes; content type follows the file extension.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-cache"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "description": "Asset not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified",
+          "openscreeps": "supported"
+        },
+        "x-sources": [
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/http.ts#L59-L69",
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/assets.ts#L1-L10",
+          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/assets.ts#L137-L173"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PlatformVersion": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "protocol": {
+            "type": "integer"
+          },
+          "package": {
+            "type": "integer"
+          },
+          "databaseVersion": {
+            "type": "integer"
+          },
+          "packageVersion": {
+            "type": "string"
+          },
+          "useNativeAuth": {
+            "type": "boolean"
+          },
+          "users": {
+            "type": "integer"
+          },
+          "currentSeason": {
+            "type": "string"
+          },
+          "decorationConvertationCost": {
+            "type": "number"
+          },
+          "decorationPixelizationCost": {
+            "type": "number"
+          },
+          "serverData": {
+            "type": "object",
+            "properties": {
+              "customObjectTypes": {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "historyChunkSize": {
+                "type": "integer"
+              },
+              "socketUpdateThrottle": {
+                "type": "number"
+              },
+              "welcomeText": {
+                "type": "string"
+              },
+              "renderer": {
+                "type": "object",
+                "properties": {
+                  "resources": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": ["resources", "metadata"],
+                "additionalProperties": true
+              },
+              "features": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "number"
+                    },
+                    "menuData": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "section": {
+                            "type": "number"
+                          },
+                          "start": {
+                            "type": "number"
+                          },
+                          "after": {
+                            "type": "string"
+                          },
+                          "module": {
+                            "type": "string"
+                          },
+                          "item": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": ["section", "item"],
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "required": ["name", "version"],
+                  "additionalProperties": true
+                }
+              },
+              "shards": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["customObjectTypes", "historyChunkSize", "renderer"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["ok", "protocol", "users", "serverData"],
+        "additionalProperties": true
+      },
+      "PlatformServer": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string"
+              },
+              "port": {
+                "type": "string"
+              },
+              "pass": {
+                "type": "string"
+              }
+            },
+            "required": ["host", "port", "pass"],
+            "additionalProperties": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "likeCount": {
+            "type": "number"
+          }
+        },
+        "required": ["_id", "settings", "name", "status", "likeCount"],
+        "additionalProperties": true
+      },
+      "PlatformNewsItem": {
+        "type": "object",
+        "properties": {
+          "gid": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "is_external_url": {
+            "type": "boolean"
+          },
+          "author": {
+            "type": "string"
+          },
+          "contents": {
+            "type": "string"
+          },
+          "feedlabel": {
+            "type": "string"
+          },
+          "date": {
+            "type": "integer"
+          },
+          "feedname": {
+            "type": "string"
+          },
+          "feed_type": {
+            "type": "integer"
+          },
+          "appid": {
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "additionalProperties": true
+      },
+      "PlatformPvpShard": {
+        "type": "object",
+        "properties": {
+          "rooms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "$ref": "#/components/schemas/RoomName"
+                },
+                "lastPvpTime": {
+                  "type": "integer"
+                }
+              },
+              "required": ["_id", "lastPvpTime"],
+              "additionalProperties": true
+            }
+          },
+          "time": {
+            "type": "integer"
+          }
+        },
+        "required": ["rooms", "time"],
+        "additionalProperties": true
+      },
+      "PlatformNuke": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "const": "nuke"
+          },
+          "room": {
+            "$ref": "#/components/schemas/RoomName"
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          },
+          "landTime": {
+            "type": "integer"
+          },
+          "launchRoomName": {
+            "$ref": "#/components/schemas/RoomName"
+          }
+        },
+        "required": ["_id", "type", "room", "x", "y", "landTime", "launchRoomName"],
+        "additionalProperties": true
+      },
+      "PlatformHistory": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "number"
+          },
+          "room": {
+            "$ref": "#/components/schemas/RoomName"
+          },
+          "base": {
+            "type": "integer"
+          },
+          "ticks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": ["object", "null"],
+                "additionalProperties": true,
+                "description": "New object, partial object patch, or null deletion. Nested patch fields intentionally remain open."
+              }
+            }
+          }
+        },
+        "required": ["timestamp", "room", "base", "ticks"],
+        "additionalProperties": true
+      }
+    }
+  }
+}

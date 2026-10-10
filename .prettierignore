@@ -1,0 +1,6 @@
+package-lock.json
+openapi.json
+openapi.yaml
+coverage.json
+build/
+.sources/

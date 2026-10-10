@@ -1,0 +1,17 @@
+[tools]
+node = "24.21.0"
+
+[tasks.install]
+run = "npm ci"
+
+[tasks.build]
+run = "npm run build"
+
+[tasks.check]
+run = "npm run check"
+
+[tasks.smoke]
+run = "npm run smoke"
+
+[tasks.ci]
+run = ["npm run check", "npm run format:check", "npm run types"]

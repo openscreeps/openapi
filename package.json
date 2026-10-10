@@ -1,0 +1,29 @@
+{
+  "name": "@openscreeps/openapi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Source-derived HTTP OpenAPI contracts for Screeps World and OpenScreeps",
+  "license": "ISC",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check && node scripts/check.mjs && redocly lint openapi.yaml && node --test test/*.test.mjs",
+    "inventory": "node scripts/inventory.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "types": "openapi-typescript openapi.yaml -o build/api.d.ts && tsc --noEmit --target es2024 --module nodenext --moduleResolution nodenext build/api.d.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.62.1",
+    "yaml": "2.9.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "prettier": "3.9.9"
+  }
+}
