@@ -1,0 +1,61 @@
+{
+  "name": "standalone",
+  "description": "Compatibility profile for a standalone, single-world Screeps server (for example OpenScreeps) that the official web client and community tools can use as a private server. It selects official operations (`required`), documents why the rest are not provided (`excluded`), adds the private-server protocol operations the official client uses only when `options.official` is false (`additions`), and records precise standalone differences (`adaptations`, `overrides`). Official schemas are reused unchanged unless an override with `x-profile-reason` says otherwise.",
+  "info": {
+    "title": "Screeps standalone server HTTP API",
+    "summary": "Official Screeps World HTTP contract composed with the standalone compatibility profile",
+    "description": "Operations a standalone single-world Screeps server provides for the official web client and community tools. Composed from the official Screeps World contract and the standalone compatibility profile; each operation's `x-profile` states whether it is an unchanged official operation (`required`), an official operation with documented standalone differences (`adapted`), a private-server protocol operation (`addition`) or a server-specific extension (`extension`). One world is served: `shard` values are accepted for official-client compatibility and ignored. Logical failures arrive as `{error}` usually with HTTP 200; never infer success from the status code."
+  },
+  "servers": [
+    {
+      "url": "http://{host}:{port}",
+      "description": "Standalone server; configure host and port for your deployment.",
+      "variables": {
+        "host": {
+          "default": "localhost",
+          "description": "Standalone server hostname or IP address."
+        },
+        "port": {
+          "default": "21025",
+          "description": "Standalone server HTTP port."
+        }
+      }
+    }
+  ],
+  "transport": [
+    {
+      "match": "^/(api/|room-history$)",
+      "parameter": {
+        "$ref": "#/components/parameters/ServerPassword"
+      },
+      "reason": "The official web client sends `X-Server-Password` on every request when `options.official` is false and a server password is configured (Auth request interceptor in build.min.js), so password-protected standalone servers check it on API and room-history requests."
+    }
+  ],
+  "overrides": {
+    "components": {
+      "parameters": {
+        "ServerPassword": {
+          "name": "X-Server-Password",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Server password of a password-protected private server, independent of player authentication. Required only when the host configures one; a missing or wrong value returns the API error envelope, usually with HTTP 200.",
+          "x-profile-reason": "Private-server protocol header: the official client sends it only when `options.official` is false.",
+          "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C296024"]
+        },
+        "Shard": {
+          "description": "Accepted for official-client compatibility. A standalone server serves one world and ignores this value.",
+          "x-profile-reason": "Single world: official shard routing does not apply."
+        }
+      },
+      "securitySchemes": {
+        "Token": {
+          "description": "Session token issued by the standalone server (for example by `authSignin` or `authSteamTicket`). Successful authenticated responses may rotate it in the X-Token response header; store the latest value. Never send tokens to untrusted hosts or follow authenticated cross-host redirects.",
+          "x-profile-reason": "Standalone servers issue their own session tokens instead of screeps.com account tokens."
+        }
+      }
+    }
+  }
+}

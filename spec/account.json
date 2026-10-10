@@ -1,0 +1,1955 @@
+{
+  "paths": {
+    "/api/adm/timeline-stats": {
+      "get": {
+        "operationId": "adminTimelineStats",
+        "summary": "Read server timeline statistics",
+        "description": "Internal screeps.com administration page (`/timeline-stats`): returns timeline statistics for a shard. The client JSON-parses every `stats` entry and draws `{type, name, start, end}` rows (start/end converted with `new Date(...)`) on a Google Charts timeline.",
+        "tags": ["Administration (Hosted)"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Shard"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AdminTimelineStatsResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C286307"],
+        "x-unverified": "Authorization requirements (presumably staff-only), the meaning of `type`/`name` and the `start`/`end` value format are not evidenced."
+      }
+    },
+    "/api/auth/github": {
+      "get": {
+        "operationId": "authGithub",
+        "summary": "Start GitHub sign-in or account linking",
+        "description": "Browser navigation, not an `Api` call: the official client opens `API_URL + 'auth/github?'` in a popup window. When signed in it appends `token=<current auth token>` (linking GitHub to the signed-in account); with `repoScope=1` it requests repository access (used by the GitHub code-sync settings after `GET /api/auth/github/check-repo-scope` answered `no scope`). On completion the popup posts a JSON string message to the opener; the client parses it, reads `token` (stored as the new session token), `email`, and `username` (absent for a newly registered account, which the client then sends to `/register`).",
+        "tags": ["Auth"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "description": "Current auth token, appended only when the user is already signed in (links GitHub to that account).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "repoScope",
+            "in": "query",
+            "required": false,
+            "description": "`1` to request GitHub repository scope; omitted otherwise.",
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "Browser navigation opened in a popup window; the response (OAuth redirect chain and the final page) is not read as JSON by the official client."
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C299157"],
+        "x-unverified": "The HTTP responses of the navigation (redirect to GitHub, callback URL, final HTML page) and the exact postMessage payload beyond `token`/`email`/`username` are not evidenced; the popup message is a browser `postMessage`, not part of the HTTP response body."
+      }
+    },
+    "/api/auth/github/check-repo-scope": {
+      "get": {
+        "operationId": "authGithubCheckRepoScope",
+        "summary": "Check GitHub repository scope",
+        "description": "Checks whether the signed-in account's linked GitHub authorization includes repository scope. The official account page calls it before opening the GitHub repository settings: on success it navigates to the repository selection; the logical error `no scope` makes it restart GitHub OAuth with `repoScope=1` (`GET /api/auth/github`). Other errors are propagated.",
+        "tags": ["Auth"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C267054"],
+        "x-unverified": "Only success vs the `no scope` error is evidenced; the success body is not read and other error strings are unknown."
+      }
+    },
+    "/api/auth/steam": {
+      "get": {
+        "operationId": "authSteam",
+        "summary": "Start Steam web sign-in or account linking",
+        "description": "Browser navigation, not an `Api` call: the official web client opens `API_URL + 'auth/steam?'` in a popup window, appending `token=<current auth token>` when signed in (links Steam to that account). On completion the popup posts a JSON string message to the opener; the client parses it, reads `token` (stored as the new session token), `email`, `steamid`, and `username` (absent for a newly registered account, which the client then sends to `/register`).",
+        "tags": ["Auth"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "description": "Current auth token, appended only when the user is already signed in (links Steam to that account).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "Browser navigation opened in a popup window; the response (OAuth redirect chain and the final page) is not read as JSON by the official client."
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C299649"],
+        "x-unverified": "The HTTP responses of the navigation (Steam OpenID redirect, callback, final HTML page) and the postMessage payload beyond `token`/`email`/`steamid`/`username` are not evidenced."
+      }
+    },
+    "/api/ea/list": {
+      "get": {
+        "operationId": "adminEarlyAccessList",
+        "summary": "List early-access applicants",
+        "description": "Internal screeps.com administration page (`/ea`): lists early-access applicants. The client reads `list` and uses each entry's `email` (selection for `POST /api/ea/send`) and `sent` (truthy when already sent; can be hidden).",
+        "tags": ["Administration (Hosted)"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AdminEarlyAccessListResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C46800"],
+        "x-unverified": "Authorization requirements (presumably staff-only) and entry fields beyond `email`/`sent` are not evidenced."
+      }
+    },
+    "/api/ea/send": {
+      "post": {
+        "operationId": "adminEarlyAccessSend",
+        "summary": "Send early-access invitations",
+        "description": "Internal screeps.com administration page (`/ea`): sends early-access e-mails to the selected applicant addresses. The client shows the whole JSON response in an alert.",
+        "tags": ["Administration (Hosted)"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "emails": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Selected applicant e-mail addresses."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["emails"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C47036"],
+        "x-unverified": "Authorization requirements and the response fields (displayed verbatim) are not evidenced."
+      }
+    },
+    "/api/register/change-password": {
+      "post": {
+        "operationId": "registerChangePassword",
+        "summary": "Reset a password with a recovery token",
+        "description": "Completes e-mail password recovery. The recovery page (`/register/recover?t=<token>`) first posts only `{token}` to validate the link: the logical error `invalid password` means the token is valid (the form is shown), any other error marks the link invalid. Submitting the form posts `{token, password}`; success shows a confirmation, any error a generic failure. The official client only submits passwords that consist of letters, digits and `!@#$%^&*(),./\\[]{}'\";=+|_-?~`:<>` characters and contain at least one digit and one non-digit.",
+        "tags": ["Register"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "description": "Recovery token from the e-mailed link (`t` route parameter)."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "New password; omitted by the link-validation call."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C262534",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C263130"
+        ],
+        "x-unverified": "Error strings other than `invalid password` (which the client treats as \"token valid, password missing\" during link validation) and the success body are not evidenced; whether a signed-in `X-Token` changes behavior is unknown."
+      }
+    },
+    "/api/register/confirm": {
+      "post": {
+        "operationId": "registerConfirm",
+        "summary": "Confirm a registration e-mail",
+        "description": "Confirms an e-mail address from the confirmation link (`/register/confirm?id=<id>&s=<secret>`). The official client skips the call when the signed-in account already has a clean e-mail, Steam or GitHub identity; on success it reads `email` for analytics, on error it shows a generic failure.",
+        "tags": ["Register"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "`id` route parameter of the confirmation link."
+                  },
+                  "s": {
+                    "type": "string",
+                    "description": "`s` route parameter (confirmation secret) of the confirmation link."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["id", "s"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RegisterConfirmResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C261769"],
+        "x-unverified": "Value formats of `id`/`s`, error strings and response fields other than `email` are not evidenced."
+      }
+    },
+    "/api/register/recover": {
+      "post": {
+        "operationId": "registerRecover",
+        "summary": "Request a password recovery e-mail",
+        "description": "Requests a password recovery e-mail for an account address. The official recovery form shows success when the call resolves and displays the logical error string otherwise.",
+        "tags": ["Register"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "Account e-mail address."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C262303"],
+        "x-unverified": "Error strings (e.g. for unknown addresses) and the success body are not evidenced."
+      }
+    },
+    "/api/sso/jwt": {
+      "get": {
+        "operationId": "supportSsoJwt",
+        "summary": "Issue a Zendesk single sign-on JWT",
+        "description": "Issues a JWT for Zendesk single sign-on (forums/support). After sign-in on the `/sso` route the official client redirects to `https://screeps.zendesk.com/access/jwt?jwt=<token>&redirect_to=<redirect_to>`. Logical errors `no subscription` (forum posting requires an active subscription) and `invalid email` (the account has no e-mail) are shown as dialogs.",
+        "tags": ["Support"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SupportSsoJwtResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C257241"],
+        "x-unverified": "JWT claims and lifetime are not evidenced."
+      }
+    },
+    "/api/user/activate-cpu-unlocks": {
+      "post": {
+        "operationId": "userActivateCpuUnlocks",
+        "summary": "Activate CPU unlocks",
+        "description": "Consumes `count` CPU unlock items of the signed-in account (Angular `UserService.activateCpuUnlock`). Errors surface as the logical error string (or `data.error`); on success the client re-reads `GET /api/auth/me`.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "description": "Number of CPU unlocks to activate."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["count"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214438C46"],
+        "x-unverified": "Error strings and the success body are not evidenced."
+      }
+    },
+    "/api/user/activate-shard-access": {
+      "post": {
+        "operationId": "userActivateShardAccess",
+        "summary": "Activate shard access with access keys",
+        "description": "Spends `count` access keys (`Me.resources.accessKey`) to grant the signed-in account access to a restricted shard, from the shard selection item (`SCWShardsItemXComponent`). On success the client re-reads `GET /api/auth/me`; failures are only logged.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shard": {
+                    "$ref": "#/components/schemas/ShardName"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "description": "Number of access keys to spend, chosen in the access-key dialog."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["shard", "count"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L210024C46"],
+        "x-unverified": "Access duration per key, error strings and the success body are not evidenced."
+      }
+    },
+    "/api/user/auth-token": {
+      "get": {
+        "operationId": "userAuthTokenList",
+        "summary": "List API auth tokens",
+        "description": "Lists the signed-in account's API auth tokens for the official account page (`/account/auth-tokens`). The client reads `tokens` and renders it.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserAuthTokenListResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C264481",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/guides/servers.md#L19-L21"
+        ],
+        "x-unverified": "Fields of `tokens` entries are read only by the page template, which is not in the analyzed assets; the entry shape (id passed to `POST /api/user/delete-auth-token`, token prefix used for the no-rate-limit page) is unverified."
+      },
+      "post": {
+        "operationId": "userAuthTokenCreate",
+        "summary": "Generate an API auth token",
+        "description": "Generates a persistent API auth token for the signed-in account. The official form posts its whole model: `type` (`full` by default), per-endpoint permissions in `endpoints`, websocket permissions in `websockets` and a `memorySegments` string. The client shows the returned `token` once (\"it will not be shown again\") and reloads the token list.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "Token type; the form default is `full`."
+                  },
+                  "endpoints": {
+                    "type": "object",
+                    "description": "Endpoint permissions keyed `METHOD /api/path`; the form offers `GET /api/user/name`, `GET /api/user/money-history`, `GET /api/market/my-orders`, `GET /api/user/memory`, `GET /api/user/memory-segment` and `POST /api/user/memory-segment` (all `false` by default).",
+                    "additionalProperties": {
+                      "type": "boolean"
+                    }
+                  },
+                  "websockets": {
+                    "type": "object",
+                    "description": "Websocket permissions (form defaults `console: false`, `rooms: false`).",
+                    "properties": {
+                      "console": {
+                        "type": "boolean"
+                      },
+                      "rooms": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "memorySegments": {
+                    "type": "string",
+                    "description": "Memory segment selection entered as text (empty by default)."
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserAuthTokenCreateResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C271268",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/guides/servers.md#L19-L21"
+        ],
+        "x-unverified": "Token `type` values other than `full`, the `memorySegments` syntax and how restricted permissions are enforced are defined by the page template/server and not evidenced."
+      }
+    },
+    "/api/user/convert-credits-subscription": {
+      "post": {
+        "operationId": "userConvertCreditsSubscription",
+        "summary": "Convert credits into subscription time",
+        "description": "Converts the signed-in account's credits into subscription time from the subscription page; the client reloads subscription data (`GET /api/xsolla/user`) and `GET /api/auth/me` on success.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C278240"],
+        "x-unverified": "Conversion rate, preconditions and error strings are not evidenced."
+      }
+    },
+    "/api/user/cpu-limit": {
+      "post": {
+        "operationId": "userCpuLimitSet",
+        "summary": "Change the CPU limit (credits)",
+        "description": "Changes the signed-in account's CPU limit on the credits-based CPU page (`/cpu`, redirected to the subscription page when the account has no credits). The client computes a pro-rated credit charge from `lastChargeTime` before allowing the change, then re-reads `GET /api/auth/me`.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cpu": {
+                    "type": "number",
+                    "description": "New CPU limit chosen on the page (the client charges nothing for values below 20 and starts the form at 19 when the current limit is below 20)."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["cpu"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C279592"],
+        "x-unverified": "Allowed values, charging rules enforced by the server and error strings are not evidenced."
+      }
+    },
+    "/api/user/delete-auth-token": {
+      "post": {
+        "operationId": "userAuthTokenDelete",
+        "summary": "Revoke an API auth token",
+        "description": "Revokes one of the signed-in account's API auth tokens; the official account page reloads the token list on success.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tokenId": {
+                    "type": "string",
+                    "description": "Identifier of the token entry (from the template-bound token list)."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["tokenId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C271645"],
+        "x-unverified": "The `tokenId` value (which `tokens` entry field it comes from) and error strings are not evidenced."
+      }
+    },
+    "/api/user/early-preview": {
+      "post": {
+        "operationId": "userEarlyPreviewActivate",
+        "summary": "Activate world access with an early-preview code",
+        "description": "Activates the persistent World with an early-preview activation code from the world activation dialog. On success the client shows the world welcome dialog; the logical error `invalid code` is shown as \"Activation code is invalid\".",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Activation code."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["code"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C47453"],
+        "x-unverified": "Whether a signed-in token is strictly required (the dialog is shown inside the game UI), the success body and other error strings are not evidenced."
+      }
+    },
+    "/api/user/find-shared": {
+      "get": {
+        "operationId": "userFindShared",
+        "summary": "Find a user for a room replay",
+        "description": "Looks up a user by id for the room history (replay) viewer. On screeps.com (`options.official`) the viewer calls this route instead of `GET /api/user/find` for every user id found in replay ticks (object `user` and controller `reservation.user`) and caches `user` by `user._id`.",
+        "tags": ["User"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "User id found in the replay data.",
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserFindSharedResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C313624"],
+        "x-unverified": "Whether sign-in is required (replays can be shared) and `user` fields beyond `_id` (rendered by the viewer) are not evidenced."
+      }
+    },
+    "/api/user/github-repo": {
+      "post": {
+        "operationId": "userGithubRepoSet",
+        "summary": "Set or clear the GitHub code-sync repository",
+        "description": "Configures GitHub code synchronization. Submitting posts `{repo, folder}` after warning that all scripts in the Screeps account will be overwritten; the logical error `no default branch` means the repository has no `default` branch. Resetting posts `{repo: false}`. On success the client re-reads `GET /api/auth/me` (`github.repo.name`/`folder`) and returns to the account page.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "description": "Repository name to sync from, or `false` to disable synchronization.",
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "folder": {
+                    "type": "string",
+                    "description": "Folder inside the repository (empty string for the root)."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["repo"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C269440",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C269731"
+        ],
+        "x-unverified": "Sync mechanics (which branches map to Screeps branches beyond the required `default` branch) and other error strings are not evidenced."
+      }
+    },
+    "/api/user/github-repos": {
+      "get": {
+        "operationId": "userGithubRepos",
+        "summary": "List GitHub repositories",
+        "description": "Lists the linked GitHub account's repositories for the code-sync settings page; the client de-duplicates `repos` by `name` and offers the names as choices.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserGithubReposResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C268769"],
+        "x-unverified": "Repository fields other than `name` are not read; error strings (e.g. missing repository scope) are not evidenced."
+      }
+    },
+    "/api/user/ivm": {
+      "post": {
+        "operationId": "userIvmSet",
+        "summary": "Select the JavaScript virtual machine",
+        "description": "Switches the signed-in account's runtime between the isolated VM (`legacy: false`, default) and the shared legacy VM (`legacy: true`); used by the account runtime settings and by a tip that activates the isolated VM. The client re-reads `GET /api/auth/me` (`runtime.legacyVm`) afterwards.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "legacy": {
+                    "type": "boolean",
+                    "description": "`true` selects the shared legacy VM, `false` the isolated VM."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["legacy"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C224952",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C277026"
+        ],
+        "x-unverified": "When the switch takes effect and error strings are not evidenced."
+      }
+    },
+    "/api/user/money-history/details": {
+      "get": {
+        "operationId": "userMoneyHistoryDetails",
+        "summary": "Resolve the parties of a market deal",
+        "description": "Returns the counterparties of a credit-ledger market deal for the market history page (`HistoryDataSource.getDetails`), queried with the `tick`, `market.roomName` and `market.targetRoomName` of a `GET /api/user/money-history` entry. The client iterates `orders`: for `type` `market.sell` it sets the entry's seller to `users[user]`, for `market.buy` the buyer.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tick",
+            "in": "query",
+            "required": false,
+            "description": "`tick` of the money-history entry.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "roomName",
+            "in": "query",
+            "required": false,
+            "description": "`market.roomName` of the money-history entry.",
+            "schema": {
+              "$ref": "#/components/schemas/RoomName"
+            }
+          },
+          {
+            "name": "targetRoomName",
+            "in": "query",
+            "required": false,
+            "description": "`market.targetRoomName` of the money-history entry.",
+            "schema": {
+              "$ref": "#/components/schemas/RoomName"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserMoneyHistoryDetailsResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L200774C66"],
+        "x-unverified": "Which parameters are mandatory, which ledger entries `orders` contains, the fields of `users` values (rendered by the page template, not in the analyzed assets) and the caller of `getDetails` are not evidenced."
+      }
+    },
+    "/api/user/noratelimit": {
+      "post": {
+        "operationId": "userNoRateLimit",
+        "summary": "Reset rate limits of an API token",
+        "description": "Lifts the current rate limiting of an API auth token after a reCAPTCHA check. Posted by the official page `#!/account/auth-tokens/noratelimit?token=<token>` (opened in a popup from the token list, or by tools such as node-screeps-api's `rateLimitResetUrl`) with the first 8 characters of the token and the reCAPTCHA response. On success the page posts `screepsTokenSuccess` to its opener and closes; errors are shown as returned.",
+        "tags": ["User"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "description": "First 8 characters of the API auth token."
+                  },
+                  "recaptcha": {
+                    "type": "string",
+                    "description": "reCAPTCHA response."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["token", "recaptcha"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C272950",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2150-L2161"
+        ],
+        "x-unverified": "Whether a signed-in session token is required (the page itself does not require sign-in), how long the reset lasts and error strings are not evidenced."
+      }
+    },
+    "/api/user/password": {
+      "post": {
+        "operationId": "userPasswordSet",
+        "summary": "Change the account password",
+        "description": "Changes the signed-in account's password. The official account page posts the current password as `oldPassword` and the new one as `password`, then re-reads `GET /api/auth/me` and returns to the account page. The official client only submits passwords that consist of letters, digits and `!@#$%^&*(),./\\[]{}'\";=+|_-?~`:<>` characters and contain at least one digit and one non-digit.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "oldPassword": {
+                    "type": "string",
+                    "description": "Current password (the form initializes it to an empty string)."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "New password."
+                  }
+                },
+                "additionalProperties": true,
+                "required": ["oldPassword", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C267830"],
+        "x-unverified": "Behavior for accounts without a password (Steam/GitHub sign-up; the form always sends `oldPassword`), session/token invalidation and error strings are not evidenced."
+      }
+    },
+    "/api/user/request-early-preview": {
+      "post": {
+        "operationId": "userEarlyPreviewRequest",
+        "summary": "Request early-preview access",
+        "description": "Submits the official early-preview request form (`/early-preview-request`); on success the page shows a confirmation.",
+        "tags": ["User"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "birthDate": {
+                    "type": "object",
+                    "description": "Birth date entered in the form.",
+                    "properties": {
+                      "day": {
+                        "description": "Form-bound value, initialized to an empty string."
+                      },
+                      "month": {
+                        "description": "Form-bound value, initialized to an empty string."
+                      },
+                      "year": {
+                        "description": "Form-bound value, initialized to an empty string."
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "qualify": {
+                    "description": "Template-bound qualification answer, initially undefined; value type not evidenced."
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C280365"],
+        "x-unverified": "Whether sign-in is required, value types of `birthDate` parts and `qualify`, and error strings are not evidenced."
+      }
+    },
+    "/api/user/unlink-github": {
+      "post": {
+        "operationId": "userUnlinkGithub",
+        "summary": "Unlink the GitHub account",
+        "description": "Removes the GitHub identity linked to the signed-in account after a confirmation dialog on the official account page, which then re-reads `GET /api/auth/me`.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C264876"],
+        "x-unverified": "Preconditions (e.g. another sign-in method must remain) and error strings are not evidenced."
+      }
+    },
+    "/api/user/unlink-steam": {
+      "post": {
+        "operationId": "userUnlinkSteam",
+        "summary": "Unlink the Steam account",
+        "description": "Removes the Steam identity linked to the signed-in account after a confirmation dialog on the official account page, which then re-reads `GET /api/auth/me`.",
+        "tags": ["User"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C265112"],
+        "x-unverified": "Preconditions (e.g. another sign-in method must remain) and error strings are not evidenced."
+      }
+    },
+    "/api/zendesk/report-problem": {
+      "post": {
+        "operationId": "supportReportProblem",
+        "summary": "Report a problem to support",
+        "description": "Submits the official client's \"report a problem\" form to support (Zendesk). The form pre-fills `email` from the signed-in account when available; on success the form shows a submitted state, on failure it displays the error message or string.",
+        "tags": ["Support"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "Contact e-mail (pre-filled from the account when signed in)."
+                  },
+                  "urgent": {
+                    "type": "boolean"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "versionDetails": {
+                    "type": "string",
+                    "description": "Client/version details entered by the user."
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L209033C46"],
+        "x-unverified": "Whether a signed-in token is required, form validators, error strings and the success body are not evidenced (the form value is posted as-is)."
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminEarlyAccessListResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "list": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string"
+                },
+                "sent": {
+                  "description": "Truthy when the early-access e-mail was already sent; value type not evidenced."
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "AdminTimelineStatsResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "stats": {
+            "type": "array",
+            "description": "JSON-encoded strings; each parses to an object with `type`, `name`, `start`, `end`.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["ok", "stats"],
+        "additionalProperties": true
+      },
+      "RegisterConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "email": {
+            "type": "string",
+            "description": "Confirmed e-mail address (read for analytics)."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "SupportSsoJwtResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "token": {
+            "type": "string",
+            "description": "Zendesk JWT passed as the `jwt` query parameter."
+          }
+        },
+        "required": ["ok", "token"],
+        "additionalProperties": true
+      },
+      "UserAuthTokenCreateResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "token": {
+            "type": "string",
+            "description": "The generated token, shown once."
+          }
+        },
+        "required": ["ok", "token"],
+        "additionalProperties": true
+      },
+      "UserAuthTokenListResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "UserFindSharedResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "$ref": "#/components/schemas/UserId"
+              }
+            },
+            "required": ["_id"],
+            "additionalProperties": true
+          }
+        },
+        "required": ["ok", "user"],
+        "additionalProperties": true
+      },
+      "UserGithubReposResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "repos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Repository name used as the choice value."
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "UserMoneyHistoryDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "user": {
+                  "$ref": "#/components/schemas/UserId"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Ledger entry type; the client acts on `market.sell` and `market.buy`."
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "users": {
+            "type": "object",
+            "description": "Users keyed by id.",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["ok", "orders"],
+        "additionalProperties": true
+      }
+    }
+  }
+}

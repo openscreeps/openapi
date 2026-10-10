@@ -1,0 +1,2117 @@
+{
+  "paths": {
+    "/api/arena/activate": {
+      "post": {
+        "operationId": "arenaActivate",
+        "summary": "Redeem an Arena activation code",
+        "description": "Redeems an Arena activation code for the signed-in player. The official client opens the activation dialog when `POST /api/arena/status` fails with `activation needed`, posts the entered `code`, closes the dialog on success and retries the status update. A logical failure `invalid code` is shown as \"Activation code is invalid\"; other errors as \"Unknown error\".",
+        "tags": ["Arena"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArenaActivateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C119692"],
+        "x-unverified": "The success body is not read by the official client; only the `invalid code` error string is evidenced."
+      }
+    },
+    "/api/arena/find-init-room": {
+      "get": {
+        "operationId": "arenaFindInitRoom",
+        "summary": "Find a starting Arena room",
+        "description": "Returns the Arena room the player should enter; the official client navigates to the room view of the returned `room`. It is called from the Arena lobby start button (also when no player is signed in, while a signed-in player without e-mail is sent to registration confirmation instead) and from the \"play Arena again\" action in the room view.",
+        "tags": ["Arena"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ArenaFindInitRoomResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C80060",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C82830"
+        ],
+        "x-unverified": "Whether an anonymous caller receives a room (the lobby calls it when signed out) and response fields other than `room` are not evidenced."
+      }
+    },
+    "/api/arena/order/offer": {
+      "get": {
+        "operationId": "arenaOrderOffer",
+        "summary": "Read the Arena access offer",
+        "description": "Resolves the Arena page data (`accessData`) of the official Angular client. The page shows the caller's Steam key from `steamKey` when present and otherwise links to the Steam store page.",
+        "tags": ["Arena"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ArenaOrderOfferResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L191776C50",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L192072C46"
+        ],
+        "x-unverified": "Authentication requirements are not evidenced (the route resolver calls it without a sign-in check); response fields other than `steamKey` are read only by the template and not evidenced."
+      }
+    },
+    "/api/arena/order/purchase": {
+      "post": {
+        "operationId": "arenaOrderPurchase",
+        "summary": "Purchase Arena access",
+        "description": "Purchases Arena access for the signed-in player. The official client's `ArenaService.getPurchase` posts without a body, then refreshes the signed-in account (`AuthService.check`) and returns the raw response.",
+        "tags": ["Arena"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L192091C46"],
+        "x-unverified": "No caller of `ArenaService.getPurchase` exists in the pinned bundle, so the request is not issued by the shipped client; success fields, errors and the exact authentication requirement (inferred from the account refresh) are not evidenced."
+      }
+    },
+    "/api/arena/status": {
+      "get": {
+        "operationId": "arenaStatus",
+        "summary": "Read the caller's Arena status",
+        "description": "Returns the signed-in player's Arena participation status. When the official client opens an Arena room (`arena*`) for a signed-in player and `status` is `not active`, it shows the Arena tip dialog and then joins via `POST /api/arena/status` with `respawn: true`.",
+        "tags": ["Arena"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ArenaStatusResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C80446"],
+        "x-unverified": "Only the `not active` status value is evidenced; other values and fields are not."
+      },
+      "post": {
+        "operationId": "arenaStatusUpdate",
+        "summary": "Join or update Arena participation",
+        "description": "Sets the signed-in player's Arena participation for the current room with a `respawn` preference (`ArenaActivator.run`). The official client calls it after the Arena tip dialog (`respawn: true`) and whenever the Arena respawn toggle changes in the room view. A logical failure `activation needed` opens the activation-code dialog (`POST /api/arena/activate`) and retries afterwards.",
+        "tags": ["Arena"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArenaStatusUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C120013"],
+        "x-unverified": "The success body is not read; only the `activation needed` error string is evidenced."
+      }
+    },
+    "/api/replays/add": {
+      "post": {
+        "operationId": "replaysAdd",
+        "summary": "Upload a simulation Survival replay",
+        "description": "Uploads the replay of a finished offline Survival simulation (training mode) together with its score. The client stores the response as the uploaded replay and links it as `/replay/<_id>?s=<secret>`; on failure it shows an upload error.",
+        "tags": ["Replays"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaysAddRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReplaysAddResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C76309"],
+        "x-unverified": "`_id`/`secret` are inferred: the client keeps this response in the same state as `{_id, secret}` built from a replay URL. Authentication requirements are not evidenced (simulation mode does not require sign-in)."
+      }
+    },
+    "/api/replays/list": {
+      "get": {
+        "operationId": "replaysList",
+        "summary": "List uploaded replays",
+        "description": "Lists uploaded replays for the replay list page (`/r`). The client converts each entry's `date` with `new Date(...)` and opens an entry as `/replay/<_id>?s=<secret>`.",
+        "tags": ["Replays"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReplaysListResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C108954"],
+        "x-unverified": "Which replays are listed (all, own, recent), paging and entry fields beyond `date`, `_id` and `secret` (template-only) are not evidenced; authentication requirements are not evidenced."
+      }
+    },
+    "/api/seasons/replay/{code}": {
+      "get": {
+        "operationId": "replaysHistoryShare",
+        "summary": "Read a shared room-history replay",
+        "description": "Resolves a room-history share code (created by `POST /api/game/history-share`, shared as `screeps.com/s/<code>`) for the history room view. The client takes `minTime`/`maxTime` as the replay tick range, parses `renderer` and `decorations` as JSON overrides when present, and decodes `terrain` for `room`. Chunks are then read from `GET /api/seasons/replay/{code}/{tick}`.",
+        "tags": ["Replays"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "History share code."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReplaysHistoryShareResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C316545",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C76683"
+        ],
+        "x-unverified": "Value types of `minTime`/`maxTime` (tick numbers) are inferred from use; other fields and authentication requirements are not evidenced."
+      }
+    },
+    "/api/seasons/replay/{code}/{tick}": {
+      "get": {
+        "operationId": "replaysHistoryShareChunk",
+        "summary": "Read a shared room-history chunk",
+        "description": "Raw room-history chunk of a shared replay, fetched with `$http` (not the Api wrapper, so no `ok` envelope) only when `options.official` is true and a share `code` is present; otherwise the official history host or the private-server `/room-history` is used. `tick` is the chunk base `floor(t / historyChunkSize) * historyChunkSize`. The client requires HTTP 200, fills `room` itself when absent and replays `ticks` like any history chunk; any failure shows an empty replay.",
+        "tags": ["Replays"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "History share code."
+          },
+          {
+            "name": "tick",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Chunk base tick (multiple of `serverData.historyChunkSize`)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History chunk without the API envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformHistory"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any non-200 status; the official client treats it as a missing chunk."
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C313020"],
+        "x-unverified": "Error status codes and bodies are not evidenced (the client treats every non-200 response as missing); the chunk shape is evidenced only through the shared history-chunk consumer."
+      }
+    },
+    "/api/seasons/access/granted": {
+      "get": {
+        "operationId": "seasonsAccessGranted",
+        "summary": "Check Seasonal World access",
+        "description": "Reports whether the signed-in player has been granted access to the current Seasonal World. The official client checks it whenever a player signs in while the `persistent-world` feature is enabled, and as a route resolver of the enter page.",
+        "tags": ["Seasonal World"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SeasonsAccessGrantedResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L198597C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L199982C46"
+        ],
+        "x-unverified": "The value type of `access` is not established (the client only treats it as truthy)."
+      },
+      "post": {
+        "operationId": "seasonsAccessGrant",
+        "summary": "Grant Seasonal World access",
+        "description": "Grants the signed-in player access to the current Seasonal World, consuming `seasonAccessCost` Access Keys (from `/api/version` data) unless the player has an unlimited Access Keys subscription. Posted without a body after the player confirms; a logical error string is shown in an alert.",
+        "tags": ["Seasonal World"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L198073C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L198577C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L199145C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L199962C46"
+        ],
+        "x-unverified": "The success body is not read; error strings are not evidenced."
+      }
+    },
+    "/api/seasons/current/posts/last": {
+      "get": {
+        "operationId": "seasonsCurrentLastPost",
+        "summary": "Read the latest Season Chronicle post",
+        "description": "Returns the latest Season Chronicle post. When the `season-chronicle` feature is enabled the client polls it and marks the Chronicle menu item as new whenever `post._id` differs from the last seen id stored locally.",
+        "tags": ["Seasonal World"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SeasonsCurrentLastPostResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L213923C46"],
+        "x-unverified": "Post fields other than `_id`, the response when no post exists and authentication requirements are not evidenced."
+      }
+    },
+    "/api/seasons/users/{userId}/ranks": {
+      "get": {
+        "operationId": "seasonsUserRanks",
+        "summary": "List a player's Seasonal World ranks",
+        "description": "Lists a player's final ranks in past Seasonal World competitions for the profile Seasonal World tab. The client joins `usersSeasons[].season` with `seasons[].index` and shows rewards for ranks up to 100.",
+        "tags": ["Seasonal World"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UserId"
+            },
+            "description": "Player id (`_id`) of the profile owner."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SeasonsUserRanksResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L208750C117",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L208897C46"
+        ],
+        "x-unverified": "Authentication requirements (profiles are public pages) and fields beyond those joined by the client are not evidenced."
+      }
+    },
+    "/api/servers/like": {
+      "post": {
+        "operationId": "platformServersLike",
+        "summary": "Like a community server",
+        "description": "Adds the Steam user's like for a community server from `POST /api/servers/list`. The desktop (NW.js) client posts it directly with `fetch` (not the Api wrapper, so no player token) with the server `_id` and its Steam auth session ticket, updates `isLiked`/`likeCount` optimistically and reverts only when the request throws. It refuses to send without a Steam ticket.",
+        "tags": ["Platform"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformServerLikeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result not read by the official client."
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L204529C46"],
+        "x-unverified": "The response body and status codes are not read by the official client (only network failures revert the optimistic update); error behavior for invalid tickets or servers is not evidenced."
+      }
+    },
+    "/api/servers/unlike": {
+      "post": {
+        "operationId": "platformServersUnlike",
+        "summary": "Remove a community server like",
+        "description": "Removes the Steam user's like for a community server from `POST /api/servers/list`. The desktop (NW.js) client posts it directly with `fetch` (not the Api wrapper, so no player token) with the server `_id` and its Steam auth session ticket, updates `isLiked`/`likeCount` optimistically and reverts only when the request throws. It refuses to send without a Steam ticket.",
+        "tags": ["Platform"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformServerLikeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result not read by the official client."
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L204569C46"],
+        "x-unverified": "The response body and status codes are not read by the official client (only network failures revert the optimistic update); error behavior for invalid tickets or servers is not evidenced."
+      }
+    },
+    "/api/steam/cart": {
+      "get": {
+        "operationId": "storeSteamCart",
+        "summary": "Open a Steam checkout cart",
+        "description": "Browser navigation, not an API call: the desktop (NW.js) purchase flow opens this URL in the system browser with `nw.Shell.openExternal`, authenticating with the stored session token in `_token` and describing the cart and its total cost.",
+        "tags": ["Store"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "_token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session token stored by the client (`localStorage` `auth`), passed in the URL because no headers can be attached."
+          },
+          {
+            "name": "cart",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated `<itemdefid>*<quantity>` pairs."
+          },
+          {
+            "name": "cost",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Total cost in cents: `round(100 * sum(price * quantity))`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page rendered in the system browser; not consumed by the client."
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L213843C39"],
+        "x-unverified": "`PurchaseService.buy` has no caller in the pinned bundle, so the navigation is not issued by the shipped client; the response (redirect or page) and its content type are not evidenced."
+      }
+    },
+    "/api/steam/inventory": {
+      "get": {
+        "operationId": "storeSteamInventory",
+        "summary": "Read the Steam inventory",
+        "description": "Reads the caller's Steam inventory as `resources` and `decorations` (`SteamService.inventory`).",
+        "tags": ["Store"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreSteamInventoryResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214167C46"],
+        "x-unverified": "`SteamService.inventory` has no caller in the pinned bundle; the shapes of `resources` and `decorations` and authentication requirements are not evidenced."
+      }
+    },
+    "/api/steam/push-decorations": {
+      "post": {
+        "operationId": "storeSteamPushDecorations",
+        "summary": "Push decorations to Steam",
+        "description": "Transfers decorations from the Screeps inventory to the Steam inventory (`SteamService.push`); the success body is not read.",
+        "tags": ["Store"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Payload passed through unchanged by `SteamService.push`; fields not evidenced.",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214186C46"],
+        "x-unverified": "`SteamService.push` has no caller in the pinned bundle; request fields, errors and authentication requirements are not evidenced."
+      }
+    },
+    "/api/steam/pull-decorations": {
+      "post": {
+        "operationId": "storeSteamPullDecorations",
+        "summary": "Pull decorations from Steam",
+        "description": "Transfers decorations from the Steam inventory into the Screeps inventory (`SteamService.pull`) and returns an `id`.",
+        "tags": ["Store"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Payload passed through unchanged by `SteamService.pull`; fields not evidenced.",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreSteamPullResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214205C46"],
+        "x-unverified": "`SteamService.pull` has no caller in the pinned bundle; request fields, the meaning of `id`, errors and authentication requirements are not evidenced."
+      }
+    },
+    "/api/steam/push-resources": {
+      "post": {
+        "operationId": "storeSteamPushResources",
+        "summary": "Transfer account resources to Steam",
+        "description": "Transfers `amount` units of an account resource (observed `accessKey`, `cpuUnlock`, `pixel`) to the player's Steam inventory from the store dialogs, then refreshes the signed-in account. Logical errors are shown as their string (or `data.error`).",
+        "tags": ["Store"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreSteamPushResourcesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L212471C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L212618C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L212788C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L214224C46"
+        ],
+        "x-unverified": "The success body is not read; error strings are not evidenced."
+      }
+    },
+    "/api/steam/pull-resources": {
+      "post": {
+        "operationId": "storeSteamPullResources",
+        "summary": "Pull resources from Steam",
+        "description": "Transfers resources from the Steam inventory into the Screeps account (`SteamService.pullResources`) and returns an `id`.",
+        "tags": ["Store"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Payload passed through unchanged by `SteamService.pullResources`; fields not evidenced.",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreSteamPullResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214252C46"],
+        "x-unverified": "`SteamService.pullResources` has no caller in the pinned bundle; request fields, the meaning of `id` and authentication requirements are not evidenced."
+      }
+    },
+    "/api/steam/store": {
+      "get": {
+        "operationId": "storeSteamCatalog",
+        "summary": "Read the Steam store catalog",
+        "description": "Item-shop catalog for the Steam store (`StoreService.resources`, used when the client runs in the NW.js desktop app). The client indexes `resources` by `resourceType`, sorts each `items` list by `amount` and keeps `lifetime` alongside; the enter pages load it before showing the Access Key store dialog.",
+        "tags": ["Store"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreCatalogResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L198109C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L199181C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L214317C35",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L214322C46"
+        ],
+        "x-unverified": "Item fields other than `amount`, the shape of `lifetime` and authentication requirements are not evidenced."
+      }
+    },
+    "/api/xsolla/store": {
+      "get": {
+        "operationId": "storeXsollaCatalog",
+        "summary": "Read the Xsolla store catalog",
+        "description": "Item-shop catalog for the Xsolla web store (`StoreService.resources`, used in the browser). The client indexes `resources` by `resourceType`, sorts each `items` list by `amount` and keeps `lifetime` alongside; the enter pages load it before showing the Access Key store dialog.",
+        "tags": ["Store"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreCatalogResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L198109C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L199181C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L214315C31",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L214322C46"
+        ],
+        "x-unverified": "Item fields other than `amount`, the shape of `lifetime` and authentication requirements are not evidenced."
+      }
+    },
+    "/api/xsolla/cancel-subscription": {
+      "post": {
+        "operationId": "storeXsollaCancelSubscription",
+        "summary": "Cancel the CPU subscription",
+        "description": "Cancels the signed-in player's Xsolla CPU subscription after confirmation on the account subscription page, which then reloads `GET /api/xsolla/user`. Posted without a body.",
+        "tags": ["Store"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C278128"],
+        "x-unverified": "The success body and error strings are not evidenced."
+      }
+    },
+    "/api/xsolla/coupon": {
+      "post": {
+        "operationId": "storeXsollaCoupon",
+        "summary": "Redeem a coupon",
+        "description": "Redeems a coupon `code` for CPU subscription days or CPU Credits, then refreshes the signed-in account. Logical errors: `subscribed` (the player has an active subscription; the client asks and resubmits with `convert: true` to convert credits into subscription time), `credits` (unspent CPU Credits must be converted first) and `invalid coupon`.",
+        "tags": ["Store"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreXsollaCouponRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreXsollaCouponResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L210856C39"],
+        "x-unverified": "Authentication is inferred from the account-bound errors and refresh; other response fields are not evidenced."
+      }
+    },
+    "/api/xsolla/token": {
+      "post": {
+        "operationId": "storeXsollaToken",
+        "summary": "Create an Xsolla payment token",
+        "description": "Creates an Xsolla Pay Station session for the browser purchase flow (`PurchaseService.buy` -> `XsollaService.next`): the client maps cart items `{sku, quantity}` to `{sku, amount}`, posts them and opens the Pay Station widget with the returned `token`; on completion it refreshes the signed-in account.",
+        "tags": ["Store"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreXsollaTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreXsollaTokenResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "unverified"
+        },
+        "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L193720C9",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L213819C25"
+        ],
+        "x-unverified": "`PurchaseService.buy` has no caller in the pinned bundle, so the request is not issued by the shipped client; SKU values, errors and the authentication requirement (inferred from the account refresh) are not evidenced."
+      }
+    },
+    "/api/xsolla/user": {
+      "get": {
+        "operationId": "storeXsollaUser",
+        "summary": "Read the CPU subscription",
+        "description": "Returns the signed-in player's Xsolla subscription for the account subscription page, which shows the remaining days from `active`.",
+        "tags": ["Store"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StoreXsollaUserResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C277687"],
+        "x-unverified": "Fields other than `active` are read only by the page template and are not evidenced."
+      }
+    },
+    "/api/survival/active-game": {
+      "get": {
+        "operationId": "survivalActiveGame",
+        "summary": "Read the active Survival game",
+        "description": "Returns the signed-in player's running Survival game, if any; the Arena and Survival lobbies load it (failures become `null`) and the Survival lobby resumes `/room/survival_<gameId>` instead of creating a game.",
+        "tags": ["Survival"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SurvivalActiveGameResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C82154",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C90673"
+        ],
+        "x-unverified": "The response when no game is active (absent `gameId` is assumed from `if (e) return e.gameId`) is not evidenced."
+      }
+    },
+    "/api/survival/create": {
+      "post": {
+        "operationId": "survivalCreate",
+        "summary": "Create a Survival game",
+        "description": "Creates a hosted Survival game and returns its `roomName`; the client navigates to `/room/<roomName>`. Called from the Survival lobby (also when no player is signed in, while a signed-in player without e-mail is first sent to registration confirmation) and from \"play again\" in the room view. Posted without a body.",
+        "tags": ["Survival"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SurvivalCreateResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C79949",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C91453"
+        ],
+        "x-unverified": "Whether anonymous callers can create a game and error strings are not evidenced."
+      }
+    },
+    "/api/survival/game": {
+      "get": {
+        "operationId": "survivalGame",
+        "summary": "Read a Survival game",
+        "description": "Returns the Survival game for a `survival_<id>` room, loaded before the room view (failures become `null`). When `status` is `finished` the client shows `score` and polls `GET /api/survival/replay` for the uploaded replay.",
+        "tags": ["Survival"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Game id taken from the room name `survival_<id>`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SurvivalGameResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C78936"],
+        "x-unverified": "Status values other than `finished`, further fields and authentication requirements are not evidenced."
+      }
+    },
+    "/api/survival/replay": {
+      "get": {
+        "operationId": "survivalReplay",
+        "summary": "Read a Survival game replay",
+        "description": "Returns the replay reference of a Survival game. After a game finishes the room view polls it every second until `uploaded` is truthy; the Survival leaderboard opens `/replay/<_id>?s=<secret>`.",
+        "tags": ["Survival"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "game",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Survival game id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SurvivalReplayResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C79743",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C92843"
+        ],
+        "x-unverified": "The type of `uploaded`, the response before upload and authentication requirements are not evidenced."
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArenaActivateRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Arena activation code entered by the player."
+          }
+        },
+        "required": ["code"],
+        "additionalProperties": true
+      },
+      "ArenaFindInitRoomResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "room": {
+            "type": "string",
+            "description": "Arena room to open in the room view."
+          }
+        },
+        "required": ["ok", "room"],
+        "additionalProperties": true
+      },
+      "ArenaOrderOfferResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "steamKey": {
+            "type": "string",
+            "description": "Steam key shown to the player when present."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "ArenaStatusResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "Arena participation status; `not active` makes the client offer joining.",
+            "examples": ["not active"]
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "ArenaStatusUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "respawn": {
+            "type": "boolean",
+            "description": "Respawn preference from the Arena respawn toggle (`true` after the Arena tip dialog)."
+          },
+          "room": {
+            "type": "string",
+            "description": "Current Arena room name from the route."
+          }
+        },
+        "additionalProperties": true
+      },
+      "ReplaysAddRequest": {
+        "type": "object",
+        "properties": {
+          "map": {
+            "type": "string",
+            "description": "Simulation map; the official client sends `survival`.",
+            "examples": ["survival"]
+          },
+          "score": {
+            "type": "number",
+            "description": "Final Survival score."
+          },
+          "v": {
+            "type": "string",
+            "description": "Client build version (asset bust value)."
+          },
+          "log": {
+            "type": "string",
+            "description": "Replay log: JSON serialized, gzip-compressed (pako level 9) and sent as a binary string."
+          }
+        },
+        "additionalProperties": true
+      },
+      "ReplaysAddResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "_id": {
+            "type": "string",
+            "description": "Uploaded replay id."
+          },
+          "secret": {
+            "type": "string",
+            "description": "Replay access secret used as the `s` query parameter."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "ReplaysListEntry": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "string",
+            "description": "Replay access secret used as the `s` query parameter."
+          },
+          "date": {
+            "description": "Upload date; the client converts it with `new Date(...)`, representation not established."
+          }
+        },
+        "additionalProperties": true
+      },
+      "ReplaysListResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "list": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReplaysListEntry"
+            }
+          }
+        },
+        "required": ["ok", "list"],
+        "additionalProperties": true
+      },
+      "ReplaysHistoryShareResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "room": {
+            "type": "string",
+            "description": "Room of the shared history, used to decode `terrain`."
+          },
+          "terrain": {
+            "type": "string",
+            "description": "Encoded room terrain."
+          },
+          "minTime": {
+            "type": "integer",
+            "description": "First tick of the shared replay."
+          },
+          "maxTime": {
+            "type": "integer",
+            "description": "Last tick of the shared replay."
+          },
+          "renderer": {
+            "type": "string",
+            "description": "JSON-encoded renderer override; parsed when present."
+          },
+          "decorations": {
+            "type": "string",
+            "description": "JSON-encoded decorations override; parsed when present."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "SeasonsAccessGrantedResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "access": {
+            "description": "Truthy when the caller has access to the current Seasonal World; value type not established."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "SeasonsChroniclePost": {
+        "type": "object",
+        "description": "Season Chronicle post.",
+        "properties": {
+          "_id": {
+            "type": "string"
+          }
+        },
+        "required": ["_id"],
+        "additionalProperties": true
+      },
+      "SeasonsCurrentLastPostResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "post": {
+            "$ref": "#/components/schemas/SeasonsChroniclePost"
+          }
+        },
+        "required": ["ok", "post"],
+        "additionalProperties": true
+      },
+      "SeasonsUserRanksSeason": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "description": "Season ordinal joined with `usersSeasons[].season`."
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["_id", "index"],
+        "additionalProperties": true
+      },
+      "SeasonsUserRanksEntry": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "type": "integer",
+            "description": "Season `index`."
+          },
+          "rank": {
+            "type": "integer",
+            "description": "Final rank of the player in that season."
+          }
+        },
+        "required": ["season", "rank"],
+        "additionalProperties": true
+      },
+      "SeasonsUserRanksResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeasonsUserRanksSeason"
+            }
+          },
+          "usersSeasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeasonsUserRanksEntry"
+            }
+          }
+        },
+        "required": ["ok", "seasons", "usersSeasons"],
+        "additionalProperties": true
+      },
+      "PlatformServerLikeRequest": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "description": "Community server `_id` from `POST /api/servers/list`."
+          },
+          "steamTicket": {
+            "type": "string",
+            "description": "Steam auth session ticket of the desktop client."
+          }
+        },
+        "required": ["server", "steamTicket"],
+        "additionalProperties": true
+      },
+      "StoreSteamInventoryResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "resources": {
+            "description": "Steam inventory resources; shape not established."
+          },
+          "decorations": {
+            "description": "Steam inventory decorations; shape not established."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "StoreSteamPullResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "id": {
+            "description": "Identifier returned by the transfer; meaning and type not established."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "StoreSteamPushResourcesRequest": {
+        "type": "object",
+        "properties": {
+          "resourceType": {
+            "type": "string",
+            "description": "Account resource to transfer; the official client sends `accessKey`, `cpuUnlock` or `pixel`.",
+            "examples": ["accessKey", "cpuUnlock", "pixel"]
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Number of units to transfer."
+          }
+        },
+        "additionalProperties": true
+      },
+      "StoreCatalogItem": {
+        "type": "object",
+        "description": "Store package.",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Package size; the client sorts items by it."
+          }
+        },
+        "additionalProperties": true
+      },
+      "StoreCatalogResource": {
+        "type": "object",
+        "properties": {
+          "resourceType": {
+            "type": "string",
+            "description": "Resource sold by these packages (for example `accessKey`)."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreCatalogItem"
+            }
+          }
+        },
+        "required": ["resourceType", "items"],
+        "additionalProperties": true
+      },
+      "StoreCatalogResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "lifetime": {
+            "description": "Lifetime subscription offer data kept alongside the resources; shape not established."
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreCatalogResource"
+            }
+          }
+        },
+        "required": ["ok", "resources"],
+        "additionalProperties": true
+      },
+      "StoreXsollaCouponRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Coupon code."
+          },
+          "convert": {
+            "type": "boolean",
+            "description": "`true` to convert a credits coupon into subscription time when the player already has an active subscription."
+          }
+        },
+        "additionalProperties": true
+      },
+      "StoreXsollaCouponResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "days": {
+            "type": "integer",
+            "description": "CPU subscription days granted."
+          },
+          "credits": {
+            "type": "number",
+            "description": "CPU Credits granted."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "StoreXsollaTokenItem": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string",
+            "description": "Store item SKU."
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Quantity."
+          }
+        },
+        "additionalProperties": true
+      },
+      "StoreXsollaTokenRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreXsollaTokenItem"
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "StoreXsollaTokenResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "token": {
+            "type": "string",
+            "description": "Xsolla Pay Station access token used to open the payment widget."
+          }
+        },
+        "required": ["ok", "token"],
+        "additionalProperties": true
+      },
+      "StoreXsollaUserResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "active": {
+            "type": "number",
+            "description": "Subscription end as a millisecond timestamp; the page shows `round((active - now) / 1 day)` days."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "SurvivalActiveGameResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "gameId": {
+            "type": "string",
+            "description": "Running Survival game id (room `survival_<gameId>`)."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "SurvivalCreateResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "roomName": {
+            "type": "string",
+            "description": "Room of the created game (`survival_<id>`)."
+          }
+        },
+        "required": ["ok", "roomName"],
+        "additionalProperties": true
+      },
+      "SurvivalGameResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "Game status; `finished` triggers the score screen.",
+            "examples": ["finished"]
+          },
+          "score": {
+            "type": "number",
+            "description": "Game score shown when finished."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      },
+      "SurvivalReplayResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "integer",
+            "const": 1
+          },
+          "uploaded": {
+            "description": "Truthy once the replay is uploaded; value type not established."
+          },
+          "_id": {
+            "type": "string",
+            "description": "Replay id."
+          },
+          "secret": {
+            "type": "string",
+            "description": "Replay access secret used as the `s` query parameter."
+          }
+        },
+        "required": ["ok"],
+        "additionalProperties": true
+      }
+    }
+  }
+}

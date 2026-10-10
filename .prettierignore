@@ -4,3 +4,6 @@ openapi.yaml
 coverage.json
 build/
 .sources/
+dist/
+clients/generated/
+profiles/*.json

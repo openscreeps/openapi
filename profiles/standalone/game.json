@@ -1,0 +1,458 @@
+{
+  "required": [
+    "gameAddGlobalIntent",
+    "gameAddObjectIntent",
+    "gameChangeFlagColor",
+    "gameCheckUniqueFlagName",
+    "gameCheckUniqueObjectName",
+    "gameCreateConstruction",
+    "gameCreateFlag",
+    "gameCreateInvader",
+    "gameFindObject",
+    "gameGenUniqueFlagName",
+    "gameGenUniqueObjectName",
+    "gameMapStats",
+    "gamePlaceSpawn",
+    "gameRandomNoviceRoom",
+    "gameRemoveFlag",
+    "gameRemoveInvader",
+    "gameRoomDecorations",
+    "gameRoomObjects",
+    "gameRoomOverview",
+    "gameRoomStatus",
+    "gameRoomTerrain",
+    "gameRooms",
+    "gameSetNotifyWhenAttacked",
+    "gameTime",
+    "gameWorldSize",
+    "marketMyOrders",
+    "marketOrders",
+    "marketOrdersIndex",
+    "marketStats",
+    "powerCreepsCancelDelete",
+    "powerCreepsCreate",
+    "powerCreepsDelete",
+    "powerCreepsExperimentation",
+    "powerCreepsList",
+    "powerCreepsRename",
+    "powerCreepsUpgrade"
+  ],
+  "excluded": {
+    "gameFinish": "Ends a hosted game-mode session in a room (the client's local counterpart marks the game info `finished`, as used by survival/custom modes); a persistent single world has no finishable session and no standalone implementation serves it.",
+    "gameHistoryShare": "Hosted replay sharing service: it mints `screeps.com/s/<code>` short links, which only screeps.com can resolve.",
+    "gameShardsInfo": "Multi-shard directory of screeps.com (per-shard CPU limits, users, tick statistics). A standalone server runs one world; the official client calls it only on its shards pages and, behind `options.official`, for the shard CPU-limit warning before first-spawn placement.",
+    "gameShardsTick": "Multi-shard routing: the official client requests `game/shards/tick` only when `options.official` is true; standalone servers provide the private-server `gameTick` addition (`GET /api/game/tick`) instead.",
+    "powerCreepsPromo": "Time-limited screeps.com Global Power Level promotion (`CONFIG.OFFER_POWER_LEVEL_PROMO_END_TIME`); a standalone server runs no hosted offers."
+  },
+  "adaptations": {
+    "gameCreateInvader": "The standalone success body carries the inserted invader creep document next to `ok`.",
+    "gameMapStats": "Standalone rankings for `<stat><interval>` are complete per-player arrays of `{user, value}` sorted descending instead of the single ranking entry documented for screeps.com.",
+    "gameRoomDecorations": "No hosted decoration inventory: the decoration list is always empty and is served without authentication.",
+    "marketMyOrders": "Single world: the caller's orders are returned as a flat `list` instead of being grouped by shard under `shards`; the official client accepts `list` when `shards` is absent.",
+    "powerCreepsCreate": "The standalone success body carries a copy of the created power creep record next to `ok`."
+  },
+  "additions": {
+    "gameTick": "The official web client requests `GET /api/game/tick` for the room renderer's tick duration whenever `options.official` is false (screeps.com uses `game/shards/tick`), so every standalone server must serve it."
+  },
+  "notes": {
+    "gameAddGlobalIntent": "Successive calls append to the caller's pending global intent lists, which the next tick merges into the caller's script intents. `generatePixel`, `unlockCpu` and `activateAccess` are dropped (only the player runtime may record them).",
+    "gameAddObjectIntent": "Additionally requires `_id` (`invalid object`), requires the object to be in `room` (`invalid object`) and owned by the caller or, if unowned, in a room whose controller the caller owns (`not owner`), and rejects payload shapes the processor cannot handle (`invalid params`). An array `intent` is accepted only when `_id` is `room`; room-level list intents must be arrays of objects whose `roomName` equals `room`.",
+    "gameChangeFlagColor": "Without `room` nothing is saved and the call still succeeds; an empty flag document is created if the caller had none in that room. The success body is exactly `{ok: 1}`.",
+    "gameCreateConstruction": "The success body is `{ok: 1, _id}` without the MongoDB insert-result fields.",
+    "gameCreateFlag": "The success body is exactly `{ok: 1}` (no MongoDB `result`).",
+    "gameCreateInvader": "An unknown `size`/`type` or a position outside 0..49 is rejected with `invalid params`.",
+    "gameMapStats": "`rooms` must be an array and `statName` a string ending in digits (`invalid params` otherwise). Rankings are computed from per-minute statistics as arrays of `{user, value}` sorted descending; only users that still exist are counted. Non-string room names and rooms without a room document are ignored; `own.user` is omitted for an invader core without a user.",
+    "gamePlaceSpawn": "Placing the first spawn does not change CPU settings.",
+    "gameRemoveFlag": "A missing `room` succeeds without effect; an empty flag document is created when none existed. The success body is exactly `{ok: 1}`.",
+    "gameRoomDecorations": "No decoration inventory exists: the response is always `{ok: 1, decorations: []}`, also without authentication.",
+    "gameRoomOverview": "Requires `room` (`invalid room`), falls back to an 8-minute interval for unsupported values (`invalid params` for malformed input), sums every player's statistics in the room and reports every stat in `totals`, including zeros.",
+    "gameRooms": "A non-array `rooms` is rejected with `invalid params`; repeated names are deduplicated.",
+    "gameSetNotifyWhenAttacked": "An unknown object yields `invalid object`. The success body is exactly `{ok: 1}`.",
+    "gameTick": "Until two ticks have completed the configured tick duration is reported.",
+    "gameWorldSize": "Width and height are one square size computed from the room documents (0 for an empty world).",
+    "marketMyOrders": "Orders of the single world are returned as a flat `list` instead of per-shard `shards`; the official client accepts `list` when `shards` is absent.",
+    "marketOrders": "Without `resourceType` every active order is returned.",
+    "marketStats": "Without `resourceType` the history of every resource is returned.",
+    "powerCreepsCreate": "The success body is `{ok: 1, ...creep}`: a copy of the new record (`level: 0`, `hitsMax: 1000`, `storeCapacity: 100`, `spawnCooldownTime: 0`, `powers: {}`).",
+    "powerCreepsUpgrade": "Non-integer levels are also rejected with `invalid value for power <id>`."
+  },
+  "evidence": {
+    "gameAddGlobalIntent": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L120-L124",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L249-L256",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/intents.ts#L206-L224",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L88-L188",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L65-L82",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/global/market.ts#L188-L388",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/global/power.ts#L22-L40",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/global/account.ts#L29-L57"
+    ],
+    "gameAddObjectIntent": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L114-L118",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L237-L247",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/intents.ts#L165-L200",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/intents.ts#L70-L99",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L88-L188",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L65-L82",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55"
+    ],
+    "gameChangeFlagColor": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L102-L106",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L216-L226",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L162-L181"
+    ],
+    "gameCheckUniqueFlagName": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L96-L100",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L210-L214",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L150-L156"
+    ],
+    "gameCheckUniqueObjectName": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L66-L70",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L153-L160",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/spawn.ts#L185-L203"
+    ],
+    "gameCreateConstruction": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L78-L82",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L174-L189",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/construction.ts#L138-L192",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/construction.ts#L43-L108",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55"
+    ],
+    "gameCreateFlag": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L84-L88",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L191-L203",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L96-L137",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55"
+    ],
+    "gameCreateInvader": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L132-L136",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L267-L279",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/invaders.ts#L43-L98"
+    ],
+    "gameGenUniqueFlagName": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L90-L94",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L205-L208",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L140-L147"
+    ],
+    "gameGenUniqueObjectName": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L60-L64",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L146-L151",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/spawn.ts#L163-L182"
+    ],
+    "gameMapStats": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L12-L16",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L70-L83",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L105-L179"
+    ],
+    "gamePlaceSpawn": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L72-L76",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L162-L172",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/spawn.ts#L53-L160",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/construction.ts#L43-L108",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55"
+    ],
+    "gameRemoveFlag": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L108-L112",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L228-L235",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L187-L199"
+    ],
+    "gameRemoveInvader": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L138-L142",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L281-L285",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/invaders.ts#L101-L108"
+    ],
+    "gameRoomDecorations": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L44-L56"
+    ],
+    "gameRoomOverview": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L54-L58",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L133-L144",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L186-L206",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/room-stats.ts#L75-L116"
+    ],
+    "gameRoomStatus": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L48-L52",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L127-L131",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L51-L54"
+    ],
+    "gameRoomTerrain": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L36-L40",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L99-L110",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L76-L82",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L85-L98"
+    ],
+    "gameRooms": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L42-L46",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L112-L125"
+    ],
+    "gameSetNotifyWhenAttacked": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L126-L130",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L258-L265",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/objects.ts#L9-L28"
+    ],
+    "gameTime": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L18-L22",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L85-L87"
+    ],
+    "gameWorldSize": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L30-L34",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L94-L97",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L57-L73"
+    ],
+    "marketMyOrders": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L24-L28",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L31-L34",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L70-L77"
+    ],
+    "marketOrders": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L18-L22",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L21-L29",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L57-L67"
+    ],
+    "marketOrdersIndex": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L12-L16",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L17-L19",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L30-L51"
+    ],
+    "marketStats": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L30-L34",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L36-L43",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L80-L84"
+    ],
+    "powerCreepsCancelDelete": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L30-L34",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L44-L48",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L235-L241"
+    ],
+    "powerCreepsCreate": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L18-L22",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L30-L36",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L179-L211"
+    ],
+    "powerCreepsDelete": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L24-L28",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L38-L42",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L217-L233"
+    ],
+    "powerCreepsExperimentation": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L48-L52",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L69-L73",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L296-L303"
+    ],
+    "powerCreepsList": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L12-L16",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L23-L25",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L166-L176"
+    ],
+    "powerCreepsRename": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L42-L46",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L60-L67",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L278-L293"
+    ],
+    "powerCreepsUpgrade": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L36-L40",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L50-L58",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L244-L276",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L97-L146"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/game/tick": {
+        "get": {
+          "operationId": "gameTick",
+          "summary": "Get recent tick duration",
+          "description": "Returns the shortest of the last 30 measured intervals between completed ticks, in milliseconds. Public and read-only. When `options.official` is false the official room renderer requests it instead of `game/shards/tick`, animates with `max(tick, serverData.socketUpdateThrottle || 200) / 1000` seconds per tick and treats a failure as `tick: 0`.",
+          "tags": ["Game"],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Tick duration.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/GameTickResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "429": {
+              "$ref": "#/components/responses/RateLimited"
+            },
+            "500": {
+              "$ref": "#/components/responses/ServerError"
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C182823",
+            "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L24-L28",
+            "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L89-L92",
+            "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L47-L63",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L722-L724",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L726-L735"
+          ]
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "GameCreateInvaderResponse": {
+          "x-profile-reason": "Standalone servers return the inserted invader document with the acknowledgement.",
+          "description": "`{ok: 1, ...creep}`: the inserted invader creep document.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "$ref": "#/components/schemas/GameInvaderCreep"
+            }
+          ]
+        },
+        "GameCreepBodyPart": {
+          "x-profile-reason": "Standalone-only: body part of the invader document returned by gameCreateInvader.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["move", "work", "carry", "attack", "ranged_attack", "tough", "heal", "claim"]
+            },
+            "hits": {
+              "type": "integer"
+            },
+            "boost": {
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["type", "hits"],
+          "additionalProperties": true
+        },
+        "GameInvaderCreep": {
+          "x-profile-reason": "Standalone-only: invader document returned by gameCreateInvader.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/GameRoomObject"
+            },
+            {
+              "type": "object",
+              "description": "Summoned invader creep document as inserted.",
+              "properties": {
+                "type": {
+                  "const": "creep"
+                },
+                "user": {
+                  "const": "2"
+                },
+                "body": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameCreepBodyPart"
+                  }
+                },
+                "hits": {
+                  "type": "integer"
+                },
+                "hitsMax": {
+                  "type": "integer"
+                },
+                "ticksToLive": {
+                  "type": "integer",
+                  "const": 1500
+                },
+                "fatigue": {
+                  "type": "integer"
+                },
+                "store": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                },
+                "storeCapacity": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string",
+                  "pattern": "^invader_.+_[0-9]+$"
+                },
+                "userSummoned": {
+                  "$ref": "#/components/schemas/UserId"
+                }
+              },
+              "additionalProperties": true
+            }
+          ]
+        },
+        "GameMapStatsRoom": {
+          "x-profile-reason": "Standalone map-stats rankings are arrays instead of a single entry.",
+          "description": "Per-room map stats. Room-status fields are copied from the room document; `own`, `sign`, `safeMode` and `minerals0` come from room objects; the requested `statName` key (e.g. `energyHarvested8`) holds the ranking for that stat as an array of `{user, value}` sorted by value descending.",
+          "additionalProperties": {
+            "$ref": null,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameMapStatEntry"
+            }
+          }
+        },
+        "GameTickResponse": {
+          "x-profile-reason": "Standalone-only: response of the private-server gameTick addition.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "tick": {
+                  "type": "number",
+                  "description": "Shortest of the last 30 measured tick durations in milliseconds; the configured tick duration until two ticks were observed."
+                }
+              },
+              "additionalProperties": true
+            }
+          ]
+        },
+        "MarketMyOrdersResponse": {
+          "x-profile-reason": "Single world: orders are not grouped by shard.",
+          "description": "Every order (active or not) owned by the caller as one flat list.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "list": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketOrder"
+                  }
+                }
+              },
+              "additionalProperties": true,
+              "required": ["list"]
+            }
+          ]
+        },
+        "PowerCreepCreateResponse": {
+          "x-profile-reason": "Standalone servers return the created power creep record with the acknowledgement.",
+          "description": "`{ok: 1, ...creep}`: a copy of the new record (`level: 0`, `hitsMax: 1000`, `storeCapacity: 100`, `spawnCooldownTime: 0`, `powers: {}`).",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "$ref": "#/components/schemas/PowerCreep"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

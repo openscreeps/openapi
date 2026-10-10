@@ -1,0 +1,57 @@
+{
+  "required": ["userMoneyHistoryDetails", "userPasswordSet"],
+  "excluded": {
+    "adminEarlyAccessList": "Internal screeps.com staff tool for the hosted early-access campaign; a standalone server has no hosted applicant list.",
+    "adminEarlyAccessSend": "Internal screeps.com staff tool that e-mails hosted early-access invitations; no hosted mail campaign on a standalone server.",
+    "adminTimelineStats": "Internal screeps.com staff statistics for hosted shard infrastructure; standalone administration is outside the official contract (server-specific admin API).",
+    "authGithub": "GitHub OAuth popup sign-in/linking via the screeps.com GitHub OAuth application and callback; standalone accounts sign in with username/e-mail + password (`POST /api/auth/signin`) or a Steam ticket (`POST /api/auth/steam-ticket`).",
+    "authGithubCheckRepoScope": "Checks the scope of a GitHub OAuth authorization; only meaningful with the hosted GitHub OAuth link, which standalone servers do not provide.",
+    "authSteam": "Steam OpenID web popup flow bound to screeps.com; standalone servers authenticate Steam users with `POST /api/auth/steam-ticket` (authSteamTicket) instead.",
+    "registerChangePassword": "Completes e-mail password recovery with an e-mailed token; requires hosted mail delivery and recovery tokens. Standalone passwords are set by the signed-in player (`POST /api/user/password`) or the server administrator.",
+    "registerConfirm": "E-mail address verification link; requires hosted mail delivery.",
+    "registerRecover": "Sends a password recovery e-mail; requires hosted mail delivery.",
+    "supportReportProblem": "Creates a screeps.com Zendesk support ticket; hosted support service.",
+    "supportSsoJwt": "Zendesk single sign-on for the screeps.com forums/support desk; hosted service (also gated on an active subscription).",
+    "userActivateCpuUnlocks": "Consumes purchased CPU unlock items (hosted payments/inventory); a standalone server sets CPU limits administratively.",
+    "userActivateShardAccess": "Spends access keys for restricted screeps.com shards; multi-shard access does not exist on a single-world server.",
+    "userAuthTokenCreate": "Persistent API auth-token management is a hosted screeps.com service (per-token permissions and rate limits); standalone servers issue session tokens through `POST /api/auth/signin`, and community tools authenticate to unofficial servers with credentials only.",
+    "userAuthTokenDelete": "Persistent API auth-token management is a hosted screeps.com service (per-token permissions and rate limits); standalone servers issue session tokens through `POST /api/auth/signin`, and community tools authenticate to unofficial servers with credentials only.",
+    "userAuthTokenList": "Persistent API auth-token management is a hosted screeps.com service (per-token permissions and rate limits); standalone servers issue session tokens through `POST /api/auth/signin`, and community tools authenticate to unofficial servers with credentials only.",
+    "userConvertCreditsSubscription": "Converts credits into a paid screeps.com subscription; hosted payments/subscriptions.",
+    "userCpuLimitSet": "Credits-charged CPU limit changes tied to the hosted subscription/credits economy; a standalone server sets CPU limits administratively.",
+    "userEarlyPreviewActivate": "Hosted World launch activation codes; a standalone world has no early-preview gate.",
+    "userEarlyPreviewRequest": "Applies for the hosted early-preview program; no such program on a standalone server.",
+    "userFindShared": "`branch: official` alternative: the official client calls `user/find-shared` only when `options.official`; on private servers the replay viewer uses `GET /api/user/find` (userFind, required).",
+    "userGithubRepoSet": "GitHub code synchronization runs on screeps.com infrastructure via the hosted GitHub OAuth link; not available without it.",
+    "userGithubRepos": "Lists repositories through the hosted GitHub OAuth link; not available without it.",
+    "userIvmSet": "Selects between screeps.com's isolated and shared legacy VM runtime pools; a standalone server runs player code in its single operator-configured runtime.",
+    "userNoRateLimit": "reCAPTCHA-gated reset of hosted per-token API rate limits; standalone servers have no persistent API tokens or reCAPTCHA.",
+    "userUnlinkGithub": "Removes the hosted GitHub OAuth identity link, which standalone servers do not create.",
+    "userUnlinkSteam": "Part of the hosted web identity-linking flow (`GET /api/auth/steam` popup); on a standalone server the Steam identity is the account created by `POST /api/auth/steam-ticket` and is managed by the administrator."
+  },
+  "adaptations": {},
+  "additions": {},
+  "notes": {
+    "userPasswordSet": "Standalone servers sign players in with username or e-mail plus password (`POST /api/auth/signin`); this operation changes that local password. OpenScreeps revokes the account's tokens and authenticated socket sessions whenever a password changes, so the client must sign in again afterwards.",
+    "userMoneyHistoryDetails": "A single world serves the details from its own money ledger (the entries listed by `GET /api/user/money-history`), resolving the counterparties of a market deal by `tick`, `roomName` and `targetRoomName`; the official market history page calls it without an `options.official` branch."
+  },
+  "evidence": {
+    "userPasswordSet": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L169-L183",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L82-L98",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/README.md#L307-L311",
+      "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/guides/servers.md#L19-L21"
+    ],
+    "userMoneyHistoryDetails": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L204-L208",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L510-L530",
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/state.ts#L383-L409"
+    ]
+  },
+  "overrides": {
+    "paths": {},
+    "components": {
+      "schemas": {}
+    }
+  }
+}

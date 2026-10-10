@@ -4,7 +4,7 @@
       "post": {
         "operationId": "gameAddGlobalIntent",
         "summary": "Queue a manual global intent",
-        "description": "Queues one account-level intent (market orders, deals, power creep management) for the next tick, as if issued by the caller's script. The payload is wrapped in a one-element list and sanitized with the engine intent table; unknown names queue nothing but still succeed. On OpenScreeps successive calls append to the caller's pending global intent lists, which the next tick merges into the caller's script intents; backend-local inserts one `users.intents` document per call. Not called by the official client.",
+        "description": "Queues one account-level intent (market orders, deals, power creep management) for the next tick, as if issued by the caller's script. The official client uses it to issue `suicidePowerCreep` (`{id}`) from the power creep panel. The payload is wrapped in a one-element list and sanitized with the engine intent table; unknown names queue nothing but still succeed.",
         "tags": ["Game"],
         "security": [
           {
@@ -53,31 +53,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L120-L124",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L249-L256",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/intents.ts#L206-L224",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L88-L188",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L65-L82",
-          "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L714-L720",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/global/market.ts#L188-L388",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/global/power.ts#L22-L40",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/global/account.ts#L29-L57"
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C318483",
+          "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L714-L720"
         ],
-        "x-compatibility": {
-          "backend-local": "Responds with `{ok: 1}` extended with the inserted `users.intents` document (q-json-response `_.extend({ok: 1}, data)`); accepts mod `customIntentTypes`.",
-          "openscreeps": "Drops `generatePixel`, `unlockCpu` and `activateAccess` (only the player runtime may record them)."
-        }
+        "x-unverified": "The official client issues only `suicidePowerCreep`; the accepted intent names and payload sanitization are inferred from the backend-local intent table. The success body beyond `ok` is not read."
       }
     },
     "/api/game/add-object-intent": {
       "post": {
         "operationId": "gameAddObjectIntent",
         "summary": "Queue a manual object or room intent",
-        "description": "Queues a manual intent for the next tick, executed as if issued by the caller's script (e.g. `suicide`, `unclaim`, `activateSafeMode`, `notifyWhenAttacked`, room-level `destroyStructure`/`removeConstructionSite`/`removeFlag`). The target room must exist, be a world room (`W…`/`E…`, otherwise `not supported`), and be inside the borders and open (`out of borders`). `activateSafeMode` is refused while any of the caller's controllers has active safe mode (`safe mode active already`). The payload is sanitized with the engine intent table (only schema fields kept; unknown names store `{}`), merged into the caller's queued manual intents for that target (`$merge`: objects deep-merge, arrays merge index by index), and the room is activated. OpenScreeps additionally requires `_id` (`invalid object`), requires the object to be in `room` (`invalid object`) and owned by the caller or, if unowned, in a room whose controller the caller owns (`not owner`), and rejects payload shapes the processor cannot handle (`invalid params`); backend-local accepts any target id.",
+        "description": "Queues a manual intent for the next tick, executed as if issued by the caller's script (e.g. `suicide`, `unclaim`, `activateSafeMode`, `notifyWhenAttacked`, room-level `destroyStructure`/`removeConstructionSite`/`removeFlag`). The target room must exist, be a world room (`W…`/`E…`, otherwise `not supported`), and be inside the borders and open (`out of borders`). `activateSafeMode` is refused while any of the caller's controllers has active safe mode (`safe mode active already`). The payload is sanitized with the engine intent table (only schema fields kept; unknown names store `{}`), merged into the caller's queued manual intents for that target (`$merge`: objects deep-merge, arrays merge index by index), and the room is activated.",
         "tags": ["Game"],
         "security": [
           {
@@ -96,7 +85,7 @@
         },
         "responses": {
           "200": {
-            "description": "Intent queued. Logical failures are reported with HTTP 200 and `{error}`: `invalid room`, `not supported`, `out of borders`, `safe mode active already`, `invalid object`, `not owner`, `invalid params`.",
+            "description": "Intent queued. Logical failures are reported with HTTP 200 and `{error}`: `invalid room`, `not supported`, `out of borders`, `safe mode active already`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -126,23 +115,15 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L114-L118",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L237-L247",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/intents.ts#L165-L200",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/intents.ts#L70-L99",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L88-L188",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/utils/system.ts#L65-L82",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C318110",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L509-L527",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L801-L813"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client types the body as a MongoDB upsert result (`result`).",
-          "backend-local": "No ownership check and no payload-shape check; sanitizes with `config.backend.customIntentTypes` as well."
+          "screeps-com": "The community client types the body as a MongoDB upsert result (`result`)."
         }
       }
     },
@@ -150,7 +131,7 @@
       "post": {
         "operationId": "gameChangeFlagColor",
         "summary": "Change a flag's colors",
-        "description": "Recolors the caller's flag `name` in `room`. Both colors must be flag colors (`invalid params`). Mutation on OpenScreeps/backend-local: the room's flag list is re-saved (an empty flag document is created if the caller had none in that room); an unknown name changes nothing but still succeeds; without `room` nothing is saved and the call still succeeds. The official client sends no `room`; how screeps.com locates the flag then is not visible in source.",
+        "description": "Recolors the caller's flag `name` in `room`. Both colors must be flag colors (`invalid params`). The official client sends the current `room` and `shard` with the flag name and both colors. The room's flag list is re-saved; an unknown name changes nothing but still succeeds.",
         "tags": ["Game"],
         "security": [
           {
@@ -199,16 +180,14 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L102-L106",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L216-L226",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L162-L181",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C317308",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L480-L498",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L725-L736"
-        ]
+        ],
+        "x-unverified": "Behavior without `room` is not evidenced for screeps.com (the official client always sends it; the community client omits it). The success body beyond `ok` is typed only by the community client."
       }
     },
     "/api/game/check-unique-flag-name": {
@@ -264,13 +243,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L96-L100",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L210-L214",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L150-L156",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C323968",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L469-L478",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L704-L710"
         ]
@@ -329,13 +305,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L66-L70",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L153-L160",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/spawn.ts#L185-L203",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C323691",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L309-L326",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L595-L601"
         ]
@@ -394,19 +367,15 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L78-L82",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L174-L189",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/construction.ts#L138-L192",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/construction.ts#L43-L108",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C319044",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L529-L581",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L835-L848",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L98-L116"
-        ]
+        ],
+        "x-unverified": "The official client reads only `_id`; the MongoDB insert-result fields are typed only by the community client."
       }
     },
     "/api/game/create-flag": {
@@ -462,19 +431,15 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L84-L88",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L191-L203",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L96-L137",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C317152",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L419-L451",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L652-L666"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client types the body as a MongoDB upsert result: `result.upserted[0]._id` is the new flag id when created; absent when moved."
+          "screeps-com": "The community client types the body as a MongoDB upsert result: `result.upserted[0]._id` is the new flag id when created; absent when moved."
         }
       }
     },
@@ -482,7 +447,7 @@
       "post": {
         "operationId": "gameCreateInvader",
         "summary": "Summon a test invader",
-        "description": "Summons an NPC invader creep (user `2`, 1500 ticks to live, no loot) to test defenses in a room the caller owns or reserves. Refused when 5 invaders already exist in the room (`too many invaders exist`), when another player's creeps are present (`hostiles present`), when the controller is not owned/reserved by the caller (`not owned`), or, on OpenScreeps, for an unknown size/type or a position outside 0..49 (`invalid params`). Any tile is accepted, walls included; the room is not activated. Mutation: inserts the creep with `userSummoned` set to the caller; body parts by `size`+`type`, boosted when `boosted` is truthy.",
+        "description": "Summons an NPC invader creep (user `2`, 1500 ticks to live, no loot) to test defenses in a room the caller owns or reserves. Refused when 5 invaders already exist in the room (`too many invaders exist`), when another player's creeps are present (`hostiles present`), when the controller is not owned/reserved by the caller (`not owned`). Any tile is accepted, walls included; the room is not activated. Mutation: inserts the creep with `userSummoned` set to the caller; body parts by `size`+`type`, boosted when `boosted` is truthy.",
         "tags": ["Game"],
         "security": [
           {
@@ -501,7 +466,7 @@
         },
         "responses": {
           "200": {
-            "description": "Invader created. Logical failures are reported with HTTP 200 and `{error}`: `too many invaders exist`, `hostiles present`, `not owned`, `invalid params`.",
+            "description": "Invader created. Logical failures are reported with HTTP 200 and `{error}`: `too many invaders exist`, `hostiles present`, `not owned`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -531,19 +496,128 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L132-L136",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L267-L279",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/invaders.ts#L43-L98",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C326343",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L631-L694",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L898-L912"
         ],
-        "x-compatibility": {
-          "backend-local": "Stores `x`/`y` as sent without validation."
-        }
+        "x-unverified": "The official client does not read the success body; fields beyond `ok` are not evidenced for screeps.com."
+      }
+    },
+    "/api/game/find-object": {
+      "get": {
+        "operationId": "gameFindObject",
+        "summary": "Find a room object by id",
+        "description": "Looks up a room object by its id. The official room view calls it when an object is selected by id (`selectObjectPending`) and, when the returned `object.room` differs from the current room, navigates there. No `shard` is sent.",
+        "tags": ["Game"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Room object id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lookup result. Logical failures are reported with HTTP 200 and `{error}`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/GameFindObjectResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C143199"],
+        "x-unverified": "Only `object.room` is read by the official client; other object fields, the authentication requirement, shard handling and the response for an unknown id are not evidenced."
+      }
+    },
+    "/api/game/finish": {
+      "post": {
+        "operationId": "gameFinish",
+        "summary": "Finish the game in a room",
+        "description": "Ends the current game in a room. The official room view's `finishGame` posts the current `room` (its local simulation counterpart marks the game info status `finished`, the state used by the survival and custom training modes).",
+        "tags": ["Game"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameFinishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Game finished. Logical failures are reported with HTTP 200 and `{error}`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C324078"],
+        "x-unverified": "Which rooms and game modes accept this call, its effect on screeps.com and the success body beyond `ok` are not evidenced; the official client does not read the response."
       }
     },
     "/api/game/gen-unique-flag-name": {
@@ -599,13 +673,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L90-L94",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L205-L208",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L140-L147",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C323373",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L454-L467",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L681-L687",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L89-L91"
@@ -665,24 +736,78 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L60-L64",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L146-L151",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/spawn.ts#L163-L182",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C323067",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L285-L307",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L572-L578",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L89-L91"
         ]
       }
     },
+    "/api/game/history-share": {
+      "post": {
+        "operationId": "gameHistoryShare",
+        "summary": "Create a room history share link",
+        "description": "Creates a shareable link to a room history moment. The official room history view posts the current `shard`, `room` and game `time`, then shows `screeps.com/s/<code>` together with the returned `room`, `time` and `shard`.",
+        "tags": ["Game"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameHistoryShareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Share link. Logical failures are reported with HTTP 200 and `{error}`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/GameHistoryShareResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C159035"],
+        "x-unverified": "Whether authentication is required and the lifetime of a share code are not evidenced; the echoed `room`, `shard` and `time` are assumed to mirror the request."
+      }
+    },
     "/api/game/map-stats": {
       "post": {
         "operationId": "gameMapStats",
         "summary": "Get map statistics for rooms",
-        "description": "Returns, for each requested room that exists, its status fields, controller ownership (`own`), sign, active safe mode, mineral (`minerals0`) and, for `<stat><interval>` stat names, the per-player ranking of that statistic over the interval, plus public profiles of every referenced user. Read-only. OpenScreeps requires `rooms` to be an array and `statName` a string ending in digits (`invalid params` otherwise) and computes rankings from its per-minute statistics; backend-local only parses the stat name and leaves rankings and `statsMax` empty. OpenScreeps wraps every success as `{ok: 1, ...result}` and reports rejected game operations as HTTP 200 `{error}`; a missing/invalid token is HTTP 401 `{error: 'unauthorized'}`.",
+        "description": "Returns, for each requested room that exists, its status fields, controller ownership (`own`), sign, active safe mode, mineral (`minerals0`) and, for `<stat><interval>` stat names, the ranking of that statistic over the interval, plus the largest ranked value per stat (`statsMax`) and public profiles of every referenced user. Read-only. The official world map requests `owner0` below the closest zoom level and the selected layer stat (e.g. `energyHarvested8`) at the closest one, merges `stats` and `users` into its map state and sizes stat circles by `statsMax`.",
         "tags": ["Game"],
         "security": [
           {
@@ -731,30 +856,27 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L12-L16",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L70-L83",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L105-L179",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L223538C46",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C245743",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L186-L257",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L546-L556",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L30-L42",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L67-L80"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client sends `shard` in the body and rate-limits this endpoint at 60 requests per hour.",
-          "backend-local": "Stat rankings and `statsMax` are never filled; invader cores always set `own` with their user.",
-          "openscreeps": "Rankings are arrays of `{user, value}` sorted descending; only users that still exist are counted."
-        }
+          "screeps-com": "Sent with `shard` in the body; the community client rate-limits this endpoint at 60 requests per hour."
+        },
+        "x-unverified": "The per-stat ranking entry is documented only by the community client (one `{user, value}` object); the official client renders it in templates outside the analysed assets."
       }
     },
     "/api/game/market/my-orders": {
       "get": {
         "operationId": "marketMyOrders",
         "summary": "List the caller's orders",
-        "description": "Returns every market order owned by the caller (active or not), with `price` in credits. Authenticated, read-only. OpenScreeps/backend-local return a flat `list`; screeps.com groups orders by shard under `shards` (intershard orders under `intershard`), as implied by the official client.",
+        "description": "Returns every market order owned by the caller (active or not), with `price` in credits, grouped by shard under `shards` (intershard orders under `intershard`). Authenticated, read-only. The official client renders one order table per shard entry that has orders.",
         "tags": ["Market"],
         "security": [
           {
@@ -790,13 +912,12 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L24-L28",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L31-L34",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L70-L77",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L201213C16",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L201278C16",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C103058",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L45-L51",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1126-L1128",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1891-L1899",
@@ -804,15 +925,16 @@
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L67-L80"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client rate-limits this endpoint at 60 requests per hour and sends no `shard`."
-        }
+          "screeps-com": "Called without `shard`; the community client rate-limits this endpoint at 60 requests per hour."
+        },
+        "x-unverified": "The `intershard` key is documented only by the community client."
       }
     },
     "/api/game/market/orders": {
       "get": {
         "operationId": "marketOrders",
         "summary": "List active orders for a resource",
-        "description": "Returns active orders for `resourceType`, with `price` converted to credits. Authenticated, read-only. Without `resourceType`, OpenScreeps returns every active order (matching backend-local's LokiJS query on `undefined`). For intershard (account) resources the official client omits `shard`.",
+        "description": "Returns active orders for `resourceType`, with `price` converted to credits. Authenticated, read-only. The official client splits `list` by `type` into sell and buy tables.",
         "tags": ["Market"],
         "security": [
           {
@@ -862,13 +984,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L18-L22",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L21-L29",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L57-L67",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L201645C22",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C99691",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L37-L43",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1139-L1141",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/gameMarket.ts#L36-L38",
@@ -876,7 +996,7 @@
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L67-L80"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client rate-limits this endpoint at 60 requests per hour."
+          "screeps-com": "The community client rate-limits this endpoint at 60 requests per hour."
         }
       }
     },
@@ -884,7 +1004,7 @@
       "get": {
         "operationId": "marketOrdersIndex",
         "summary": "Summarize active market orders",
-        "description": "Returns one entry per resource type with active orders. Authenticated, read-only. OpenScreeps/backend-local count all active orders and split them into `buying`/`selling`; the official client types the official entries with `avgPrice`/`stdeevPrice` and documents that intershard data is always included.",
+        "description": "Returns one entry per resource type with active orders. Authenticated, read-only. The official client merges each entry (`_id`, `count`, `buying`, `selling`) into its resource table.",
         "tags": ["Market"],
         "security": [
           {
@@ -925,28 +1045,27 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L12-L16",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L17-L19",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L30-L51",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L200274C50",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C98990",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L14-L35",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1112-L1118",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/gameMarket.ts#L10-L18",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L67-L80"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client rate-limits this endpoint at 60 requests per hour."
-        }
+          "screeps-com": "The community client rate-limits this endpoint at 60 requests per hour and documents that intershard data is always included."
+        },
+        "x-unverified": "`avgPrice` and `stdeevPrice` are typed only by the community client."
       }
     },
     "/api/game/market/stats": {
       "get": {
         "operationId": "marketStats",
         "summary": "Get daily market history",
-        "description": "Returns daily price statistics for `resourceType`, newest first. Authenticated, read-only. Without `resourceType` OpenScreeps returns the history of every resource.",
+        "description": "Returns daily price statistics for `resourceType`, newest first. Authenticated, read-only. The official client reads `stats` for the resource order view.",
         "tags": ["Market"],
         "security": [
           {
@@ -996,20 +1115,18 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/market.ts#L30-L34",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/market.ts#L36-L43",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/market.ts#L80-L84",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L201660C21",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C99866",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L53-L56",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1154-L1160",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/gameMarket.ts#L45-L56",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L67-L80"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client rate-limits this endpoint at 60 requests per hour."
+          "screeps-com": "The community client rate-limits this endpoint at 60 requests per hour."
         }
       }
     },
@@ -1017,7 +1134,7 @@
       "post": {
         "operationId": "gamePlaceSpawn",
         "summary": "Place the first spawn",
-        "description": "Starts playing: places the caller's first spawn at `x`,`y` in a free room. Preconditions (checked in this order on OpenScreeps): coordinates 0..49 and name ≤ 50 characters (`invalid params`), account not blocked (`blocked`), non-zero CPU (`no cpu`), at least 180 s since the last respawn (`too soon after last respawn`), playable room (The target room must exist, be a world room (`W…`/`E…`, otherwise `not supported`), and be inside the borders and open (`out of borders`). / `invalid room`), the caller owns no room objects (`already playing`), the controller exists (`invalid room`) and is unowned, unreserved and not bound to another user (`room busy`), and the tile is a valid construction spot (`invalid location`). Mutation: other players' creeps and construction sites in the room are removed, their structures become ruins (decaying after 100000 ticks), the level-0 controller is claimed at level 1 with 20000 ticks of safe mode, sources reset `invaderHarvested`, the spawn is inserted with 300 energy, the room's `invaderGoal` becomes 1000000, the room is activated, and the user's `active` counter becomes 10000. See `userWorldStatus` for the precondition state.\n\nOn screeps.com, placing the initial spawn of an account has been observed to reset the account's CPU allocation to the selected shard; callers must not assume a previously configured allocation (`userCpuShardsSet`, `POST /api/user/cpu-shards`) survives. OpenScreeps is single-world and does not change CPU settings.",
+        "description": "Starts playing: places the caller's first spawn at `x`,`y` in a free room. Preconditions: coordinates 0..49 and name ≤ 50 characters (`invalid params`), account not blocked (`blocked`), non-zero CPU (`no cpu`), at least 180 s since the last respawn (`too soon after last respawn`), playable room (The target room must exist, be a world room (`W…`/`E…`, otherwise `not supported`), and be inside the borders and open (`out of borders`). / `invalid room`), the caller owns no room objects (`already playing`), the controller exists (`invalid room`) and is unowned, unreserved and not bound to another user (`room busy`), and the tile is a valid construction spot (`invalid location`). Mutation: other players' creeps and construction sites in the room are removed, their structures become ruins (decaying after 100000 ticks), the level-0 controller is claimed at level 1 with 20000 ticks of safe mode, sources reset `invaderHarvested`, the spawn is inserted with 300 energy, the room's `invaderGoal` becomes 1000000, the room is activated, and the user's `active` counter becomes 10000. See `userWorldStatus` for the precondition state.\n\nPlacing the initial spawn of an account has been observed to reset the account's CPU allocation to the selected shard; callers must not assume a previously configured allocation (`userCpuShardsSet`, `POST /api/user/cpu-shards`) survives.",
         "tags": ["Game"],
         "security": [
           {
@@ -1066,30 +1183,24 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L72-L76",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L162-L172",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/spawn.ts#L53-L160",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/construction.ts#L43-L108",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/support.ts#L40-L55",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C319226",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L328-L407",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L621-L627"
         ],
         "x-compatibility": {
-          "screeps-com": "Observed: initial placement resets the account CPU allocation to the selected shard. Body `shard` selects the shard.",
-          "openscreeps": "No CPU allocation change; `shard` ignored.",
-          "backend-local": "Name length is only validated for truthy names; success body is `{ok: 1, newbie: true}`."
-        }
+          "screeps-com": "Observed: initial placement resets the account CPU allocation to the selected shard. Body `shard` selects the shard."
+        },
+        "x-unverified": "The official client does not read the success body; `newbie` follows backend-local."
       }
     },
     "/api/game/power-creeps/cancel-delete": {
       "post": {
         "operationId": "powerCreepsCancelDelete",
         "summary": "Cancel a scheduled power creep deletion",
-        "description": "Clears `deleteTime` on one of the caller's power creeps (`invalid id`; `not being deleted` when no deletion is scheduled). Not called by the official client; screeps.com support is unverified.",
+        "description": "Clears `deleteTime` on one of the caller's power creeps (`invalid id`; `not being deleted` when no deletion is scheduled). The official client sends `{id}` and reloads the list afterwards.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1138,25 +1249,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L30-L34",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L44-L48",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L235-L241",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207123C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L91-L105"
         ],
-        "x-compatibility": {
-          "backend-local": "Success body includes the storage `result`."
-        }
+        "x-unverified": "The official client does not read the success body; the MongoDB `result` is typed only by the community client."
       }
     },
     "/api/game/power-creeps/create": {
       "post": {
         "operationId": "powerCreepsCreate",
         "summary": "Create a power creep",
-        "description": "Creates an unspawned power creep. Requires a free power level (GPL `floor((power / 1000) ^ (1/2))` minus one per existing creep and their levels; `not enough power level`), a valid class (`invalid class`) and a name unique among the caller's creeps (`name already exists`). Mutation: inserts the record at level 0 with 1000 max hits and 100 store capacity. Not called by the official client; screeps.com support is unverified.",
+        "description": "Creates an unspawned power creep. Requires a free power level (GPL `floor((power / 1000) ^ (1/2))` minus one per existing creep and their levels; `not enough power level`), a valid class (`invalid class`) and a name unique among the caller's creeps (`name already exists`). Mutation: inserts the record at level 0 with 1000 max hits and 100 store capacity. The official client sends `{name, className}` from the creep editor.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1205,22 +1311,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L18-L22",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L30-L36",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L179-L211",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207107C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L35-L64"
-        ]
+        ],
+        "x-unverified": "The official client does not read the success body; fields beyond `ok` are not evidenced for screeps.com."
       }
     },
     "/api/game/power-creeps/delete": {
       "post": {
         "operationId": "powerCreepsDelete",
         "summary": "Delete a power creep",
-        "description": "Deletes one of the caller's unspawned power creeps (`invalid id`, `spawned`, `already being deleted`). Mutation: during power experimentation the record is removed immediately; otherwise `deleteTime` is set to now + `POWER_CREEP_DELETE_COOLDOWN` (24 h) and the engine deletes it then. Not called by the official client; screeps.com support is unverified.",
+        "description": "Deletes one of the caller's unspawned power creeps (`invalid id`, `spawned`, `already being deleted`). Mutation: during power experimentation the record is removed immediately; otherwise `deleteTime` is set to now + `POWER_CREEP_DELETE_COOLDOWN` (24 h) and the engine deletes it then. The official client sends `{id}` (refusing locally while the creep is spawned) and reloads the list afterwards.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1269,25 +1373,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L24-L28",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L38-L42",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L217-L233",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207119C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L66-L89"
         ],
-        "x-compatibility": {
-          "backend-local": "Success body includes the storage `result`."
-        }
+        "x-unverified": "The official client does not read the success body; the MongoDB `result` is typed only by the community client."
       }
     },
     "/api/game/power-creeps/experimentation": {
       "post": {
         "operationId": "powerCreepsExperimentation",
         "summary": "Start power experimentation",
-        "description": "Spends one of the caller's power experimentation resets (`no power resets` when none are left) to start a 24-hour window in which power creep deletion is immediate. Mutation: decrements `powerExperimentations` and sets `powerExperimentationTime` to now + 24 h. No request fields are read. Not called by the official client; screeps.com support is unverified.",
+        "description": "Spends one of the caller's power experimentation resets (`no power resets` when none are left) to start a 24-hour window in which power creep deletion is immediate. Mutation: decrements `powerExperimentations` and sets `powerExperimentationTime` to now + 24 h. No request fields are read. The official client posts `{}`.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1337,13 +1436,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L48-L52",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L69-L73",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L296-L303",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207131C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L224-L230"
         ]
       }
@@ -1352,7 +1448,7 @@
       "get": {
         "operationId": "powerCreepsList",
         "summary": "List the caller's power creeps",
-        "description": "Returns the caller's power creep records; while a creep is spawned its room object is merged over the record. Not called by the official client; screeps.com support is unverified.",
+        "description": "Returns the caller's power creep records; while a creep is spawned its room object is merged over the record. The official power creep page reads `list` and uses `room`/`shard` to tell spawned creeps apart.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1388,22 +1484,79 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L12-L16",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L23-L25",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L166-L176",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207103C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L19-L33"
         ]
+      }
+    },
+    "/api/game/power-creeps/promo": {
+      "post": {
+        "operationId": "powerCreepsPromo",
+        "summary": "Claim the power level promotion",
+        "description": "Claims the screeps.com Global Power Level promotion offered until `CONFIG.OFFER_POWER_LEVEL_PROMO_END_TIME`. The official client posts `{}`, refreshes the account on success (\"Your Global Power Level has been upgraded!\") and explains the refusals `GPL too big` (Global Power Level already at least 3) and `no power spawns` (no Power Spawn in the world).",
+        "tags": ["Power Creeps"],
+        "security": [
+          {
+            "Token": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "The official client sends an empty object."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Promotion applied. Logical failures are reported with HTTP 200 and `{error}`: `GPL too big`, `no power spawns`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Ok"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L207127C16"],
+        "x-unverified": "The granted power level, the behavior after the offer ends and the success body beyond `ok` are not evidenced."
       }
     },
     "/api/game/power-creeps/rename": {
       "post": {
         "operationId": "powerCreepsRename",
         "summary": "Rename a power creep",
-        "description": "Renames one of the caller's unspawned power creeps (`invalid id`, `spawned`); the converted, truncated name must be unique among the caller's creeps (`name already exists`). Not called by the official client; screeps.com support is unverified.",
+        "description": "Renames one of the caller's unspawned power creeps (`invalid id`, `spawned`); the converted, truncated name must be unique among the caller's creeps (`name already exists`). The official client sends `{id, name}` and reloads the list afterwards.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1452,25 +1605,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L42-L46",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L60-L67",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L278-L293",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207115C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L203-L222"
         ],
-        "x-compatibility": {
-          "backend-local": "Success body includes the storage `result`."
-        }
+        "x-unverified": "The official client does not read the success body; the MongoDB `result` is typed only by the community client."
       }
     },
     "/api/game/power-creeps/upgrade": {
       "post": {
         "operationId": "powerCreepsUpgrade",
         "summary": "Set power creep power levels",
-        "description": "Sets the complete power levels of one of the caller's power creeps; the new creep level is the sum of power levels. Refusals: `invalid id`, `invalid powers` (not an object), `invalid power <id>`, `invalid class for power <id>`, `invalid value for power <id>` (not a number; OpenScreeps also non-integers), `cannot downgrade power <id>`, `invalid max value for power <id>` (> 5), `max level` (> 25), `not enough level for power <id>`, `powers set is not valid` (levels not reachable in requirement order), `not enough power level` (insufficient free GPL). Mutation: merges `{level}` into each non-zero power (keeping cooldowns) and sets `level`, `hitsMax = 1000 × (level + 1)` and `storeCapacity = 100 × (level + 1)` on the record and, when spawned, on its room object. Not called by the official client; screeps.com support is unverified.",
+        "description": "Sets the complete power levels of one of the caller's power creeps; the new creep level is the sum of power levels. Refusals: `invalid id`, `invalid powers` (not an object), `invalid power <id>`, `invalid class for power <id>`, `invalid value for power <id>` (not a number), `cannot downgrade power <id>`, `invalid max value for power <id>` (> 5), `max level` (> 25), `not enough level for power <id>`, `powers set is not valid` (levels not reachable in requirement order), `not enough power level` (insufficient free GPL). Mutation: merges `{level}` into each non-zero power (keeping cooldowns) and sets `level`, `hitsMax = 1000 × (level + 1)` and `storeCapacity = 100 × (level + 1)` on the record and, when spawned, on its room object. The official client sends `{id, powers}` with the complete level per power id.",
         "tags": ["Power Creeps"],
         "security": [
           {
@@ -1519,26 +1667,68 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/power.ts#L36-L40",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/power.ts#L50-L58",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L244-L276",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/power.ts#L97-L146",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L207111C16",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L107-L201"
+        ]
+      }
+    },
+    "/api/game/random-novice-room": {
+      "get": {
+        "operationId": "gameRandomNoviceRoom",
+        "summary": "Pick a random novice-area room",
+        "description": "Suggests a random room inside a novice area. The official world map requests it with the current `shard` and, when `room` is returned, navigates to that room on the returned `shard`.",
+        "tags": ["Game"],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
         ],
-        "x-compatibility": {
-          "backend-local": "Success body is `{ok: 1}` extended with the array of storage update results."
-        }
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Shard"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suggested room. Logical failures are reported with HTTP 200 and `{error}`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/GameRandomNoviceRoomResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "x-availability": {
+          "screeps-com": "supported"
+        },
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C243850"],
+        "x-unverified": "Only `room` and `shard` are read; selection criteria, the authentication requirement and the response when no novice room is available (the client tolerates a missing `room`) are not evidenced."
       }
     },
     "/api/game/remove-flag": {
       "post": {
         "operationId": "gameRemoveFlag",
         "summary": "Remove a flag",
-        "description": "Removes the caller's flag `name` from `room`. Mutation on OpenScreeps/backend-local: the room's flag list is re-saved without it (an empty flag document is created when none existed); unknown names and a missing `room` succeed without effect.",
+        "description": "Removes the caller's flag `name` from `room`. The official client sends the current `room` and `shard`. The room's flag list is re-saved without it; unknown names succeed without effect.",
         "tags": ["Game"],
         "security": [
           {
@@ -1587,13 +1777,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L108-L112",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L228-L235",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/flags.ts#L187-L199",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C317618",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L500-L507",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L750-L756"
         ]
@@ -1652,13 +1839,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L138-L142",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L281-L285",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/invaders.ts#L101-L108",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C130998",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L696-L704",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L928-L934"
         ]
@@ -1668,7 +1852,7 @@
       "get": {
         "operationId": "gameRoomDecorations",
         "summary": "List active room decorations",
-        "description": "Lists the inventory decorations players have activated in a room (screeps.com decoration inventory). Read-only. OpenScreeps has no decoration inventory and always returns `{ok: 1, decorations: []}` without authentication; backend-local does not serve this route. Whether screeps.com requires authentication is not visible in source (the official client sends its token when it has one).",
+        "description": "Lists the inventory decorations players have activated in a room (screeps.com decoration inventory). Read-only. The official room view maps each entry's `user`, `active` property values and `decoration` into renderer decorations.",
         "tags": ["Game"],
         "security": [
           {},
@@ -1716,21 +1900,21 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L44-L56",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C162255",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L983-L989",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L144-L146"
-        ]
+        ],
+        "x-unverified": "Whether screeps.com requires authentication is not visible in source (the official client sends its token when it has one)."
       }
     },
     "/api/game/room-objects": {
       "get": {
         "operationId": "gameRoomObjects",
         "summary": "List room objects",
-        "description": "Returns every room object document in a room together with the public profiles of the referenced users. Read-only. Objects are raw tagged documents: base fields are stable; all other fields depend on `type`. Flags are not included. Implemented by screeps.com only; neither OpenScreeps nor backend-local serves it. Whether screeps.com requires authentication is not visible in source (the official client sends its token when it has one).",
+        "description": "Returns every room object document in a room together with the public profiles of the referenced users. Read-only. Objects are raw tagged documents: base fields are stable; all other fields depend on `type`. Flags are not included. The official decoration dialog reads `objects` and `users`.",
         "tags": ["Game"],
         "security": [
           {},
@@ -1778,21 +1962,22 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L196312C50",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1002-L1008",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L153-L156",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/rooms.ts#L83-L90"
-        ]
+        ],
+        "x-unverified": "Whether screeps.com requires authentication is not visible in source (the official client sends its token when it has one); object fields beyond the base fields are typed only by the community client."
       }
     },
     "/api/game/room-overview": {
       "get": {
         "operationId": "gameRoomOverview",
         "summary": "Get room statistics overview",
-        "description": "Returns the room's controller owner and per-statistic graphs over an interval. Authenticated, read-only. OpenScreeps requires `room` (`invalid room`), falls back to an 8-minute interval for unsupported values, and sums every player's statistics in the room; backend-local returns only the owner with empty `stats`, `statsMax` and `totals`.",
+        "description": "Returns the room's controller owner and per-statistic graphs over an interval. Authenticated, read-only. The official room overview requests its stored interval (8, 180 or 1440 minutes) and scales its graphs by `statsMax`.",
         "tags": ["Game"],
         "security": [
           {
@@ -1824,7 +2009,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Room overview. Logical failures are reported with HTTP 200 and `{error}`: `invalid room`, `invalid params`.",
+            "description": "Room overview. Logical failures are reported with HTTP 200 and `{error}`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1851,25 +2036,22 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L54-L58",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L133-L144",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L186-L206",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/room-stats.ts#L75-L116",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C107486",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L583-L602",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1088-L1098",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L244-L266"
-        ]
+        ],
+        "x-unverified": "The official client reads `statsMax` at the call site; `owner`, `stats` and `totals` follow the community client typing."
       }
     },
     "/api/game/room-status": {
       "get": {
         "operationId": "gameRoomStatus",
         "summary": "Get room status",
-        "description": "Returns the room's status fields (`status`, `novice`, `respawnArea`, `openTime`) under `room`; unknown or omitted rooms yield `room: {}`. Authenticated, read-only. The official client types the official body as top-level `_id`, `status`, `novice`, `respawn` and `openTime` fields instead; that shape is not confirmed by server source.",
+        "description": "Returns the room's status fields (`status`, `novice`, `respawnArea`, `openTime`) under `room`; unknown or omitted rooms yield `room: {}`. Authenticated, read-only. The official room view stores `room` as the room status info and checks its `novice` time before first-spawn placement.",
         "tags": ["Game"],
         "security": [
           {
@@ -1919,24 +2101,22 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L48-L52",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L127-L131",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L51-L54",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C141315",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L280-L283",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1065-L1071",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L227-L237"
-        ]
+        ],
+        "x-unverified": "The community client types a top-level body (`_id`, `status`, `novice`, `respawn`, `openTime`) instead; the official client reads `room`."
       }
     },
     "/api/game/room-terrain": {
       "get": {
         "operationId": "gameRoomTerrain",
         "summary": "Get room terrain",
-        "description": "Returns a room's terrain either encoded (`encoded` non-empty: one 2500-digit terrain document) or as the list of wall and swamp tiles (`encoded` absent or empty; plain tiles omitted). Public and read-only. A room without terrain yields `invalid room`. backend-local returns the raw terrain documents also when the room's terrain is not stored as a single `terrain` document (the official client warns about this for maps generated by `map.generateRoom`).",
+        "description": "Returns a room's terrain either encoded (`encoded` non-empty: one 2500-digit terrain document) or as the list of wall and swamp tiles (`encoded` absent or empty; plain tiles omitted). Public and read-only. A room without terrain yields `invalid room`. The official client requests the encoded form and decodes `terrain[0].terrain`.",
         "tags": ["Game"],
         "security": [],
         "parameters": [
@@ -1956,7 +2136,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Any non-empty value selects the encoded format (the official client sends `1`)."
+            "description": "Any non-empty value selects the encoded format (the official client sends `true`)."
           },
           {
             "$ref": "#/components/parameters/Shard"
@@ -1995,14 +2175,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L36-L40",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L99-L110",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L76-L82",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L85-L98",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C316669",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L263-L278",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1022-L1028",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1046-L1052",
@@ -2011,7 +2187,7 @@
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L67-L80"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client rate-limits this endpoint at 360 requests per hour."
+          "screeps-com": "The community client rate-limits this endpoint at 360 requests per hour."
         }
       }
     },
@@ -2019,9 +2195,14 @@
       "post": {
         "operationId": "gameRooms",
         "summary": "Get encoded terrain for several rooms",
-        "description": "Returns the encoded terrain documents of the requested rooms (unknown rooms skipped). Public and read-only. OpenScreeps rejects a non-array `rooms` with `invalid params`; backend-local passes it to its storage query unchecked. Not called by the official client.",
+        "description": "Returns the encoded terrain documents of the requested rooms (unknown rooms skipped). Public and read-only. The official decoration dialog posts the caller's owned and reserved rooms once per shard, with `shard` in the query string, and reads each entry's `room`.",
         "tags": ["Game"],
         "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Shard"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2034,7 +2215,7 @@
         },
         "responses": {
           "200": {
-            "description": "Terrain documents. Logical failures are reported with HTTP 200 and `{error}`: `invalid params`.",
+            "description": "Terrain documents. Logical failures are reported with HTTP 200 and `{error}`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2061,21 +2242,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L42-L46",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L112-L125",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L197506C36",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L412-L417"
-        ]
+        ],
+        "x-unverified": "The official client reads only `rooms[].room`; the remaining terrain-document fields follow backend-local."
       }
     },
     "/api/game/set-notify-when-attacked": {
       "post": {
         "operationId": "gameSetNotifyWhenAttacked",
         "summary": "Toggle attack notifications for an object",
-        "description": "Sets `notifyWhenAttacked` on a room object to `!!enabled`. The object must exist (`invalid object` on OpenScreeps; backend-local answers HTTP 200 with a stringified `TypeError` in `error`) and be owned by the caller (`not owner`), or, if unowned, be in a room whose controller the caller owns (`not controller owner`).",
+        "description": "Sets `notifyWhenAttacked` on a room object to `!!enabled`. The object must be owned by the caller (`not owner`), or, if unowned, be in a room whose controller the caller owns (`not controller owner`). The official room view sends the selected object's `_id` and its current `notifyWhenAttacked` value.",
         "tags": ["Game"],
         "security": [
           {
@@ -2094,7 +2274,7 @@
         },
         "responses": {
           "200": {
-            "description": "Setting saved. Logical failures are reported with HTTP 200 and `{error}`: `invalid object`, `not owner`, `not controller owner`.",
+            "description": "Setting saved. Logical failures are reported with HTTP 200 and `{error}`: `not owner`, `not controller owner`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2124,23 +2304,21 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L126-L130",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L258-L265",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/objects.ts#L9-L28",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C142465",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L604-L624",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L862-L868"
-        ]
+        ],
+        "x-unverified": "The error for an unknown object on screeps.com is not evidenced. The success body beyond `ok` is typed only by the community client."
       }
     },
     "/api/game/shards/info": {
       "get": {
         "operationId": "gameShardsInfo",
         "summary": "List shards",
-        "description": "Returns high-level information about every shard of screeps.com (name, CPU limit, recent tick durations, claimable rooms, active users, average tick). Public and read-only. OpenScreeps is single-world and does not serve this route; neither does backend-local.",
+        "description": "Returns high-level information about every shard of screeps.com (name, CPU limit, recent tick durations, claimable rooms, active users, average tick). Public and read-only. The official client lists `shards` on its shards pages and, in official mode, checks the target shard's `cpuLimit` before placing the first spawn.",
         "tags": ["Game"],
         "security": [],
         "responses": {
@@ -2169,32 +2347,44 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L210624C66",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C147329",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C194376",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1170-L1172",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/gameShards.ts#L8-L21",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/test/api.raw.game.ts#L9-L22"
         ]
       }
     },
-    "/api/game/tick": {
+    "/api/game/shards/tick": {
       "get": {
-        "operationId": "gameTick",
-        "summary": "Get recent tick duration",
-        "description": "Returns the shortest of the last 30 measured intervals between completed ticks, in milliseconds. Public and read-only. OpenScreeps measures intervals between its `tick` events and falls back to the configured tick duration until two ticks have completed; backend-local measures `roomsDone` pubsub events and omits `tick` until then. Not called by the official client.",
+        "operationId": "gameShardsTick",
+        "summary": "Get a shard's tick duration",
+        "description": "Returns the current tick duration of a shard in milliseconds. In official mode the room renderer requests it with the room's `shard` and animates with `tick / 1000` seconds per tick.",
         "tags": ["Game"],
-        "security": [],
+        "security": [
+          {},
+          {
+            "Token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Shard"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Tick duration.",
+            "description": "Tick duration. Logical failures are reported with HTTP 200 and `{error}`.",
             "content": {
               "application/json": {
                 "schema": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/GameTickResponse"
+                      "$ref": "#/components/schemas/GameShardsTickResponse"
                     },
                     {
                       "$ref": "#/components/schemas/ApiError"
@@ -2212,23 +2402,17 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
-        "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L24-L28",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L89-L92",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L47-L63",
-          "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L722-L724",
-          "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L726-L735"
-        ]
+        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C182736"],
+        "x-unverified": "How `tick` is measured (average or recent) and the authentication requirement are not evidenced."
       }
     },
     "/api/game/time": {
       "get": {
         "operationId": "gameTime",
         "summary": "Get current game time",
-        "description": "Returns the current game tick. Public and read-only. On screeps.com the tick is per shard (`shard` query); OpenScreeps is single-world and ignores `shard`.",
+        "description": "Returns the current game tick of the shard selected by `shard`. Public and read-only. The official client reads `time` for the room view, history navigation and replays.",
         "tags": ["Game"],
         "security": [],
         "parameters": [
@@ -2262,12 +2446,13 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L18-L22",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L85-L87",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C76931",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C140063",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C140367",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C158727",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L259-L261",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L626-L628",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L946-L952",
@@ -2279,7 +2464,7 @@
       "get": {
         "operationId": "gameWorldSize",
         "summary": "Get world size",
-        "description": "Returns the world map size in rooms. Public and read-only. OpenScreeps and backend-local compute one square size from the room documents (`calcWorldSize`) and report it as both width and height (0 for an empty world); backend-local caches the value for the process lifetime. On screeps.com the size is per shard.",
+        "description": "Returns the world map size in rooms of the shard selected by `shard`. Public and read-only. The official market resource view reads `width` and `height`.",
         "tags": ["Game"],
         "security": [],
         "parameters": [
@@ -2313,13 +2498,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L30-L34",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L94-L97",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/domain/map.ts#L57-L73",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L201668C29",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C99981",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L706-L712",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L964-L970",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/game.ts#L132-L137"
@@ -2332,7 +2515,7 @@
       "GameAddGlobalIntentRequest": {
         "type": "object",
         "required": ["name"],
-        "description": "One account-level (global) intent. The server wraps `intent` in a one-element list and sanitizes it with the engine intent table: known names keep only their schema fields, unknown names store nothing. The global processor acts on market (`createOrder`, `changeOrderPrice`, `extendOrder`, `cancelOrder`, `deal`) and power-creep (`spawnPowerCreep`, `suicidePowerCreep`, `deletePowerCreep`, `upgradePowerCreep`, `createPowerCreep`, `renamePowerCreep`) intents; other known names are sanitized and queued but have no global effect. `generatePixel`, `unlockCpu` and `activateAccess` are dropped on OpenScreeps and unknown to the pinned backend. backend-local additionally accepts mod-registered `customIntentTypes`.",
+        "description": "One account-level (global) intent. The server wraps `intent` in a one-element list and sanitizes it with the engine intent table: known names keep only their schema fields, unknown names store nothing. The global processor acts on market (`createOrder`, `changeOrderPrice`, `extendOrder`, `cancelOrder`, `deal`) and power-creep (`spawnPowerCreep`, `suicidePowerCreep`, `deletePowerCreep`, `upgradePowerCreep`, `createPowerCreep`, `renamePowerCreep`) intents; other known names are sanitized and queued but have no global effect. `generatePixel`, `unlockCpu` and `activateAccess` are official account intents that the pinned backend-local intent table does not know.",
         "properties": {
           "name": {
             "type": "string",
@@ -2368,7 +2551,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         },
         "allOf": [
@@ -2735,7 +2918,7 @@
             ]
           },
           "intent": {
-            "description": "Intent payload. `null`/absent stores nothing. On OpenScreeps an array is accepted only when `_id` is `room`; room-level list intents (`_id: room` with one of the five list names) must be arrays whose items are objects with `roomName` equal to `room`; null array items are rejected (`invalid params`). The official client types this parameter as a JSON string, but its documented examples send objects and arrays.",
+            "description": "Intent payload. `null`/absent stores nothing. The official client sends a JSON object (e.g. `{id}` for `suicide`); the community client types this parameter as a JSON string, but its documented examples send objects and arrays.",
             "anyOf": [
               {
                 "type": "object",
@@ -2759,7 +2942,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         },
         "allOf": [
@@ -4735,7 +4918,7 @@
           "nuker",
           "factory"
         ],
-        "description": "Keys of the engine `CONSTRUCTION_COST` table; any other value (including `controller`, which the official client lists as buildable) is rejected with `invalid params`."
+        "description": "Keys of the engine `CONSTRUCTION_COST` table; any other value (including `controller`, which the community client lists as buildable) is rejected with `invalid params`."
       },
       "GameChangeFlagColorRequest": {
         "type": "object",
@@ -4747,7 +4930,7 @@
                 "$ref": "#/components/schemas/RoomName"
               }
             ],
-            "description": "Room holding the flag. Required for any effect on OpenScreeps and backend-local (without it nothing is saved yet the call succeeds). The official client does not send it."
+            "description": "Room holding the flag. The official client always sends the current room."
           },
           "name": {
             "type": "string"
@@ -4764,7 +4947,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -4781,7 +4964,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -4802,7 +4985,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -4826,14 +5009,14 @@
           },
           "endDatetime": {
             "type": "number",
-            "description": "Only on system (hard) signs per the official client."
+            "description": "Only on system (hard) signs per the community client."
           }
         },
         "required": ["text", "time", "datetime"],
         "additionalProperties": true
       },
       "GameCoordinateInput": {
-        "description": "Room tile coordinate (0..49) as accepted by `parseInt`-style decoding. OpenScreeps (`parseInteger`) truncates JSON numbers and parses numeric strings with `Number.parseInt(value, 10)`; any other JSON type becomes `NaN` and is rejected with `invalid params`. backend-local applies `parseInt` to the raw value.",
+        "description": "Room tile coordinate (0..49). The server decodes it with `parseInt`, so numeric strings are accepted as well as JSON numbers.",
         "anyOf": [
           {
             "type": "integer",
@@ -4874,7 +5057,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -4888,7 +5071,7 @@
             "properties": {
               "_id": {
                 "type": "string",
-                "description": "Id of the new construction site (OpenScreeps and backend-local)."
+                "description": "Id of the new construction site (read by the official client)."
               },
               "result": {
                 "type": "object",
@@ -4901,31 +5084,31 @@
                   }
                 },
                 "additionalProperties": true,
-                "description": "Official client typing only."
+                "description": "Community client typing only."
               },
               "ops": {
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/GameRoomObject"
                 },
-                "description": "Inserted construction-site documents; official client typing only."
+                "description": "Inserted construction-site documents; community client typing only."
               },
               "insertedCount": {
                 "type": "integer",
-                "description": "Official client typing only."
+                "description": "Community client typing only."
               },
               "insertedIds": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Official client typing only."
+                "description": "Community client typing only."
               }
             },
             "additionalProperties": true
           }
         ],
-        "description": "OpenScreeps/backend-local return `{ok: 1, _id}`; the official client types a MongoDB insert result (`result`, `ops`, `insertedCount`, `insertedIds`)."
+        "description": "Creation acknowledgement with the new site's `_id`, which the official client reads. The community client additionally types a MongoDB insert result (`result`, `ops`, `insertedCount`, `insertedIds`)."
       },
       "GameCreateFlagRequest": {
         "type": "object",
@@ -4962,7 +5145,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -4997,7 +5180,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -5005,33 +5188,13 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/Ok"
-          },
-          {
-            "$ref": "#/components/schemas/GameInvaderCreep"
           }
         ],
-        "description": "OpenScreeps returns `{ok: 1, ...creep}` (the inserted invader document); backend-local returns its storage insert result for the same document; the official client leaves the body untyped."
-      },
-      "GameCreepBodyPart": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["move", "work", "carry", "attack", "ranged_attack", "tough", "heal", "claim"]
-          },
-          "hits": {
-            "type": "integer"
-          },
-          "boost": {
-            "type": ["string", "null"]
-          }
-        },
-        "required": ["type", "hits"],
-        "additionalProperties": true
+        "description": "Creation acknowledgement. The official client does not read the body."
       },
       "GameDbUpdateResult": {
         "type": "object",
-        "description": "MongoDB write result reported by the official server (typed by the official client).",
+        "description": "MongoDB write result reported by screeps.com (typed by the community client).",
         "properties": {
           "ok": {
             "type": "integer",
@@ -5078,7 +5241,7 @@
             "additionalProperties": true
           }
         ],
-        "description": "Generic write acknowledgement. OpenScreeps returns exactly `{ok: 1}`; the official client types the official body as a MongoDB update/upsert result under `result`; backend-local returns whatever its storage layer reports for the write."
+        "description": "Write acknowledgement. The community client types the screeps.com body as a MongoDB update/upsert result under `result`; the official client does not read it."
       },
       "GameFlagColor": {
         "type": "integer",
@@ -5100,7 +5263,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -5124,7 +5287,7 @@
       },
       "GameIntentActivateAccess": {
         "type": "object",
-        "description": "Payload of the `activateAccess` intent: no fields. Official-game account intent known to the OpenScreeps engine but not to the pinned backend; both HTTP intent endpoints on OpenScreeps drop it (only the player runtime may record it).",
+        "description": "Payload of the `activateAccess` intent: no fields. Official account intent; not part of the pinned backend-local intent table, so acceptance through the HTTP intent endpoints is unverified.",
         "additionalProperties": true
       },
       "GameIntentActivateSafeMode": {
@@ -5479,7 +5642,7 @@
       },
       "GameIntentGeneratePixel": {
         "type": "object",
-        "description": "Payload of the `generatePixel` intent: no fields. Official-game account intent known to the OpenScreeps engine but not to the pinned backend; both HTTP intent endpoints on OpenScreeps drop it (only the player runtime may record it).",
+        "description": "Payload of the `generatePixel` intent: no fields. Official account intent; not part of the pinned backend-local intent table, so acceptance through the HTTP intent endpoints is unverified.",
         "additionalProperties": true
       },
       "GameIntentGenerateSafeMode": {
@@ -5986,7 +6149,7 @@
       },
       "GameIntentUnlockCpu": {
         "type": "object",
-        "description": "Payload of the `unlockCpu` intent: no fields. Official-game account intent known to the OpenScreeps engine but not to the pinned backend; both HTTP intent endpoints on OpenScreeps drop it (only the player runtime may record it).",
+        "description": "Payload of the `unlockCpu` intent: no fields. Official account intent; not part of the pinned backend-local intent table, so acceptance through the HTTP intent endpoints is unverified.",
         "additionalProperties": true
       },
       "GameIntentUpgradeController": {
@@ -6049,61 +6212,6 @@
         },
         "additionalProperties": true
       },
-      "GameInvaderCreep": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/GameRoomObject"
-          },
-          {
-            "type": "object",
-            "description": "Summoned invader creep document as inserted.",
-            "properties": {
-              "type": {
-                "const": "creep"
-              },
-              "user": {
-                "const": "2"
-              },
-              "body": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/GameCreepBodyPart"
-                }
-              },
-              "hits": {
-                "type": "integer"
-              },
-              "hitsMax": {
-                "type": "integer"
-              },
-              "ticksToLive": {
-                "type": "integer",
-                "const": 1500
-              },
-              "fatigue": {
-                "type": "integer"
-              },
-              "store": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "number"
-                }
-              },
-              "storeCapacity": {
-                "type": "integer"
-              },
-              "name": {
-                "type": "string",
-                "pattern": "^invader_.+_[0-9]+$"
-              },
-              "userSummoned": {
-                "$ref": "#/components/schemas/UserId"
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      },
       "GameMapStatEntry": {
         "type": "object",
         "properties": {
@@ -6126,12 +6234,12 @@
             "items": {
               "type": "string"
             },
-            "description": "Room names. OpenScreeps ignores non-string items and rooms without a room document."
+            "description": "Room names. The official world map sends the rooms of the visible sectors."
           },
           "statName": {
             "type": "string",
             "pattern": "^.*?[0-9]+$",
-            "description": "Statistic name suffixed with an interval, matched by `/^(.*?)(\\d+)$/`. `owner0` and `claim0` request only ownership data; `<GameRoomStatName><8|180|1440>` (e.g. `energyHarvested8`) additionally ranks players on OpenScreeps.",
+            "description": "Statistic name suffixed with an interval, matched by `/^(.*?)(\\d+)$/`. `owner0` and `claim0` request only ownership data; `<GameRoomStatName><8|180|1440>` (e.g. `energyHarvested8`) additionally requests the ranking of that statistic.",
             "examples": ["owner0", "claim0", "energyHarvested8", "creepsLost180"]
           },
           "shard": {
@@ -6140,7 +6248,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -6168,7 +6276,7 @@
                 "additionalProperties": {
                   "type": "number"
                 },
-                "description": "Largest ranked value keyed by `statName` (OpenScreeps); always `{}` on backend-local."
+                "description": "Largest ranked value keyed by `statName`; the official world map scales stat circles by it."
               },
               "users": {
                 "$ref": "#/components/schemas/GamePublicUsers"
@@ -6180,7 +6288,7 @@
         ]
       },
       "GameMapStatsRoom": {
-        "description": "Per-room map stats. Room-status fields are copied from the room document; `own`, `sign`, `safeMode` and `minerals0` come from room objects; the requested `statName` key (e.g. `energyHarvested8`) holds the ranking for that stat. OpenScreeps fills the ranking as an array sorted by value descending; backend-local never fills it; the official client types it as a single `{user, value}` object.",
+        "description": "Per-room map stats. Room-status fields are copied from the room document; `own`, `sign`, `safeMode` and `minerals0` come from room objects; the requested `statName` key (e.g. `energyHarvested8`) holds the ranking entry for that stat, typed by the community client as a single `{user, value}` object.",
         "type": "object",
         "properties": {
           "status": {
@@ -6197,7 +6305,7 @@
           },
           "own": {
             "type": "object",
-            "description": "Controller owner (`level` = RCL), reserver (`level: 0`), or an invader core with level > 0 (`user` omitted on OpenScreeps when the core has no user).",
+            "description": "Controller owner (`level` = RCL), reserver (`level: 0`), or an invader core with level > 0.",
             "properties": {
               "user": {
                 "$ref": "#/components/schemas/UserId"
@@ -6218,7 +6326,7 @@
                 "$ref": "#/components/schemas/GameControllerSign"
               }
             ],
-            "description": "System sign, typed by the official client only."
+            "description": "System sign, typed by the community client only."
           },
           "safeMode": {
             "type": "boolean",
@@ -6240,17 +6348,7 @@
           }
         },
         "additionalProperties": {
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "$ref": "#/components/schemas/GameMapStatEntry"
-              }
-            },
-            {
-              "$ref": "#/components/schemas/GameMapStatEntry"
-            }
-          ]
+          "$ref": "#/components/schemas/GameMapStatEntry"
         }
       },
       "GamePlaceSpawnRequest": {
@@ -6269,7 +6367,7 @@
           "name": {
             "type": "string",
             "maxLength": 50,
-            "description": "Optional spawn name; the spawn is unnamed when omitted. Non-string values are treated as absent on OpenScreeps."
+            "description": "Optional spawn name; the spawn is unnamed when omitted."
           },
           "shard": {
             "allOf": [
@@ -6277,7 +6375,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -6294,11 +6392,10 @@
                 "const": true
               }
             },
-            "additionalProperties": true,
-            "required": ["newbie"]
+            "additionalProperties": true
           }
         ],
-        "description": "OpenScreeps and backend-local return `{ok: 1, newbie: true}`; the official client leaves the success body untyped."
+        "description": "Placement acknowledgement. backend-local returns `{ok: 1, newbie: true}`; the official client does not read the body."
       },
       "GamePublicUser": {
         "type": "object",
@@ -6340,7 +6437,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -6358,13 +6455,13 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
       "GameRoomDecoration": {
         "type": "object",
-        "description": "Active decoration instance in a room (official inventory system). The official client types it as a `DecorationInstance`.",
+        "description": "Active decoration instance in a room (screeps.com inventory system). The official client reads `user`, `active` and `decoration`; the community client types it as a `DecorationInstance`.",
         "properties": {
           "_id": {
             "type": "string"
@@ -6422,7 +6519,7 @@
       },
       "GameRoomObject": {
         "type": "object",
-        "description": "Raw room object document (`rooms.objects`). Only the base fields are stable across object types; every other field is type-specific (see the OpenScreeps engine `RoomObject` state shape) and is passed through as stored.",
+        "description": "Raw room object document (`rooms.objects`). Only the base fields are stable across object types; every other field is type-specific and is passed through as stored.",
         "properties": {
           "_id": {
             "type": "string"
@@ -6477,7 +6574,7 @@
             "required": ["objects", "users"]
           }
         ],
-        "description": "Typed by the official client: every room object of the room plus the public profiles of referenced users."
+        "description": "Every room object of the room plus the public profiles of referenced users (typed by the community client; the official client reads `objects` and `users`)."
       },
       "GameRoomOverviewResponse": {
         "allOf": [
@@ -6509,7 +6606,7 @@
               },
               "stats": {
                 "type": "object",
-                "description": "Graph points per room stat, oldest first, summed over all players in the room (OpenScreeps). backend-local returns `{}`.",
+                "description": "Graph points per room stat, oldest first.",
                 "propertyNames": {
                   "$ref": "#/components/schemas/GameRoomStatName"
                 },
@@ -6522,14 +6619,14 @@
               },
               "statsMax": {
                 "type": "object",
-                "description": "Largest point per `<stat><interval>` key, at least 1 on OpenScreeps; `{}` on backend-local.",
+                "description": "Largest point per `<stat><interval>` key; the official room overview scales its graphs by it.",
                 "additionalProperties": {
                   "type": "number"
                 }
               },
               "totals": {
                 "type": "object",
-                "description": "Window total per room stat (OpenScreeps reports every stat including zeros; the official client documents zero totals as omitted).",
+                "description": "Window total per room stat (the community client documents zero totals as omitted).",
                 "additionalProperties": {
                   "type": "number"
                 }
@@ -6543,7 +6640,7 @@
       "GameRoomStatInterval": {
         "type": "integer",
         "enum": [8, 180, 1440],
-        "description": "Statistic interval in minutes. Graphs contain 8 points for 8 and 180 minutes and 7 points for 1440 minutes (OpenScreeps `INTERVAL_POINTS`)."
+        "description": "Statistic interval in minutes. Graphs contain 8 points for 8 and 180 minutes and 7 points for 1440 minutes (the official room overview labels 8, 8 and 7 offsets respectively)."
       },
       "GameRoomStatName": {
         "type": "string",
@@ -6564,7 +6661,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "description": "Room status, e.g. `normal`, `out of borders` (backend/OpenScreeps documents) or `closed`/`novice`/`respawn` per the official client."
+            "description": "Room status, e.g. `normal` or `out of borders` (the official world map treats `out of borders` rooms as unavailable); the community client also lists `closed`/`novice`/`respawn`."
           },
           "novice": {
             "type": ["number", "null"],
@@ -6604,7 +6701,7 @@
         "properties": {
           "_id": {
             "type": "string",
-            "description": "Document id; OpenScreeps uses the room name."
+            "description": "Document id."
           },
           "room": {
             "type": "string"
@@ -6641,7 +6738,7 @@
             "required": ["terrain"]
           }
         ],
-        "description": "Response when `encoded` is non-empty (and, on backend-local, whenever the room's terrain is not a single `terrain` document)."
+        "description": "Response when `encoded` is non-empty."
       },
       "GameRoomTerrainTilesResponse": {
         "allOf": [
@@ -6673,7 +6770,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Room names; unknown rooms and non-string items are skipped."
+            "description": "Room names; unknown rooms are skipped."
           }
         }
       },
@@ -6690,7 +6787,7 @@
                 "items": {
                   "$ref": "#/components/schemas/GameRoomTerrainDocument"
                 },
-                "description": "One encoded terrain document per known requested room (OpenScreeps deduplicates repeated names)."
+                "description": "One encoded terrain document per known requested room; the official client reads `room`."
               }
             },
             "additionalProperties": true,
@@ -6708,7 +6805,7 @@
           },
           "enabled": {
             "type": "boolean",
-            "description": "Coerced with `!!`; omitted means `false`. The official client defaults to `true`."
+            "description": "Coerced with `!!`; omitted means `false`. The official client sends the selected object's current flag value."
           },
           "shard": {
             "allOf": [
@@ -6716,7 +6813,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -6761,7 +6858,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "Official shard routing. The official client sends `shard` inside the JSON body for POST operations; OpenScreeps is single-world and ignores it."
+            "description": "Shard routing. The official client sends `shard` inside the JSON body for POST operations."
           }
         }
       },
@@ -6824,23 +6921,6 @@
         "required": ["room", "x", "y", "type"],
         "additionalProperties": true
       },
-      "GameTickResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Ok"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "tick": {
-                "type": "number",
-                "description": "Shortest of the last 30 measured tick durations in milliseconds. OpenScreeps falls back to the configured tick duration before two ticks were observed; backend-local omits the field until then (`_.min([])` is `undefined`)."
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      },
       "GameTimeResponse": {
         "allOf": [
           {
@@ -6873,7 +6953,7 @@
               },
               "height": {
                 "type": "integer",
-                "description": "World height in rooms (always equal to width on backend-local/OpenScreeps: `calcWorldSize` returns one square size)."
+                "description": "World height in rooms."
               }
             },
             "additionalProperties": true,
@@ -6882,58 +6962,33 @@
         ]
       },
       "MarketMyOrdersResponse": {
-        "anyOf": [
+        "allOf": [
           {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Ok"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "list": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/MarketOrder"
-                    }
-                  }
-                },
-                "additionalProperties": true,
-                "required": ["list"]
-              }
-            ],
-            "description": "OpenScreeps/backend-local: every order (active or not) owned by the caller."
+            "$ref": "#/components/schemas/Ok"
           },
           {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Ok"
-              },
-              {
+            "type": "object",
+            "properties": {
+              "shards": {
                 "type": "object",
-                "properties": {
-                  "shards": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/MarketOrder"
-                      }
-                    },
-                    "description": "Orders keyed by shard name; intershard orders under `intershard`."
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketOrder"
                   }
                 },
-                "additionalProperties": true,
-                "required": ["shards"]
+                "description": "Orders keyed by shard name; intershard orders under `intershard` (community client)."
               }
-            ],
-            "description": "Official shape as implied by the official client (`mapToShard` only synthesizes `shards` when absent, and documents intershard orders under the `intershard` key)."
+            },
+            "additionalProperties": true,
+            "required": ["shards"]
           }
-        ]
+        ],
+        "description": "The caller's orders grouped by shard. The official client maps each `shards` entry to one order table."
       },
       "MarketOrder": {
         "type": "object",
-        "description": "Market order document. `price` is converted from stored thousandths to credits; OpenScreeps drops processing-only `_`-prefixed fields except `_id`. The official client types public orders without `_id`/`user`/`active`.",
+        "description": "Market order document. `price` is converted from stored thousandths to credits. The community client types public orders without `_id`/`user`/`active`.",
         "properties": {
           "_id": {
             "type": "string"
@@ -6975,7 +7030,7 @@
           },
           "roomName": {
             "type": "string",
-            "description": "Absent for intershard (account resource) orders on OpenScreeps."
+            "description": "Absent for intershard (account resource) orders."
           }
         },
         "required": ["type", "resourceType", "amount", "remainingAmount", "price"],
@@ -6991,23 +7046,23 @@
           },
           "count": {
             "type": "integer",
-            "description": "Active orders."
+            "description": "Active orders (read by the official client)."
           },
           "buying": {
             "type": "integer",
-            "description": "Active buy orders (OpenScreeps/backend-local)."
+            "description": "Active buy orders (read by the official client)."
           },
           "selling": {
             "type": "integer",
-            "description": "Active sell orders (OpenScreeps/backend-local)."
+            "description": "Active sell orders (read by the official client)."
           },
           "avgPrice": {
             "type": "number",
-            "description": "Official client typing only."
+            "description": "Community client typing only."
           },
           "stdeevPrice": {
             "type": "number",
-            "description": "Official client typing only (spelling as typed)."
+            "description": "Community client typing only (spelling as typed)."
           }
         },
         "required": ["_id", "count"],
@@ -7197,12 +7252,9 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/Ok"
-          },
-          {
-            "$ref": "#/components/schemas/PowerCreep"
           }
         ],
-        "description": "OpenScreeps returns `{ok: 1, ...creep}` (copy of the new record, `level: 0`, `hitsMax: 1000`, `storeCapacity: 100`, `spawnCooldownTime: 0`, `powers: {}`); backend-local returns its storage insert result for the same record."
+        "description": "Creation acknowledgement. The official client does not read the body."
       },
       "PowerCreepIdRequest": {
         "type": "object",
@@ -7273,7 +7325,7 @@
           },
           "powers": {
             "type": "object",
-            "description": "Complete requested level per power id (missing powers count as level 0, so omitting a learned power is a downgrade and is refused). Only powers of the creep's class, levels 0..5; the sum is the new creep level (max 25). OpenScreeps additionally rejects non-integer levels.",
+            "description": "Complete requested level per power id (missing powers count as level 0, so omitting a learned power is a downgrade and is refused). Only powers of the creep's class, levels 0..5; the sum is the new creep level (max 25).",
             "propertyNames": {
               "pattern": "^[0-9]+$"
             },
@@ -7284,6 +7336,119 @@
             }
           }
         }
+      },
+      "GameFindObjectResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Ok"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "object": {
+                "type": "object",
+                "description": "Found room object; the official client reads `room`.",
+                "properties": {
+                  "room": {
+                    "$ref": "#/components/schemas/RoomName"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GameFinishRequest": {
+        "type": "object",
+        "properties": {
+          "room": {
+            "$ref": "#/components/schemas/RoomName"
+          }
+        },
+        "additionalProperties": true,
+        "description": "The official client sends the current room."
+      },
+      "GameHistoryShareRequest": {
+        "type": "object",
+        "properties": {
+          "shard": {
+            "$ref": "#/components/schemas/ShardName"
+          },
+          "room": {
+            "$ref": "#/components/schemas/RoomName"
+          },
+          "time": {
+            "type": "integer",
+            "description": "Game tick of the shared history moment."
+          }
+        },
+        "additionalProperties": true,
+        "description": "History moment to share, as sent by the official room history view."
+      },
+      "GameHistoryShareResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Ok"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Share code; the official client shows `screeps.com/s/<code>`."
+              },
+              "room": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "shard": {
+                "$ref": "#/components/schemas/ShardName"
+              },
+              "time": {
+                "type": "integer",
+                "description": "Game tick of the shared moment."
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GameRandomNoviceRoomResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Ok"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "room": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "shard": {
+                "$ref": "#/components/schemas/ShardName"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GameShardsTickResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Ok"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tick": {
+                "type": "number",
+                "description": "Tick duration in milliseconds."
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
       }
     }
   }

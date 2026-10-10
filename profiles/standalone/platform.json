@@ -1,0 +1,120 @@
+{
+  "required": ["platformActivePromotion", "platformSteamNews", "platformVersion"],
+  "excluded": {
+    "platformServersList": "Hosted directory of community servers curated by screeps.com; a standalone server is an entry in that directory, not a provider of it.",
+    "platformExperimentalPvp": "Experimental screeps.com multi-shard combat analytics; not used by the official client and not part of the private-server protocol (backend-local has no such route).",
+    "platformExperimentalNukes": "Experimental screeps.com multi-shard nuke analytics; not used by the official client and not part of the private-server protocol (backend-local has no such route).",
+    "platformOfficialRoomHistory": "Static history host of screeps.com (`HISTORY_URL/<shard>/<room>/<tick>.json`). The official client uses it only when `options.official` is true; standalone servers provide the `/room-history` addition instead."
+  },
+  "adaptations": {
+    "platformSteamNews": "A standalone server has no screeps.com news backend and relays the public Valve news feed instead; when that upstream is unavailable it reports HTTP 502 rather than inventing an empty feed."
+  },
+  "additions": {
+    "platformRoomHistory": "The official web client fetches room history from `/room-history?room=&time=` whenever `options.official` is false (private-server branch), so every standalone server must serve it."
+  },
+  "notes": {
+    "platformVersion": "Standalone servers serve one world: `serverData.shards` and official hosted `features` (seasons, decorations, inventory) may be absent, in which case the official client falls back to its market/auth feature set.",
+    "platformSteamNews": "Relays Valve ISteamNews/GetNewsForApp for the Screeps app (one item), cached for five minutes with concurrent requests coalesced.",
+    "platformActivePromotion": "No hosted item shop: the response is `{ok: 1}` without promotion fields.",
+    "platformRoomHistory": "`time` must identify a retained chunk base; at most `historyChunkSize` frames are returned and a missing chunk yields HTTP 404."
+  },
+  "evidence": {
+    "platformVersion": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L15-L31"
+    ],
+    "platformSteamNews": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L11-L23",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/steam-news.ts#L12-L50"
+    ],
+    "platformActivePromotion": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L25-L38"
+    ],
+    "platformRoomHistory": [
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/http.ts#L39-L47",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L34-L46",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/realtime/diff.ts#L1-L35"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/steam/news": {
+        "get": {
+          "responses": {
+            "502": {
+              "description": "Upstream Valve news feed unavailable.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/room-history": {
+        "get": {
+          "operationId": "platformRoomHistory",
+          "summary": "Read private-server room-history chunk",
+          "description": "Room-history chunk endpoint of the private-server protocol. When `options.official` is false the official web client requests `http://<host>:<port>/room-history?room=<room>&time=<tick>` with `time` aligned to `serverData.historyChunkSize`, treats any non-200 status as missing and fills `room` when absent. The body is a history chunk (base tick plus tick-keyed object diffs) without the `ok` envelope.",
+          "tags": ["Platform"],
+          "security": [],
+          "parameters": [
+            {
+              "name": "room",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Room name."
+            },
+            {
+              "name": "time",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Base game tick, normally aligned to the advertised historyChunkSize."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "History chunk.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PlatformHistory"
+                  }
+                }
+              }
+            },
+            "400": {
+              "$ref": "#/components/responses/BadRequest"
+            },
+            "404": {
+              "description": "Requested history frame was not retained.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "$ref": "#/components/responses/ServerError"
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C313108",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L178-L187"
+          ]
+        }
+      }
+    }
+  }
+}

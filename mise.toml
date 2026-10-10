@@ -2,10 +2,10 @@
 node = "24.21.0"
 
 [tasks.install]
-run = "npm ci"
+run = "npm ci --ignore-scripts"
 
 [tasks.build]
-run = "npm run build"
+run = "npm run prepare"
 
 [tasks.check]
 run = "npm run check"
@@ -14,4 +14,4 @@ run = "npm run check"
 run = "npm run smoke"
 
 [tasks.ci]
-run = ["npm run check", "npm run format:check", "npm run types"]
+run = ["npm run check", "npm run format:check"]

@@ -4,7 +4,7 @@
       "get": {
         "operationId": "authMe",
         "summary": "Get the authenticated account",
-        "description": "Returns the private profile of the account owning the token: id, username, e-mail, CPU, badge, GCL/power progress, credit balance (`money`), notification preferences, linked Steam data and power-creep experimentation state. screeps.com additionally returns shard CPU limits (`cpuShard`, `cpuShardUpdatedTime`), account resources, SSO links and legacy fields; OpenScreeps never returns those and instead mirrors the backend-local projection (`emailDirty`, `lastChargeTime`, `blocked`, `customBadge`). Only fields present in storage are serialized. The official client uses this endpoint only for full-access tokens; restricted tokens resolve the user through `GET /api/user/name` + `GET /api/user/find`.",
+        "description": "Returns the private profile of the account owning the token: id, username, e-mail (and an unconfirmed `emailDirty`), CPU, badge, GCL/power progress, credit balance (`money`), notification preferences, linked Steam/GitHub data, shard CPU limits (`cpuShard`, `cpuShardUpdatedTime`), account resources and power-creep experimentation state. Only fields present in storage are serialized. The official web client calls it after storing a token and keeps the result as the signed-in account; node-screeps-api resolves restricted tokens through `GET /api/user/name` + `GET /api/user/find` instead.",
         "tags": ["Auth"],
         "security": [
           {
@@ -40,37 +40,33 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-observations": [
           {
             "url": "https://screeps.com/api/auth/me",
             "date": "2026-10-10",
-            "notes": "Authenticated read-only response represents steam.ownership as an array of integer Steam application IDs, unlike the standalone boolean. No account identifiers or credentials are recorded."
+            "notes": "Authenticated read-only response represents steam.ownership as an array of integer Steam application IDs. No account identifiers or credentials are recorded."
           }
         ],
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L12-L16",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L135-L167",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C297032",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L446-L454",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/auth.ts#L15-L74",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L111-L135",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/transport.ts#L113-L158",
-          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2168-L2179",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/transport.ts#L67-L73"
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2168-L2179"
         ],
         "x-compatibility": {
-          "openscreeps": "Token may be sent as `X-Token`, `Authorization: Bearer`, or `?token=`; each authenticated call issues a fresh token in the `X-Token` response header (default lifetime 60 s).",
-          "screeps-com": "Fields such as cpuShard, resources, github/twitter are typed by the official client only."
-        }
+          "screeps-com": "`cpuShard`, `cpuShardUpdatedTime`, `resources`, `github`, `credits`, `lastChargeTime`, `emailDirty` and `steam.ownership` are read by the official web client; `twitter`, `lastTweetTime` and `restrictedAccessUntil` are typed by node-screeps-api only."
+        },
+        "x-unverified": "`blocked` and `customBadge` are neither read by the official web client nor typed by node-screeps-api; their presence on screeps.com is unverified."
       }
     },
     "/api/auth/query-token": {
       "get": {
         "operationId": "authQueryToken",
         "summary": "Inspect an API token",
-        "description": "Returns the permissions of a screeps.com account auth token: whether it has full access, or the REST endpoints and WebSocket channel groups it is restricted to, plus its description. The official client calls it to decide between `GET /api/auth/me` and the restricted `GET /api/user/name` lookup. Unrecognized tokens produce an HTTP error. Not implemented by OpenScreeps or backend-local, which issue only short-lived full-access session tokens.",
+        "description": "Returns the permissions of a screeps.com account auth token: whether it has full access, or the REST endpoints and WebSocket channel groups it is restricted to, plus its description. node-screeps-api calls it to decide between `GET /api/auth/me` and the restricted `GET /api/user/name` lookup. Unrecognized tokens produce an HTTP error.",
         "tags": ["Auth"],
         "security": [],
         "parameters": [
@@ -102,23 +98,12 @@
               }
             }
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L456-L467",
@@ -135,7 +120,7 @@
       "post": {
         "operationId": "authSignin",
         "summary": "Sign in with password",
-        "description": "Exchanges local credentials for a session token. The `email` field carries an e-mail address or, on OpenScreeps, a username (looked up case-insensitively unless it contains `@`). OpenScreeps verifies scrypt hashes in constant time (unknown accounts still hash a dummy) and answers every failure with HTTP 401 `unauthorized`; accounts without a configured password cannot sign in. The official client notes that password sign-in has not worked on screeps.com since 2018 (use account auth tokens there); it remains the authentication method for private servers.",
+        "description": "Exchanges an account e-mail address and password for a session token. The official web client posts `email`, `password`, its reCAPTCHA response (`recaptcha`) and, in the Steam desktop build, a hex-encoded Steam session ticket (`steamTicket`); it stores the returned `token` and then loads `GET /api/auth/me`.",
         "tags": ["Auth"],
         "security": [],
         "requestBody": {
@@ -167,17 +152,10 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
+          "401": {
+            "description": "Invalid credentials. The official web client excludes sign-in from its HTTP 401 sign-out handling.",
             "content": {
               "application/json": {
                 "schema": {
@@ -188,39 +166,27 @@
           },
           "500": {
             "$ref": "#/components/responses/ServerError"
-          },
-          "401": {
-            "description": "Missing/invalid credentials (`unauthorized`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         },
         "x-availability": {
-          "screeps-com": "unsupported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L18-L22",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L169-L183",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/auth.ts#L66-L87",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C298607",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L416-L429",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/auth.ts#L6-L13"
         ],
         "x-compatibility": {
-          "backend-local": "The pinned backend-local has no signin route (provided by auth mods on private servers)."
-        }
+          "screeps-com": "node-screeps-api documents that password sign-in has not worked on screeps.com since 2018; use account auth tokens there."
+        },
+        "x-unverified": "Only `token` is read from the success body; server-side handling of `recaptcha` and `steamTicket` and the logical error values are not evidenced."
       }
     },
     "/api/auth/steam-ticket": {
       "post": {
         "operationId": "authSteamTicket",
         "summary": "Sign in with a Steam session ticket",
-        "description": "Verifies a Steam session ticket and returns a session token plus the authenticated SteamID, creating a new account (no username, 100 CPU, default code branch, empty Memory) the first time a SteamID signs in. OpenScreeps verifies the ticket with the Steam Web API `ISteamUserAuth/AuthenticateUserTicket` (app 464350) using the operator-configured Steam Web API key, outside the world lock and with a 10 s timeout; without a configured key, or when `useNativeAuth` is truthy, it answers `authentication method is not supported`. Any verification failure yields `could not authenticate`. The official client documents Steam (and GitHub) SSO as the only sign-in methods on screeps.com but does not type the response.",
+        "description": "Verifies a Steam session ticket from the Steam desktop build and returns a session token plus the authenticated SteamID, creating an account without a username the first time a SteamID signs in (the official web client then routes the player to username selection). With `useNativeAuth`, the ticket is a Greenworks encrypted app ticket instead of a session ticket.",
         "tags": ["Auth"],
         "security": [],
         "requestBody": {
@@ -235,7 +201,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `authentication method is not supported`, `could not authenticate`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `authentication method is not supported`, `could not authenticate`, `invalid encrypted ticket`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -252,24 +218,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
@@ -279,19 +228,15 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L24-L28",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L185-L199",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/auth.ts#L94-L125",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C300346",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L431-L444",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L137-L178"
         ],
         "x-compatibility": {
-          "screeps-com": "Response typed `ScreepsUnknownResponse` by the official client; token/steamid fields are from backend-local/OpenScreeps.",
-          "backend-local": "Also supports Greenworks encrypted app tickets when started in native-auth mode (`invalid encrypted ticket`)."
+          "screeps-com": "Untyped by node-screeps-api (`ScreepsUnknownResponse`); the official web client reads `token`, `steamid`, `username` and `email`."
         }
       }
     },
@@ -299,7 +244,7 @@
       "get": {
         "operationId": "leaderboardFind",
         "summary": "Find a user on the leaderboard",
-        "description": "Public. With `season`, returns the user's ranking fields for that season at the top level (`result not found` if unranked). Without `season`, returns `{list}` of the user's rankings across all seasons. The username is matched case-insensitively; unknown users yield `user not found` on OpenScreeps. backend-local is a stub: with `season` it always answers `result not found`, otherwise an empty list.",
+        "description": "Public. With `season`, returns the user's ranking fields for that season at the top level (`result not found` if unranked). Without `season`, returns `{list}` of the user's rankings across all seasons. The official web client uses the season form to jump to the user's page (`floor(rank / 10) + 1`) and the list form on profile pages.",
         "tags": ["Leaderboard"],
         "security": [],
         "parameters": [
@@ -307,7 +252,7 @@
             "name": "mode",
             "in": "query",
             "required": true,
-            "description": "Ranking to read. OpenScreeps answers `invalid params` when omitted; other values (e.g. official arena modes) return empty results there.",
+            "description": "Ranking to read.",
             "schema": {
               "$ref": "#/components/schemas/LeaderboardMode"
             }
@@ -333,7 +278,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid params`, `user not found`, `result not found`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `result not found`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -364,23 +309,39 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/leaderboard.ts#L24-L28",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/leaderboard.ts#L117-L147",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C81828",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C82279",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C83067",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C84987",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C85107",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C86993",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C87314",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C87901",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C90344",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C90798",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C91652",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C94855",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C95176",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C95763",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C104259",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C104421",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284307",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284407",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1198-L1216",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/leaderboard.ts#L16-L21",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L19-L28"
-        ]
+        ],
+        "x-unverified": "The legacy official web client lobby also sends `arena` and `survival` modes; results for those modes on screeps.com are unverified. Error values for unknown users are not evidenced."
       }
     },
     "/api/leaderboard/list": {
       "get": {
         "operationId": "leaderboardList",
         "summary": "List a season leaderboard page",
-        "description": "Public. Returns one page of a monthly leaderboard (`world` = control points, `power` = power processed) with the total ranked count and public data of the listed users. OpenScreeps clamps `limit` to 1-20 (default 10), treats invalid `offset` as 0, defaults `season` to the current UTC month and rejects malformed seasons with `invalid params`. backend-local always returns an empty list.",
+        "description": "Public. Returns one page of a monthly leaderboard (`world` = control points, `power` = power processed) with the total ranked count and public data of the listed users. The official web client pages with `limit=10` and `offset=10*(page-1)`.",
         "tags": ["Leaderboard"],
         "security": [],
         "parameters": [
@@ -388,7 +349,7 @@
             "name": "mode",
             "in": "query",
             "required": true,
-            "description": "Ranking to read. OpenScreeps answers `invalid params` when omitted; other values (e.g. official arena modes) return empty results there.",
+            "description": "Ranking to read.",
             "schema": {
               "$ref": "#/components/schemas/LeaderboardMode"
             }
@@ -406,11 +367,10 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Page size. OpenScreeps clamps to 1-20 and treats missing/invalid values as 10.",
+            "description": "Page size.",
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
               "default": 10
             }
           },
@@ -428,7 +388,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid params`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -452,26 +412,26 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/leaderboard.ts#L18-L22",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/leaderboard.ts#L99-L115",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/leaderboard.ts#L46-L62",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/leaderboard.ts#L65-L80",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C83502",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C88341",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C92093",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C96203",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1174-L1196",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/leaderboard.ts#L4-L14",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/leaderboard.ts#L23-L33",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L14-L17"
-        ]
+        ],
+        "x-unverified": "The maximum page size on screeps.com is unverified. The legacy official web client lobby also sends `arena` and `survival` modes."
       }
     },
     "/api/leaderboard/seasons": {
       "get": {
         "operationId": "leaderboardSeasons",
         "summary": "List leaderboard seasons",
-        "description": "Public. Lists monthly leaderboard seasons, newest first; the first entry is the current season. These are calendar months (`YYYY-MM`), unrelated to Seasonal World competitions (`/api/seasons`). OpenScreeps lists every month with recorded scores plus the current month; backend-local returns two placeholder entries (`empty1`, `empty2`, name `—`, no date).",
+        "description": "Public. Lists monthly leaderboard seasons, newest first; the first entry is the current season. These are calendar months (`YYYY-MM`), unrelated to Seasonal World competitions (`/api/seasons`).",
         "tags": ["Leaderboard"],
         "security": [],
         "responses": {
@@ -500,16 +460,35 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/leaderboard.ts#L12-L16",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/leaderboard.ts#L86-L97",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/leaderboard.ts#L39-L43",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C80993",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C82077",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C84848",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C86158",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C87235",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C89476",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C90596",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C94020",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C95097",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C104119",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284217",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1218-L1231",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/leaderboard.ts#L35-L49",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L30-L32"
+        ],
+        "x-unverified": "Whether the server filters seasons by `mode` is unverified.",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "description": "Leaderboard mode sent by some official web client lobby routes (`world`, `power` and the legacy `arena`/`survival`).",
+            "schema": {
+              "type": "string"
+            }
+          }
         ]
       }
     },
@@ -517,7 +496,7 @@
       "get": {
         "operationId": "registerCheckEmail",
         "summary": "Check e-mail availability",
-        "description": "Public availability check used by registration forms. Succeeds with `{ok: 1}` when no account uses the address; otherwise returns the error envelope `exists`. A missing/empty `email` yields `invalid email`. backend-local compares lower-cased; OpenScreeps compares against stored lower-cased addresses using the query value lower-cased.",
+        "description": "Public availability check used by the official web client's registration and e-mail forms. Succeeds with `{ok: 1}` when no account uses the address; otherwise returns the error envelope `exists`. A missing/empty `email` yields `invalid email`. Addresses are compared lower-cased.",
         "tags": ["Register"],
         "security": [],
         "parameters": [
@@ -557,13 +536,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L37-L41",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L201-L206",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L27-L30",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C259322",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C268280",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L469-L483",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L15-L27"
         ]
@@ -613,13 +590,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L43-L47",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L208-L215",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L37-L40",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C259469",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L485-L499",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L30-L42"
         ]
@@ -629,7 +603,7 @@
       "post": {
         "operationId": "registerSetUsername",
         "summary": "Choose the account username",
-        "description": "Sets the username of an authenticated account that has none yet (e.g. created through Steam sign-in), optionally storing an e-mail address. Usernames must match `^[a-zA-Z0-9_-]{3,}$`, be unique case-insensitively and (OpenScreeps) not be the reserved system user name. Fails with `username already set` once a name exists. OpenScreeps also rejects an e-mail already used by another account (`email already exists`); backend-local does not check e-mail uniqueness here.",
+        "description": "Sets the username of an authenticated account that has none yet (e.g. created through Steam or GitHub sign-in), optionally storing an e-mail address. Usernames must match `^[a-zA-Z0-9_-]{3,}$` and be unique case-insensitively. Fails with `username already set` once a name exists. The official web client also sends its reCAPTCHA response (`recaptcha`) and whether the tutorial was completed (`tutorialDone`), then uploads the code edited before registration.",
         "tags": ["Register"],
         "security": [
           {
@@ -648,7 +622,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid email`, `username already set`, `invalid username`, `email already exists`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid email`, `username already set`, `invalid username`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -665,24 +639,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -695,28 +652,24 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L49-L53",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L217-L240",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L18",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L43-L49",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L16",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C260373",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L501-L511",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L44-L73"
         ],
         "x-compatibility": {
-          "screeps-com": "Official client documents `username already set` and leaves the success shape untyped."
-        }
+          "screeps-com": "node-screeps-api documents `username already set` and leaves the success shape untyped."
+        },
+        "x-unverified": "Server-side handling of `recaptcha` and `tutorialDone` is not evidenced."
       }
     },
     "/api/register/submit": {
       "post": {
         "operationId": "registerSubmit",
         "summary": "Register a new account",
-        "description": "Creates an account with username, e-mail, password and optional initial code modules, as exposed by the official client. Whether screeps.com accepts password registration is undocumented (the client itself says it is unclear), so availability there is unverified; neither OpenScreeps nor the pinned backend-local implement it (OpenScreeps accounts are created through Steam sign-in or the administrator API/CLI).",
+        "description": "Creates an account with username, e-mail and password from the official web client's registration form, together with its reCAPTCHA response, tutorial completion flag and the code edited before registration (`modules`, `branches`). On success the client shows the e-mail confirmation page.",
         "tags": ["Register"],
         "security": [],
         "requestBody": {
@@ -731,7 +684,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success shape untyped by the official client (`ScreepsUnknownResponse`); only `ok` is known.",
+            "description": "Success (only `ok` is known) or a logical error in the HTTP 200 `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -747,34 +700,25 @@
               }
             }
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C260982",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L513-L531"
-        ]
+        ],
+        "x-unverified": "The success body, error values and server-side validation are not evidenced; node-screeps-api leaves the response untyped."
       }
     },
     "/api/scoreboard/list": {
       "get": {
         "operationId": "scoreboardList",
         "summary": "List the Seasonal World scoreboard",
-        "description": "Public Seasonal World scoreboard page, filtered by a case-sensitive username substring when `search` is set. Only served by the screeps.com Seasonal World server (`https://screeps.com/season`); other servers answer HTTP 404 per the official client.",
+        "description": "Public Seasonal World scoreboard page, filtered by a case-sensitive username substring when `search` is set. Served by the screeps.com Seasonal World server (`https://screeps.com/season`).",
         "tags": ["Seasonal World"],
         "security": [],
         "parameters": [
@@ -829,23 +773,12 @@
               }
             }
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1843-L1859",
@@ -861,7 +794,7 @@
       "get": {
         "operationId": "seasonsList",
         "summary": "List Seasonal World competitions",
-        "description": "Lists all past, current and upcoming Seasonal World competitions ordered by `index`. The official client documents this as working only on official servers (HTTP 404 elsewhere); authentication requirements are not documented and treated as public.",
+        "description": "Lists all past, current and upcoming Seasonal World competitions ordered by `index`. Authentication requirements are not documented and treated as public.",
         "tags": ["Seasonal World"],
         "security": [],
         "responses": {
@@ -882,23 +815,12 @@
               }
             }
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1233-L1243",
@@ -911,7 +833,7 @@
       "get": {
         "operationId": "seasonsCurrent",
         "summary": "Get the current Seasonal World competition",
-        "description": "Returns metadata of the active or imminent Seasonal World competition plus the caller's seasonal rank, or a JSON `null` body when no competition is active or about to start. Official servers only (HTTP 404 elsewhere). The `rank` field implies an authenticated caller; whether anonymous calls succeed is unverified.",
+        "description": "Returns metadata of the active or imminent Seasonal World competition plus the caller's seasonal rank, or a JSON `null` body when no competition is active or about to start. The `rank` field implies an authenticated caller; whether anonymous calls succeed is unverified.",
         "tags": ["Seasonal World"],
         "security": [
           {
@@ -942,23 +864,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1245-L1260",
@@ -970,7 +881,7 @@
       "post": {
         "operationId": "userActivatePtr",
         "summary": "Unlock CPU on the PTR",
-        "description": "Public Test Realm only: unlocks full CPU on PTR for one week. Official non-PTR servers answer `{error: \"not ptr\"}`; unofficial servers answer HTTP 404 (official client).",
+        "description": "Public Test Realm only: unlocks full CPU on PTR for one week. Non-PTR servers answer `{error: \"not ptr\"}`. The official web client offers it on the PTR entry pages.",
         "tags": ["User"],
         "security": [
           {
@@ -998,25 +909,16 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L198170C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L199249C46",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1262-L1273"
         ]
       }
@@ -1061,24 +963,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1091,26 +976,20 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L168-L172",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L444-L453",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/badge.ts#L448-L483",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C274875",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1275-L1284",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L146-L176"
-        ],
-        "x-compatibility": {
-          "backend-local": "Color regex is not end-anchored, so longer strings starting with `#rrggbb` pass."
-        }
+        ]
       }
     },
     "/api/user/badge-svg": {
       "get": {
         "operationId": "userBadgeSvg",
         "summary": "Render a user badge as SVG",
-        "description": "Public. Renders the named user's badge as a 128x128 SVG image (`border=1` adds a black ring). Users without a valid badge get an empty `<svg>`. Unknown users get HTTP 404. Not exposed by the official client, so screeps.com availability is unverified.",
+        "description": "Public. Renders the named user's badge as an SVG image (`border=1` adds a black ring). The official web client uses it as the room renderer's `BADGE_URL` and for world-map owner badges (`border=1`).",
         "tags": ["User"],
         "security": [],
         "parameters": [
@@ -1145,14 +1024,8 @@
               }
             }
           },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          },
           "404": {
-            "description": "Unknown user (OpenScreeps: `text/plain` `Not Found`).",
+            "description": "Unknown user.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1160,28 +1033,32 @@
                 }
               }
             }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L174-L178",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L455-L462",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/badge.ts#L499-L539",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L197598C26",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L197612C24",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L221232C51",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C181899",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L467-L490"
         ],
-        "x-compatibility": {
-          "backend-local": "Caches SVGs for an hour; a missing `username` throws instead of answering 404."
-        }
+        "x-unverified": "The 128x128 size, the empty `<svg>` for users without a valid badge and the HTTP 404 for unknown users are not observed on screeps.com."
       }
     },
     "/api/user/branches": {
       "get": {
         "operationId": "userBranches",
         "summary": "List code branches",
-        "description": "Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). OpenScreeps and backend-local return complete branch documents including `modules`; the official client types only id, name and flags.",
+        "description": "Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`.",
         "tags": ["User Code"],
         "security": [
           {
@@ -1217,16 +1094,25 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L94-L98",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L282-L285",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L83-L89",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C303727",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1409-L1418",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L65-L77",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L56-L80"
+        ],
+        "x-unverified": "Whether `modules` is omitted when `withCode` is not set is unverified; node-screeps-api types only `_id`, `branch`, `activeWorld` and `activeSim`.",
+        "parameters": [
+          {
+            "name": "withCode",
+            "in": "query",
+            "required": false,
+            "description": "Set by the official web client when branch module contents are needed.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
         ]
       }
     },
@@ -1234,7 +1120,7 @@
       "post": {
         "operationId": "userCloneBranch",
         "summary": "Clone a branch",
-        "description": "Copies a branch's modules (or `defaultModules`, or `{main: \"\"}`) into `newName`, creating it inactive or overwriting an existing branch of that name, and publishes `user:<id>/code`. Creating a new branch fails with `too many branches` once the player has 30 branches (names matching `tutorial-<digit>` are exempt). Names longer than 30 characters (OpenScreeps also empty or `$`-prefixed `newName`) yield `invalid branch name`; invalid `defaultModules` yield `invalid params` on OpenScreeps. Returns a timestamp.",
+        "description": "Copies a branch's modules (or `defaultModules`, or `{main: \"\"}`) into `newName`, creating it inactive or overwriting an existing branch of that name, and publishes `user:<id>/code`. Creating a new branch fails with `too many branches` once the player has 30 branches (names matching `tutorial-<digit>` are exempt). Names longer than 30 characters yield `invalid branch name`. Returns a timestamp, which the official web client reads.",
         "tags": ["User Code"],
         "security": [
           {
@@ -1253,7 +1139,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid branch name`, `too many branches`, `invalid params`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid branch name`, `too many branches`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1270,24 +1156,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1300,13 +1169,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L118-L122",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L329-L353",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L139-L168",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C304116",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1323-L1339",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L209-L244"
         ]
@@ -1363,13 +1229,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L106-L110",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L304-L313",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L48-L57",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C303840",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1420-L1432",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L79-L84",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L122-L144",
@@ -1401,7 +1264,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `code length exceeds 5 MB limit`, `invalid params`, `branch does not exist`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `code length exceeds 5 MB limit`, `branch does not exist`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1418,24 +1281,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1448,21 +1294,17 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L100-L104",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L287-L302",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L26-L41",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L96-L110",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C304253",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1434-L1446",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L86-L99",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L82-L120",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L65-L86"
         ],
         "x-compatibility": {
-          "screeps-com": "screeps.com endpoint limit: 240 requests per day per token (HTTP 429 with `X-RateLimit-Limit`/`-Remaining`/`-Reset`), in addition to the global 120 per minute. Success typed `ScreepsUnknownResponse` by the official client."
+          "screeps-com": "screeps.com endpoint limit: 240 requests per day per token (HTTP 429 with `X-RateLimit-Limit`/`-Remaining`/`-Reset`), in addition to the global 120 per minute. Success untyped by node-screeps-api (`ScreepsUnknownResponse`); the official web client reads `timestamp`."
         }
       }
     },
@@ -1470,7 +1312,7 @@
       "post": {
         "operationId": "userConsole",
         "summary": "Queue a console expression",
-        "description": "Queues a JavaScript expression for evaluation in the player's runtime, with normal CPU accounting. Commands are queued and run only when the player's runtime reaches its console-processing step (after a main loop run); no ordering relative to other queued commands, ticks or code deployment is guaranteed by this API, and the response does not contain the evaluation result (results arrive on the console realtime channel). The JSON-encoded expression must not exceed 1024 characters (`expression size is too large`); OpenScreeps rejects non-string expressions (`invalid params`). screeps.com requires a `shard` and echoes the inserted command document.",
+        "description": "Queues a JavaScript expression for evaluation in the player's runtime on the given shard, with normal CPU accounting. Commands are queued and run only when the player's runtime reaches its console-processing step (after a main loop run); no ordering relative to other queued commands, ticks or code deployment is guaranteed by this API, and the response does not contain the evaluation result (results arrive on the console realtime channel). The JSON-encoded expression must not exceed 1024 characters (`expression size is too large`). The official web client sends `expression` and the current `shard`.",
         "tags": ["User Memory"],
         "security": [
           {
@@ -1489,7 +1331,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid params`, `expression size is too large`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `expression size is too large`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1506,24 +1348,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -1536,13 +1361,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L155-L159",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L420-L429",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/runtime/index.ts#L363",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C310975",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1772-L1793",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L298-L316",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L341-L351",
@@ -1557,7 +1379,7 @@
       "post": {
         "operationId": "userCpuShardsSet",
         "summary": "Set per-shard CPU allocation",
-        "description": "screeps.com only. Replaces the account's CPU allocation across shards (`Game.cpu.shardLimits`) with `cpu: {<shard>: limit}`. Observed: the limits must total the account CPU (omitted shards count as 0), and changes made too soon after the previous change are rejected (an interval of about 12 hours was observed; the exact cooldown and its error text are not documented). The new allocation is reflected in `GET /api/auth/me` (`cpuShard`, `cpuShardUpdatedTime`). Note that placing an initial spawn (`gamePlaceSpawn`) resets the allocation to the shard where the spawn was placed. The success body carries `ok: 1` plus database-driver metadata; only `ok` is stable. OpenScreeps has a single world with no shard CPU allocation and does not implement this route.",
+        "description": "Replaces the account's CPU allocation across shards (`Game.cpu.shardLimits`) with `cpu: {<shard>: limit}`. Observed: the limits must total the account CPU (omitted shards count as 0), and changes made too soon after the previous change are rejected; the official web client disables reassignment for 12 hours after `cpuShardUpdatedTime` (the server-side error text is not documented). The new allocation is reflected in `GET /api/auth/me` (`cpuShard`, `cpuShardUpdatedTime`). Placing an initial spawn (`gamePlaceSpawn`) resets the allocation to the shard where the spawn was placed. The success body carries `ok: 1` plus database-driver metadata; only `ok` is stable.",
         "tags": ["User"],
         "security": [
           {
@@ -1595,31 +1417,22 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L210563C46",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C195757",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1286-L1295",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/users.ts#L80-L86",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/auth.ts#L15-L74"
         ],
         "x-compatibility": {
-          "screeps-com": "Allocation total and ~12 h cooldown are observed behavior, not documented by pinned sources; see gamePlaceSpawn for the initial-spawn reset."
+          "screeps-com": "Allocation total is observed behavior and the 12-hour interval is enforced by the official web client; see gamePlaceSpawn for the initial-spawn reset."
         }
       }
     },
@@ -1627,7 +1440,7 @@
       "post": {
         "operationId": "userDecorationsActivate",
         "summary": "Activate a decoration",
-        "description": "screeps.com only. Applies an owned decoration with the given property values (`active`). Success shape untyped by the official client.",
+        "description": "Applies an owned decoration with the given property values (`active`). Success shape untyped by node-screeps-api.",
         "tags": ["User Decorations"],
         "security": [
           {
@@ -1646,7 +1459,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success (untyped beyond `ok` by the official client) or `{error}` envelope.",
+            "description": "Success (untyped beyond `ok` by node-screeps-api) or `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1665,23 +1478,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1496-L1506"
@@ -1692,7 +1494,7 @@
       "post": {
         "operationId": "userDecorationsConvert",
         "summary": "Convert decorations back to pixels",
-        "description": "screeps.com only. Destroys the listed owned decorations, refunding part of their pixelization cost (`decorationConvertationCost` in `/api/version`). Irreversible. Success shape untyped by the official client.",
+        "description": "Destroys the listed owned decorations, refunding part of their pixelization cost (`decorationConvertationCost` in `/api/version`). Irreversible. Success shape untyped by node-screeps-api.",
         "tags": ["User Decorations"],
         "security": [
           {
@@ -1711,7 +1513,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success (untyped beyond `ok` by the official client) or `{error}` envelope.",
+            "description": "Success (untyped beyond `ok` by node-screeps-api) or `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1730,23 +1532,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1469-L1479"
@@ -1757,7 +1548,7 @@
       "post": {
         "operationId": "userDecorationsDeactivate",
         "summary": "Deactivate decorations",
-        "description": "screeps.com only. Removes one or more active decorations from use. Success shape untyped by the official client.",
+        "description": "Removes one or more active decorations from use. Success shape untyped by node-screeps-api.",
         "tags": ["User Decorations"],
         "security": [
           {
@@ -1776,7 +1567,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success (untyped beyond `ok` by the official client) or `{error}` envelope.",
+            "description": "Success (untyped beyond `ok` by node-screeps-api) or `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1795,23 +1586,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1508-L1517"
@@ -1822,7 +1602,7 @@
       "get": {
         "operationId": "userDecorationsInventory",
         "summary": "List owned decorations",
-        "description": "Lists the caller's decoration items (pixelized skins, badges, graffiti) with their definitions and activation state. OpenScreeps has no decoration inventory and always returns an empty list (and advertises no `inventory` feature).",
+        "description": "Lists the caller's decoration items (pixelized skins, badges, graffiti) with their definitions and activation state. The official web client's badge editor reads `list` and offers the active badge decorations.",
         "tags": ["User Decorations"],
         "security": [
           {
@@ -1858,28 +1638,23 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L58-L67",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C273695",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1448-L1456",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userDecorations.ts#L4-L11",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/decorations.ts#L4-L24",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/decorations.ts#L75-L83",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/decorations.ts#L85-L109"
-        ],
-        "x-compatibility": {
-          "openscreeps": "Always `{ok: 1, list: []}`.",
-          "backend-local": "Not implemented."
-        }
+        ]
       }
     },
     "/api/user/decorations/pixelize": {
       "post": {
         "operationId": "userDecorationsPixelize",
         "summary": "Pixelize new decorations",
-        "description": "screeps.com only. Spends pixels (`decorationPixelizationCost` in `/api/version`) to generate `count` random decorations, optionally from one theme at a higher cost. Spends account resources. Success shape untyped by the official client.",
+        "description": "Spends pixels (`decorationPixelizationCost` in `/api/version`) to generate `count` random decorations, optionally from one theme at a higher cost. Spends account resources. Success shape untyped by node-screeps-api.",
         "tags": ["User Decorations"],
         "security": [
           {
@@ -1898,7 +1673,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success (untyped beyond `ok` by the official client) or `{error}` envelope.",
+            "description": "Success (untyped beyond `ok` by node-screeps-api) or `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1917,23 +1692,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1481-L1494"
@@ -1944,7 +1708,7 @@
       "get": {
         "operationId": "userDecorationsThemes",
         "summary": "List decoration themes",
-        "description": "Lists decoration themes available for grouping and targeted pixelization. OpenScreeps always returns an empty list.",
+        "description": "Lists decoration themes available for grouping and targeted pixelization. The official web client loads them in the room view and reads `list`.",
         "tags": ["User Decorations"],
         "security": [
           {
@@ -1980,18 +1744,13 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L69-L74",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C162059",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1458-L1467",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userDecorations.ts#L13-L31"
-        ],
-        "x-compatibility": {
-          "openscreeps": "Always `{ok: 1, list: []}`.",
-          "backend-local": "Not implemented."
-        }
+        ]
       }
     },
     "/api/user/delete-branch": {
@@ -2034,24 +1793,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2064,13 +1806,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L124-L128",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L355-L359",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L171-L177",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C304002",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1341-L1350",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L246-L253"
         ]
@@ -2116,24 +1855,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2146,13 +1868,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L186-L190",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L482-L496",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L16",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C268352",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1373-L1382",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L437-L450"
         ]
@@ -2162,7 +1881,7 @@
       "get": {
         "operationId": "userFind",
         "summary": "Find a user by id or username",
-        "description": "Public profile lookup by `id` or (case-insensitive) `username`; `id` wins when both are given. Returns id, username, badge, GCL and power progress, and the Steam id unless the player hid the profile link. OpenScreeps answers `user not found` for unknown users or when neither parameter is given (it also omits malformed stored badges).",
+        "description": "Public profile lookup by `id` or (case-insensitive) `username`; `id` wins when both are given. Returns id, username, badge, GCL and power progress, and the Steam id unless the player hid the profile link. The official web client resolves profile pages, world-map searches and market counterparties with it.",
         "tags": ["User"],
         "security": [],
         "parameters": [
@@ -2187,7 +1906,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `user not found`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2211,27 +1930,30 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L162-L166",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L432-L442",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L112-L122",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/badge.ts#L418-L442",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L203195C16",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L203389C13",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L221345C46",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C244115",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C282359",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284121",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C313624",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1692-L1702",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1704-L1714",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L101-L109",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L111-L133",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L353-L369"
-        ]
+        ],
+        "x-unverified": "The error returned on screeps.com for unknown users is not evidenced."
       }
     },
     "/api/user/memory": {
       "get": {
         "operationId": "userMemoryGet",
         "summary": "Read Memory",
-        "description": "Reads the player's `Memory` (whole object or the value at a dot-separated `path`). Values are returned as `gz:` + base64(gzip(JSON)); the official client inflates them transparently. A missing value yields a success body without `data`. A path that cannot be traversed yields the success body `{data: \"Incorrect memory path\"}` rather than an error envelope. On screeps.com Memory is per shard (`shard` required by the official client).",
+        "description": "Reads the player's `Memory` (whole object or the value at a dot-separated `path`). Values are returned as `gz:` + base64(gzip(JSON)); the official web client inflates them transparently. A missing value yields a success body without `data`. A path that cannot be traversed yields the success body `{data: \"Incorrect memory path\"}` rather than an error envelope. Memory is per shard; the official web client always sends `shard`.",
         "tags": ["User Memory"],
         "security": [
           {
@@ -2281,13 +2003,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L131-L135",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L362-L381",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L56-L63",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C319859",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C321864",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1529-L1548",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L327-L335",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2100-L2104",
@@ -2297,12 +2017,13 @@
         ],
         "x-compatibility": {
           "screeps-com": "screeps.com endpoint limit: 1440 requests per day per token (HTTP 429 with `X-RateLimit-Limit`/`-Remaining`/`-Reset`), in addition to the global 120 per minute."
-        }
+        },
+        "x-unverified": "A legacy official web client code path reads a `memory` field from a path-less response; that field is not otherwise evidenced."
       },
       "post": {
         "operationId": "userMemorySet",
         "summary": "Write Memory",
-        "description": "Assigns `value` at `path`, deletes the value at `path` when `value` is omitted, or (without `path`) clears Memory and merges an object `value` into it. The edit is not applied synchronously: it is queued as a hidden console command executed inside the player's runtime. Commands are queued and run only when the player's runtime reaches its console-processing step (after a main loop run); no ordering relative to other queued commands, ticks or code deployment is guaranteed by this API, and the response does not contain the evaluation result (results arrive on the console realtime channel). JSON-serialized values over 1 MiB yield `memory size is too large`; OpenScreeps rejects invalid paths (`Incorrect memory path`) and, at execution, fails the hidden command when an intermediate path element is not an object.",
+        "description": "Assigns `value` at `path`, deletes the value at `path` when `value` is omitted, or (without `path`) clears Memory and merges an object `value` into it. The edit is not applied synchronously: it is queued as a hidden console command executed inside the player's runtime on the given shard. Commands are queued and run only when the player's runtime reaches its console-processing step (after a main loop run); no ordering relative to other queued commands, ticks or code deployment is guaranteed by this API, and the response does not contain the evaluation result (results arrive on the console realtime channel). JSON-serialized values over 1 MiB yield `memory size is too large`.",
         "tags": ["User Memory"],
         "security": [
           {
@@ -2321,7 +2042,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `memory size is too large`, `Incorrect memory path`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `memory size is too large`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2338,24 +2059,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2368,14 +2072,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L137-L141",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L383-L397",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L66-L84",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/runtime/index.ts#L363",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C320127",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C322188",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1550-L1571",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L337-L351",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L285-L316",
@@ -2383,14 +2084,15 @@
         ],
         "x-compatibility": {
           "screeps-com": "screeps.com endpoint limit: 240 requests per day per token (HTTP 429 with `X-RateLimit-Limit`/`-Remaining`/`-Reset`), in addition to the global 120 per minute."
-        }
+        },
+        "x-unverified": "A legacy official web client code path posts `{memory, shard}`; how the server treats `memory` is unverified."
       }
     },
     "/api/user/memory-segment": {
       "get": {
         "operationId": "userMemorySegmentGet",
         "summary": "Read a RawMemory segment",
-        "description": "Returns the contents of a `RawMemory.segments` entry (0-99), or `null` when it was never written. screeps.com accepts a comma-separated list of ids and then returns an array of contents in request order (official client). OpenScreeps and backend-local parse the value with `parseInt`, so a list reads only its first id and returns a single value. Ids outside 0-99 yield `invalid segment ID`.",
+        "description": "Returns the contents of a `RawMemory.segments` entry (0-99), or `null` when it was never written. A comma-separated list of ids returns an array of contents in request order (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The official web client reads single segments of the current shard.",
         "tags": ["User Memory"],
         "security": [
           {
@@ -2402,7 +2104,7 @@
             "name": "segment",
             "in": "query",
             "required": true,
-            "description": "Segment id 0-99, or (screeps.com) comma-separated ids.",
+            "description": "Segment id 0-99, or comma-separated ids.",
             "schema": {
               "type": "string",
               "pattern": "^[0-9]{1,2}(,[0-9]{1,2})*$"
@@ -2441,12 +2143,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L143-L147",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L399-L404",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C320370",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1573-L1609",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L353-L370",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L318-L327",
@@ -2459,7 +2159,7 @@
       "post": {
         "operationId": "userMemorySegmentSet",
         "summary": "Write a RawMemory segment",
-        "description": "Replaces the contents of one `RawMemory.segments` entry (0-99) immediately (not via the console queue). Contents longer than 100 KiB after string conversion yield `length limit exceeded`. OpenScreeps requires `data` to be a string, number or boolean (`invalid params` otherwise) and stores its string form. Only one segment per request.",
+        "description": "Replaces the contents of one `RawMemory.segments` entry (0-99) immediately (not via the console queue). Contents longer than 100 KiB after string conversion yield `length limit exceeded`. Only one segment per request.",
         "tags": ["User Memory"],
         "security": [
           {
@@ -2478,7 +2178,7 @@
         },
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid segment ID`, `invalid params`, `length limit exceeded`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid segment ID`, `length limit exceeded`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2495,24 +2195,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2525,12 +2208,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L149-L153",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L406-L418",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C320659",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1611-L1636",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L329-L339",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L65-L86"
@@ -2580,20 +2261,15 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/messages.ts#L24-L28",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/messages.ts#L106-L125",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C280956",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1649-L1657",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userMessages.ts#L40-L51",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userMessages.ts#L53-L64",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L88-L104"
-        ],
-        "x-compatibility": {
-          "backend-local": "Groups conversations by `message.user` (always the caller), returning at most one entry keyed by the caller id; OpenScreeps groups by respondent."
-        }
+        ]
       }
     },
     "/api/user/messages/list": {
@@ -2647,12 +2323,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/messages.ts#L18-L22",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/messages.ts#L95-L104",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C282482",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1638-L1647",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userMessages.ts#L4-L21",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L82-L86"
@@ -2699,24 +2373,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2729,12 +2386,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/messages.ts#L30-L34",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/messages.ts#L127-L147",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C283461",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1681-L1690",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userMessages.ts#L75-L84",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L106-L129"
@@ -2781,24 +2436,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2811,13 +2449,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/messages.ts#L12-L16",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/messages.ts#L56-L93",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/messages.ts#L31-L50",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C282811",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1669-L1679",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L38-L80"
         ]
@@ -2863,12 +2498,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/messages.ts#L36-L40",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/messages.ts#L149-L156",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C287396",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1659-L1667",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/userMessages.ts#L66-L73",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L131-L134"
@@ -2879,7 +2512,7 @@
       "get": {
         "operationId": "userMoneyHistory",
         "summary": "List credit transactions",
-        "description": "Returns the caller's credit ledger (market purchases, sales and fees) newest first in pages of 20, with `hasMore` when another page exists. Dates are ISO 8601 strings (OpenScreeps converts its numeric log dates at the wire boundary to match the official storage serialization).",
+        "description": "Returns the caller's credit ledger (market purchases, sales and fees) newest first in pages of 20, with `hasMore` when another page exists. Dates are ISO 8601 strings. The official web client pages with `page` and reads `list`, `page` and `hasMore`.",
         "tags": ["User"],
         "security": [
           {
@@ -2928,13 +2561,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L204-L208",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L510-L530",
-          "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/simulation/state.ts#L383-L409",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L200769C66",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C101952",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1761-L1770",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L202-L212",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L214-L234",
@@ -2942,7 +2573,7 @@
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L65-L86"
         ],
         "x-compatibility": {
-          "screeps-com": "The official client's rate-limit table lists 60 per hour under the key `/api/game/user/money-history`, which does not match this path; the screeps.com limit for this path is therefore unverified (global 120/minute applies)."
+          "screeps-com": "node-screeps-api's rate-limit table lists 60 per hour under the key `/api/game/user/money-history`, which does not match this path; the screeps.com limit for this path is therefore unverified (global 120/minute applies)."
         }
       }
     },
@@ -2950,7 +2581,7 @@
       "get": {
         "operationId": "userName",
         "summary": "Get the caller's username",
-        "description": "Returns only the username of the token owner. Usable with restricted screeps.com tokens (the official client uses it with `GET /api/user/find` when the token is not full-access). Not implemented by OpenScreeps or backend-local.",
+        "description": "Returns only the username of the token owner. Usable with restricted auth tokens (node-screeps-api uses it with `GET /api/user/find` when the token is not full-access).",
         "tags": ["User"],
         "security": [
           {
@@ -2978,23 +2609,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Route not implemented (OpenScreeps answers Nest's `{message, error: \"Not Found\", statusCode: 404}`; the official client documents HTTP 404 on unofficial servers for official-only routes).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
           "429": {
             "$ref": "#/components/responses/RateLimited"
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "unsupported"
+          "screeps-com": "supported"
         },
         "x-sources": [
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1795-L1803",
@@ -3043,24 +2663,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3073,12 +2676,14 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L180-L184",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L464-L480",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C265499",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C265975",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C266549",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C266747",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C266937",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1352-L1361",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L6-L17",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L389-L410"
@@ -3089,7 +2694,7 @@
       "get": {
         "operationId": "userOverview",
         "summary": "Get the caller's statistics overview",
-        "description": "Per-room time series of one statistic (`statName`, default `energyHarvested`) for the caller's owned rooms plus window totals of all statistics. screeps.com groups data by shard (`shards.<shard>.rooms/stats/gameTimes`); OpenScreeps returns the single-world backend-local shape (`rooms`, `stats`, `statsMax`, `totals`, `gametimes`), filling real values where backend-local returns empty placeholders. OpenScreeps treats unknown intervals as `invalid params` and missing ones as 8.",
+        "description": "Per-room time series of one statistic (`statName`) for the caller's owned rooms, grouped by shard (`shards.<shard>.rooms/stats/gameTimes`), plus the largest slot value (`statsMax`) and window totals of all statistics. The official web client reads `statsMax` and `shards`.",
         "tags": ["User"],
         "security": [
           {
@@ -3110,7 +2715,7 @@
             "name": "statName",
             "in": "query",
             "required": false,
-            "description": "Statistic to chart; default `energyHarvested` (the official client defaults to `energyControl`).",
+            "description": "Statistic to chart (the official web client defaults to `energyHarvested`; node-screeps-api to `energyControl`).",
             "schema": {
               "$ref": "#/components/schemas/UserRoomStatName"
             }
@@ -3118,20 +2723,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid params`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope.",
             "content": {
               "application/json": {
                 "schema": {
                   "anyOf": [
                     {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/UserOverviewShardedResponse"
-                        },
-                        {
-                          "$ref": "#/components/schemas/UserOverviewFlatResponse"
-                        }
-                      ]
+                      "$ref": "#/components/schemas/UserOverviewShardedResponse"
                     },
                     {
                       "$ref": "#/components/schemas/ApiError"
@@ -3152,13 +2750,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L217-L221",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L551-L591",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L95-L108",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C104549",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1743-L1759",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L171-L200",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L412-L432"
@@ -3169,7 +2764,7 @@
       "post": {
         "operationId": "userRespawn",
         "summary": "Respawn (abandon all rooms)",
-        "description": "Abandons the player's whole presence so a new first spawn can be placed: creeps and construction sites are removed, structures become system-owned ruins, flags are deleted and owned controllers are reset to neutral; the account status becomes `empty`. Allowed only from `normal` or `lost` (`invalid status` otherwise). OpenScreeps additionally deletes the player's power creep records, records `lastRespawnDate`, and resets only the player's controller rooms to `normal` (backend-local reopens every room). Irreversible.",
+        "description": "Abandons the player's whole presence so a new first spawn can be placed: creeps and construction sites are removed, structures become system-owned ruins, flags are deleted and owned controllers are reset to neutral; the account status becomes `empty`. Allowed only from `normal` or `lost` (`invalid status` otherwise). Irreversible. The official web client offers it from the world map.",
         "tags": ["User"],
         "security": [
           {
@@ -3195,24 +2790,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3225,18 +2803,16 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L81-L85",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L267-L274",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/world/bots.ts#L453-L531",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L221384C16",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C50656",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1297-L1306",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L182-L193"
         ],
         "x-compatibility": {
-          "screeps-com": "Success shape untyped by the official client; respawn cooldowns/prohibited rooms are screeps.com policies not modeled here."
+          "screeps-com": "Success shape untyped by node-screeps-api; respawn cooldowns/prohibited rooms are screeps.com policies not modeled here."
         }
       }
     },
@@ -3244,7 +2820,7 @@
       "get": {
         "operationId": "userRespawnProhibitedRooms",
         "summary": "List rooms where respawning is prohibited",
-        "description": "Lists rooms the player may not choose for a new spawn after respawning. screeps.com returns zero or one `shard/room` entries; OpenScreeps and backend-local always return an empty list.",
+        "description": "Lists rooms the player may not choose for a new spawn after respawning (observed zero or one entries). The official web client checks the current room against `rooms` and, while the world status is `empty`, marks prohibited rooms on the world map.",
         "tags": ["User"],
         "security": [
           {
@@ -3280,12 +2856,11 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L75-L79",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L262-L265",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C141200",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C245993",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1519-L1527",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L135-L145",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L178-L180"
@@ -3296,7 +2871,7 @@
       "get": {
         "operationId": "userRooms",
         "summary": "List rooms claimed by a user",
-        "description": "Public. Lists rooms whose controller the given user owns. screeps.com groups rooms by shard (`shards`) with an always-empty `reservations` map; OpenScreeps and backend-local return a flat `rooms` array sorted by controller level (descending), which the official client maps to `shards.privSrv`. An unknown or missing `id` returns an empty list.",
+        "description": "Public. Lists rooms whose controller the given user owns, grouped by shard (`shards`), plus reserved rooms grouped by shard (`reservations`). The official web client's decoration module requests reservations with the valueless `reservation` flag (`user/rooms?reservation`) and merges both maps per shard; profile pages and world-map searches read `shards`.",
         "tags": ["User"],
         "security": [],
         "parameters": [
@@ -3308,6 +2883,16 @@
             "schema": {
               "$ref": "#/components/schemas/UserId"
             }
+          },
+          {
+            "name": "reservation",
+            "in": "query",
+            "required": false,
+            "allowEmptyValue": true,
+            "description": "Valueless flag (`?reservation`) sent by the official web client to also request `reservations`.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3318,14 +2903,7 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/UserRoomsShardedResponse"
-                        },
-                        {
-                          "$ref": "#/components/schemas/UserRoomsFlatResponse"
-                        }
-                      ]
+                      "$ref": "#/components/schemas/UserRoomsShardedResponse"
                     },
                     {
                       "$ref": "#/components/schemas/ApiError"
@@ -3343,18 +2921,19 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L87-L91",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L276-L279",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L124-L129",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L197489C46",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L221348C46",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C244182",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284653",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1732-L1741",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L147-L157",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1891-L1899",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L380-L387"
-        ]
+        ],
+        "x-unverified": "Whether `reservations` is populated only when `reservation` is present is unverified; node-screeps-api observes the arrays empty."
       }
     },
     "/api/user/set-active-branch": {
@@ -3397,24 +2976,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3427,13 +2989,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L112-L116",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L315-L327",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/code.ts#L113-L127",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C303912",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1308-L1321",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L195-L207",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsRateLimitTracker.ts#L65-L86"
@@ -3447,7 +3006,7 @@
       "post": {
         "operationId": "userSetSteamVisible",
         "summary": "Show or hide the Steam profile link",
-        "description": "Controls whether `GET /api/user/find` exposes the linked Steam id. No effect for accounts without a Steam link. Not exposed by the official client, so screeps.com availability is unverified.",
+        "description": "Controls whether `GET /api/user/find` exposes the linked Steam id (stored as `steam.steamProfileLinkHidden`). No effect for accounts without a Steam link. The official web client's account page posts `visible` and then reloads `GET /api/auth/me`.",
         "tags": ["User"],
         "security": [
           {
@@ -3483,24 +3042,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3513,24 +3055,19 @@
           }
         },
         "x-availability": {
-          "screeps-com": "unverified",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L192-L196",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L498-L503",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C265225",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L492-L497"
-        ],
-        "x-compatibility": {
-          "backend-local": "Stores `steamProfileLinkHidden` as 0/1; OpenScreeps as boolean."
-        }
+        ]
       }
     },
     "/api/user/stats": {
       "get": {
         "operationId": "userStats",
         "summary": "Get a user's statistics totals",
-        "description": "Public. Sums each room statistic of the user over the selected window (8 = last 8 eight-minute slots, 180 = 8 three-hour slots, 1440 = 7 daily slots on OpenScreeps). Other intervals yield `invalid params`. OpenScreeps requires `id` (this route is unauthenticated, so there is no caller fallback) and answers `user not found` otherwise; backend-local returns empty `stats`.",
+        "description": "Public. Sums each room statistic of the user over the selected window (8 = last 8 eight-minute slots, 180 = 8 three-hour slots, 1440 = daily slots). Other intervals yield `invalid params`. The official web client's profile page requests `interval=1440` by default and reads `stats`.",
         "tags": ["User"],
         "security": [],
         "parameters": [
@@ -3555,7 +3092,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid params`, `user not found`.",
+            "description": "Success, or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `invalid params`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3579,13 +3116,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L211-L215",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L533-L549",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L95-L108",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284535",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1716-L1730",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L159-L169",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/common/rooms.ts#L861-L895",
@@ -3598,7 +3132,7 @@
       "post": {
         "operationId": "userTutorialDone",
         "summary": "Mark the tutorial completed",
-        "description": "Records that the tutorial was completed. OpenScreeps and backend-local accept the call and store nothing.",
+        "description": "Records that the tutorial was completed. The official web client calls it when a signed-in player finishes the first simulator tutorial section.",
         "tags": ["User"],
         "security": [
           {
@@ -3624,24 +3158,7 @@
             }
           },
           "400": {
-            "description": "OpenScreeps: malformed JSON (`invalid request`) or a body that is not a JSON object (`invalid params`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "OpenScreeps: JSON body larger than 8 MB (`request too large`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3654,12 +3171,10 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L198-L202",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L505-L508",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C228678",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1363-L1371",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L434-L435"
         ]
@@ -3669,7 +3184,7 @@
       "get": {
         "operationId": "userWorldStartRoom",
         "summary": "Get the room to center the map on",
-        "description": "Returns zero or one room name the client should center the world map on when opened without coordinates: a random room whose controller the user owns, otherwise a default start room. Observed on screeps.com: when the `shard` query parameter is omitted, the result may be returned as `shard/room` (the official client documents this format); with `shard`, a plain room name for that shard. OpenScreeps ignores `shard` and returns a plain room name: a random owned-controller room, else `W5N5` if it exists, else the alphabetically first `normal` room (backend-local always falls back to `W5N5`).",
+        "description": "Returns zero or one room name the client should center the world map on when opened without coordinates: a random room whose controller the user owns, otherwise a default start room. Observed on screeps.com: when the `shard` query parameter is omitted, the result is returned as `shard/room` (the official web client extracts the shard with `^(.*)\\/(.*)$`, falling back to `shard0`); with `shard`, a plain room name for that shard.",
         "tags": ["User"],
         "security": [
           {
@@ -3710,13 +3225,16 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L63-L67",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L243-L255",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L124-L129",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L200349C16",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L222994C46",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C97890",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C240990",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C241456",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C241589",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C247368",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1384-L1397",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L19-L30",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L19-L28"
@@ -3727,7 +3245,7 @@
       "get": {
         "operationId": "userWorldStatus",
         "summary": "Get the account world status",
-        "description": "Returns whether the player must place a first spawn (`empty`), is established (`normal`: owns a spawn in a room whose controller it also owns) or has lost every such spawn (`lost`, may respawn). Observed on screeps.com: the status is account-wide, aggregated across all shards, regardless of any `shard` parameter. OpenScreeps computes it from the single world (no objects → `empty`).",
+        "description": "Returns whether the player must place a first spawn (`empty`), is established (`normal`: owns a spawn in a room whose controller it also owns) or has lost every such spawn (`lost`, may respawn). Observed on screeps.com: the status is account-wide, aggregated across all shards, regardless of any `shard` parameter.",
         "tags": ["User"],
         "security": [
           {
@@ -3763,13 +3281,14 @@
           }
         },
         "x-availability": {
-          "screeps-com": "supported",
-          "openscreeps": "supported"
+          "screeps-com": "supported"
         },
         "x-sources": [
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L69-L73",
-          "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L257-L260",
-          "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/world/bots.ts#L534-L547",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L223050C46",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C48240",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C49501",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C171329",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C241703",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1399-L1407",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L32-L39",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/user.ts#L41-L57",
@@ -3796,7 +3315,7 @@
           },
           "username": {
             "type": "string",
-            "description": "Absent for accounts that have not chosen a username (OpenScreeps Steam sign-up before `register/set-username`)."
+            "description": "Absent for accounts that have not chosen a username yet (e.g. after Steam or GitHub sign-up, before `POST /api/register/set-username`)."
           },
           "email": {
             "type": "string",
@@ -3804,7 +3323,7 @@
           },
           "emailDirty": {
             "type": "string",
-            "description": "Unconfirmed e-mail (backend-local/OpenScreeps projection; no OpenScreeps API writes it, so it appears only in imported state)."
+            "description": "Unconfirmed e-mail address; the official web client keeps such accounts on the e-mail confirmation page."
           },
           "cpu": {
             "type": "number",
@@ -3815,11 +3334,11 @@
             "additionalProperties": {
               "type": "number"
             },
-            "description": "screeps.com: per-shard CPU limits (`Game.cpu.shardLimits`). Not returned by OpenScreeps."
+            "description": "Per-shard CPU limits (`Game.cpu.shardLimits`)."
           },
           "cpuShardUpdatedTime": {
             "type": "number",
-            "description": "screeps.com: Unix ms of the last successful shard-limit change (`Game.cpu.setShardLimits()` or `POST /api/user/cpu-shards`). Not returned by OpenScreeps."
+            "description": "Unix ms of the last successful shard-limit change (`Game.cpu.setShardLimits()` or `POST /api/user/cpu-shards`); the official web client blocks reassignment for 12 hours after it."
           },
           "badge": {
             "$ref": "#/components/schemas/UserBadge"
@@ -3841,13 +3360,19 @@
           },
           "lastChargeTime": {
             "type": "number",
-            "description": "Last subscription charge time (backend-local/OpenScreeps projection; no OpenScreeps API writes it)."
+            "description": "Unix ms of the last CPU-limit charge; the official web client prorates `POST /api/user/cpu-limit` costs from it."
           },
           "blocked": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Account blocked flag."
           },
           "customBadge": {
-            "$ref": "#/components/schemas/UserBadgeCustomPaths"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserBadgeCustomPaths"
+              }
+            ],
+            "description": "Custom badge paths assigned to the account (accepted as `badge.type` by `POST /api/user/badge`)."
           },
           "power": {
             "type": "number",
@@ -3858,14 +3383,14 @@
             "description": "Credit balance (stored thousandths divided by 1000)."
           },
           "credits": {
-            "description": "screeps.com legacy field; the official client marks it deprecated and observes it always 0. Not returned by OpenScreeps."
+            "description": "Legacy field; node-screeps-api marks it deprecated and observes it always 0. The official web client compares it with the CPU-limit charge amount."
           },
           "steam": {
             "$ref": "#/components/schemas/AuthSteamAccount"
           },
           "github": {
             "type": "object",
-            "description": "screeps.com GitHub SSO data.",
+            "description": "GitHub SSO data.",
             "properties": {
               "id": {
                 "type": "string"
@@ -3877,7 +3402,7 @@
           },
           "twitter": {
             "type": "object",
-            "description": "screeps.com Twitter SSO data.",
+            "description": "Twitter SSO data (node-screeps-api type).",
             "properties": {
               "username": {
                 "type": "string"
@@ -3889,17 +3414,17 @@
           },
           "lastTweetTime": {
             "type": "number",
-            "description": "screeps.com only."
+            "description": "Legacy Twitter integration field (node-screeps-api type)."
           },
           "resources": {
             "type": "object",
             "additionalProperties": {
               "type": "number"
             },
-            "description": "screeps.com account-bound resources (e.g. pixel, cpuUnlock, accessKey) and amounts."
+            "description": "Account-bound resources (e.g. pixel, cpuUnlock, accessKey) and amounts."
           },
           "restrictedAccessUntil": {
-            "description": "screeps.com only; type not documented by the official client."
+            "description": "Type not documented by node-screeps-api."
           },
           "powerExperimentations": {
             "type": "integer",
@@ -3967,11 +3492,19 @@
           "email": {
             "type": "string",
             "minLength": 1,
-            "description": "E-mail address or (OpenScreeps) username; a value containing `@` is looked up as an e-mail, otherwise case-insensitively as a username."
+            "description": "Account e-mail address."
           },
           "password": {
             "type": "string",
-            "description": "Local password (OpenScreeps: 8-1024 characters when set)."
+            "description": "Account password."
+          },
+          "recaptcha": {
+            "type": "string",
+            "description": "reCAPTCHA response sent by the official web client."
+          },
+          "steamTicket": {
+            "type": "string",
+            "description": "Hex-encoded Steam session ticket sent by the official web client's Steam desktop build."
           }
         },
         "required": ["email", "password"]
@@ -3986,14 +3519,14 @@
           },
           "token": {
             "type": "string",
-            "description": "Session token to send as `X-Token`. OpenScreeps tokens are 64 lowercase hex characters, valid for `tokenLifetimeMs` (60 s default) and refreshed through the `X-Token` response header of authenticated calls."
+            "description": "Session token to send as `X-Token`."
           }
         },
         "required": ["ok", "token"]
       },
       "AuthSteamAccount": {
         "type": "object",
-        "description": "Linked Steam account data of the signed-in player (empty object on OpenScreeps when no Steam account is linked).",
+        "description": "Linked Steam account data of the signed-in player.",
         "properties": {
           "id": {
             "type": "string",
@@ -4004,23 +3537,17 @@
             "type": "string"
           },
           "ownership": {
-            "anyOf": [
-              { "type": "boolean" },
-              { "type": "array", "items": { "type": "integer", "minimum": 0 } }
-            ],
-            "description": "OpenScreeps/backend-local use a Steam ownership flag. Observed official responses use an array of owned Steam application IDs."
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Steam application IDs owned by the account; the official web client checks 464350 (game), 491760 (subscription) and 883940 (lifetime subscription)."
           },
           "steamProfileLinkHidden": {
-            "description": "Whether the Steam profile link is hidden from other players. backend-local stores 0/1 (official client types `0 | 1`); OpenScreeps stores a boolean.",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "integer",
-                "enum": [0, 1]
-              }
-            ]
+            "type": "integer",
+            "enum": [0, 1],
+            "description": "1 when the Steam profile link is hidden from other players (node-screeps-api types `0 | 1`; the official web client reads it as a boolean)."
           }
         }
       },
@@ -4029,11 +3556,11 @@
         "properties": {
           "ticket": {
             "type": "string",
-            "description": "Hex-encoded Steam session ticket (`GetAuthSessionTicket`). OpenScreeps accepts 1-8192 hex characters."
+            "description": "Hex-encoded Steam session ticket (`GetAuthSessionTicket`), or the encrypted app ticket when `useNativeAuth` is true."
           },
           "useNativeAuth": {
             "type": "boolean",
-            "description": "Request Greenworks encrypted app-ticket verification. OpenScreeps never supports it and rejects any truthy value."
+            "description": "Request Greenworks encrypted app-ticket verification instead of session-ticket verification."
           }
         },
         "required": ["ticket"]
@@ -4054,6 +3581,14 @@
             "type": "string",
             "pattern": "^[0-9]{1,20}$",
             "description": "64-bit SteamID as a decimal string."
+          },
+          "username": {
+            "type": "string",
+            "description": "Account username; absent for new accounts, which the official web client then sends to username selection."
+          },
+          "email": {
+            "type": "string",
+            "description": "Account e-mail, read by the official web client for analytics on first sign-in."
           }
         },
         "required": ["ok", "token"]
@@ -4071,7 +3606,7 @@
             "items": {
               "$ref": "#/components/schemas/LeaderboardResult"
             },
-            "description": "The user's results in every season (OpenScreeps: newest season first; backend-local always empty)."
+            "description": "The user's results in every season."
           }
         },
         "required": ["ok", "list"],
@@ -4137,7 +3672,7 @@
         "properties": {
           "_id": {
             "type": "string",
-            "description": "Result id (OpenScreeps: `<season>-<mode>-<userId>`)."
+            "description": "Result id."
           },
           "season": {
             "$ref": "#/components/schemas/LeaderboardSeasonId"
@@ -4151,7 +3686,7 @@
           "rank": {
             "type": "integer",
             "minimum": 0,
-            "description": "Position in the season ranking. OpenScreeps ranks from 0 (best), ties broken by user id; zero scores are unranked."
+            "description": "Zero-based position in the season ranking (the official web client computes the page as `floor(rank / 10) + 1`)."
           }
         },
         "required": ["_id", "season", "user", "score", "rank"]
@@ -4161,7 +3696,7 @@
         "properties": {
           "_id": {
             "type": "string",
-            "description": "Season id `YYYY-MM` (backend-local returns placeholder ids `empty1`/`empty2`)."
+            "description": "Season id `YYYY-MM`."
           },
           "name": {
             "type": "string",
@@ -4170,7 +3705,7 @@
           "date": {
             "type": "string",
             "format": "date-time",
-            "description": "Season start (UTC). Omitted by backend-local."
+            "description": "Season start (UTC)."
           }
         },
         "required": ["_id", "name"]
@@ -4200,7 +3735,7 @@
       },
       "LeaderboardUser": {
         "type": "object",
-        "description": "Public user data of a listed result. OpenScreeps also includes `gcl`.",
+        "description": "Public user data of a listed result.",
         "properties": {
           "_id": {
             "$ref": "#/components/schemas/UserId"
@@ -4210,9 +3745,6 @@
           },
           "badge": {
             "$ref": "#/components/schemas/UserBadge"
-          },
-          "gcl": {
-            "type": "number"
           }
         },
         "required": ["_id"]
@@ -4228,6 +3760,14 @@
           "email": {
             "type": "string",
             "description": "Optional e-mail stored lower-cased; must match the server e-mail rule."
+          },
+          "recaptcha": {
+            "type": "string",
+            "description": "reCAPTCHA response sent by the official web client."
+          },
+          "tutorialDone": {
+            "type": "boolean",
+            "description": "Whether the tutorial was completed before registration (sent by the official web client)."
           }
         },
         "required": ["username"]
@@ -4246,6 +3786,30 @@
           },
           "modules": {
             "$ref": "#/components/schemas/UserCodeModules"
+          },
+          "recaptcha": {
+            "type": "string",
+            "description": "reCAPTCHA response."
+          },
+          "tutorialDone": {
+            "type": "boolean",
+            "description": "Whether the tutorial was completed before registration."
+          },
+          "branches": {
+            "type": "array",
+            "description": "Code branches edited before registration, as kept by the official web client.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "branch": {
+                  "type": "string"
+                },
+                "modules": {
+                  "$ref": "#/components/schemas/UserCodeModules"
+                }
+              }
+            }
           }
         },
         "required": ["username", "email", "password"]
@@ -4419,13 +3983,13 @@
           },
           "decoration": {
             "type": "string",
-            "description": "screeps.com decoration id of a non-standard badge (official client type; not produced by OpenScreeps)."
+            "description": "Decoration id of a non-standard badge (node-screeps-api type)."
           }
         },
         "required": ["type", "color1", "color2", "color3", "param", "flip"]
       },
       "UserBadgeColor": {
-        "description": "Badge color. Submitted badges use `#rrggbb`; stored badges may also contain an integer index into the legacy badge palette (OpenScreeps `readBadge` accepts both; the official client types colors as strings).",
+        "description": "Badge color. Submitted badges use `#rrggbb`; stored legacy badges may contain an integer index into the badge palette, which the official web client converts through its color table.",
         "anyOf": [
           {
             "type": "string"
@@ -4438,7 +4002,7 @@
       },
       "UserBadgeCustomPaths": {
         "type": "object",
-        "description": "Pair of SVG path strings composing a custom (decoration-derived on screeps.com, administrator-assigned on OpenScreeps) badge shape.",
+        "description": "Pair of SVG path strings composing a custom (e.g. decoration-derived) badge shape.",
         "properties": {
           "path1": {
             "type": "string",
@@ -4616,7 +4180,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 30,
-            "description": "Target branch name. OpenScreeps rejects names starting with `$`. If the branch exists its modules are overwritten."
+            "description": "Target branch name. If the branch exists its modules are overwritten."
           },
           "defaultModules": {
             "$ref": "#/components/schemas/UserCodeModules"
@@ -4626,7 +4190,7 @@
       },
       "UserCodeBranch": {
         "type": "object",
-        "description": "Code branch document (`users.code`). The official client types only `_id`, `branch`, `activeWorld`, `activeSim`; OpenScreeps and backend-local return the whole document including `user`, `modules` and `timestamp`.",
+        "description": "Code branch document (`users.code`). node-screeps-api types only `_id`, `branch`, `activeWorld` and `activeSim`; complete documents also carry `user`, `modules` and `timestamp`.",
         "properties": {
           "_id": {
             "type": "string"
@@ -4650,7 +4214,7 @@
             "description": "Branch runs in the simulator. Absent on branches created by cloning until activated."
           },
           "timestamp": {
-            "description": "Last code change. OpenScreeps: Unix milliseconds, absent until code is first saved; backend-local may store a Date (serialized as an ISO string).",
+            "description": "Last code change: Unix milliseconds or a stored date (ISO 8601 string).",
             "anyOf": [
               {
                 "type": "integer"
@@ -4684,7 +4248,7 @@
       },
       "UserCodeModules": {
         "type": "object",
-        "description": "Code modules keyed by module name: JavaScript source text or `{binary}` WebAssembly. Servers drop module names starting with `$`, `.`, `/` or `\\` (OpenScreeps also `__proto__`) and always ensure a `main` module exists.",
+        "description": "Code modules keyed by module name: JavaScript source text or `{binary}` WebAssembly. Servers drop module names starting with `$`, `.`, `/` or `\\` and always ensure a `main` module exists.",
         "additionalProperties": {
           "anyOf": [
             {
@@ -4707,7 +4271,7 @@
             "$ref": "#/components/schemas/UserCodeModules"
           },
           "_hash": {
-            "description": "Opaque client hash echoed in the `user:<id>/code` realtime event (string or number on OpenScreeps).",
+            "description": "Opaque client hash echoed in the `user:<id>/code` realtime event; the official web client compares it to recognize its own uploads.",
             "anyOf": [
               {
                 "type": "string"
@@ -4734,7 +4298,7 @@
       },
       "UserConsoleCommandDoc": {
         "type": "object",
-        "description": "Inserted `users.console` document (screeps.com / backend-local driver echo).",
+        "description": "Inserted `users.console` document (database driver echo).",
         "properties": {
           "_id": {
             "type": "string"
@@ -4782,11 +4346,11 @@
           },
           "data": {
             "type": "string",
-            "description": "Declared by the official client for memory writes; meaning undocumented."
+            "description": "Declared by node-screeps-api for memory writes; meaning undocumented."
           }
         },
         "required": ["ok"],
-        "description": "Command queued. screeps.com echoes the inserted console document and driver metadata (shape from the official client; not a stable contract, rely on `ok`). OpenScreeps returns only `{ok: 1}`."
+        "description": "Command queued. The body echoes the inserted console document and driver metadata (node-screeps-api shape; not a stable contract, rely on `ok`)."
       },
       "UserConsoleRequest": {
         "type": "object",
@@ -4801,7 +4365,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "screeps.com shard whose runtime data is addressed (the official client refuses to call screeps.com without one). OpenScreeps and backend-local ignore it."
+            "description": "Shard whose runtime evaluates the expression; the official web client sends the current shard and node-screeps-api refuses to call screeps.com without one."
           }
         },
         "required": ["expression"]
@@ -4833,11 +4397,11 @@
           }
         },
         "required": ["ok"],
-        "description": "Success. screeps.com may include driver `result` metadata (official client types it as `ScreepsDbUpdateResponse`); OpenScreeps returns only `{ok: 1}`."
+        "description": "Success; may include database driver `result` metadata (node-screeps-api `ScreepsDbUpdateResponse`)."
       },
       "UserDbWriteResult": {
         "type": "object",
-        "description": "Database driver write result echoed by screeps.com / backend-local for some writes. Driver metadata, not a stable contract: clients should rely only on `ok`.",
+        "description": "Database driver write result echoed for some writes. Driver metadata, not a stable contract: clients should rely only on `ok`.",
         "properties": {
           "ok": {
             "type": "integer"
@@ -4851,7 +4415,7 @@
         }
       },
       "UserDecoration": {
-        "description": "Decoration definition (screeps.com; shape from the official client).",
+        "description": "Decoration definition (node-screeps-api shape).",
         "oneOf": [
           {
             "$ref": "#/components/schemas/UserBadgeDecoration"
@@ -4995,7 +4559,7 @@
           "active": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Values for the decoration's configurable `props` (and placement data such as room/object, not documented by the official client)."
+            "description": "Values for the decoration's configurable `props` (and placement data such as room/object, not documented by node-screeps-api)."
           }
         },
         "required": ["_id", "active"]
@@ -5151,7 +4715,7 @@
             ]
           },
           "data": {
-            "description": "Segment contents, max 100 KiB after string conversion. OpenScreeps accepts string, number or boolean and stores `String(data)`; backend-local stores the raw value.",
+            "description": "Segment contents; at most 100 KiB after string conversion.",
             "anyOf": [
               {
                 "type": "string",
@@ -5171,7 +4735,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "screeps.com shard whose runtime data is addressed (the official client refuses to call screeps.com without one). OpenScreeps and backend-local ignore it."
+            "description": "Shard whose segment is written; the official web client sends the current shard and node-screeps-api refuses to call screeps.com without one."
           }
         },
         "required": ["segment", "data"]
@@ -5181,7 +4745,7 @@
         "properties": {
           "path": {
             "type": "string",
-            "description": "Dot-separated Memory path (e.g. `creeps.Harvester1`). Empty/omitted replaces the whole Memory object. OpenScreeps rejects empty segments and `__proto__`."
+            "description": "Dot-separated Memory path (e.g. `creeps.Harvester1`). Empty/omitted replaces the whole Memory object."
           },
           "value": {
             "$ref": "#/components/schemas/JsonValue",
@@ -5193,7 +4757,10 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "screeps.com shard whose runtime data is addressed (the official client refuses to call screeps.com without one). OpenScreeps and backend-local ignore it."
+            "description": "Shard whose Memory is edited; the official web client sends the current shard and node-screeps-api refuses to call screeps.com without one."
+          },
+          "memory": {
+            "description": "Whole Memory sent by a legacy official web client code path; server handling unverified."
           }
         }
       },
@@ -5221,16 +4788,9 @@
             "description": "The other participant."
           },
           "date": {
-            "description": "Send time. screeps.com/backend-local serialize a Date (ISO 8601 string, as typed by the official client); OpenScreeps returns Unix milliseconds.",
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "integer"
-              }
-            ]
+            "type": "string",
+            "format": "date-time",
+            "description": "Send time (ISO 8601)."
           },
           "type": {
             "type": "string",
@@ -5269,7 +4829,7 @@
                       "$ref": "#/components/schemas/UserId"
                     }
                   ],
-                  "description": "Conversation key: the respondent id on OpenScreeps. backend-local groups by `message.user` (the caller) instead, yielding at most one entry."
+                  "description": "Conversation key (user id)."
                 },
                 "message": {
                   "$ref": "#/components/schemas/UserMessage"
@@ -5321,23 +4881,23 @@
       "UserMessagesMarkReadResponse": {
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "integer",
-            "const": 1,
-            "description": "Success marker; every JSON success body carries `ok: 1`."
-          },
           "0": {
-            "description": "screeps.com/backend-local echo of internal publish results (official client types number)."
+            "description": "Internal publish result (node-screeps-api types a number)."
           },
           "1": {
             "description": "As `0`."
           },
           "2": {
             "$ref": "#/components/schemas/UserDbWriteResult"
+          },
+          "ok": {
+            "type": "integer",
+            "const": 1,
+            "description": "Success marker; every JSON success body carries `ok: 1`."
           }
         },
         "required": ["ok"],
-        "description": "Success. screeps.com/backend-local merge the array of internal publish/update results into the body under keys `0`-`2` (backend-local `q.all`); not a stable contract. OpenScreeps returns `{ok: 1}`."
+        "description": "Success. The array of internal publish/update results is merged into the body under keys `0`-`2`; not a stable contract, rely on `ok`."
       },
       "UserMessagesSendRequest": {
         "type": "object",
@@ -5410,7 +4970,7 @@
                 "$ref": "#/components/schemas/ShardName"
               }
             ],
-            "description": "screeps.com only."
+            "description": "Shard of the transaction."
           },
           "market": {
             "$ref": "#/components/schemas/UserMoneyHistoryMarketInfo"
@@ -5420,14 +4980,8 @@
       },
       "UserMoneyHistoryMarketInfo": {
         "type": "object",
-        "description": "Transaction-specific details. Variants observed by the official client: price change (`changeOrderPrice`), extension (`extendOrder`), filled deal (resourceType/roomName/targetRoomName/owner/dealer/price/amount/npc) and new order (`order`). OpenScreeps engine documents also carry `orderId`/`anotherUser`.",
+        "description": "Transaction-specific details. Variants typed by node-screeps-api: price change (`changeOrderPrice`), extension (`extendOrder`), filled deal (resourceType/roomName/targetRoomName/owner/dealer/price/amount/npc) and new order (`order`).",
         "properties": {
-          "orderId": {
-            "type": "string"
-          },
-          "anotherUser": {
-            "$ref": "#/components/schemas/UserId"
-          },
           "order": {
             "type": "object",
             "description": "Created order (fee entries).",
@@ -5682,49 +5236,6 @@
           "props"
         ]
       },
-      "UserOverviewFlatResponse": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "integer",
-            "const": 1,
-            "description": "Success marker; every JSON success body carries `ok: 1`."
-          },
-          "rooms": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoomName"
-            },
-            "description": "Rooms whose controller the user owns, highest level first."
-          },
-          "stats": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "$ref": "#/components/schemas/UserOverviewPoint"
-              }
-            },
-            "description": "Per-room slot values of `statName`, oldest first (OpenScreeps; backend-local returns `{}`)."
-          },
-          "statsMax": {
-            "type": "number",
-            "description": "Largest slot value (OpenScreeps; omitted by backend-local)."
-          },
-          "totals": {
-            "$ref": "#/components/schemas/UserRoomStatValues"
-          },
-          "gametimes": {
-            "type": "array",
-            "items": {
-              "type": ["integer", "null"]
-            },
-            "description": "Highest game tick recorded in each slot, null for empty slots (OpenScreeps; backend-local returns `[]`)."
-          }
-        },
-        "required": ["ok", "rooms", "stats", "totals", "gametimes"],
-        "description": "OpenScreeps / backend-local single-world shape."
-      },
       "UserOverviewPoint": {
         "type": "object",
         "properties": {
@@ -5748,7 +5259,8 @@
             "description": "Success marker; every JSON success body carries `ok: 1`."
           },
           "statsMax": {
-            "type": "number"
+            "type": "number",
+            "description": "Largest slot value across the returned series (read by the official web client)."
           },
           "totals": {
             "$ref": "#/components/schemas/UserRoomStatValues"
@@ -5779,14 +5291,14 @@
                   "items": {
                     "type": ["number", "null"]
                   },
-                  "description": "Shard game time at the start of the window (first element; the official client types the rest as undefined)."
+                  "description": "Shard game time at the start of the window (first element; node-screeps-api types the rest as undefined)."
                 }
               }
             }
           }
         },
         "required": ["ok", "shards"],
-        "description": "screeps.com shape (per shard)."
+        "description": "Statistics overview grouped by shard."
       },
       "UserPublicProfile": {
         "type": "object",
@@ -5832,7 +5344,7 @@
           },
           "username": {
             "type": "string",
-            "description": "Absent on OpenScreeps for Steam-created accounts that have not chosen a username."
+            "description": "Absent for accounts that have not chosen a username."
           },
           "badge": {
             "$ref": "#/components/schemas/UserBadge"
@@ -5852,9 +5364,9 @@
             "type": "array",
             "items": {
               "type": "string",
-              "description": "`shard/room` on screeps.com."
+              "description": "Room entry; observed as `shard/room`."
             },
-            "description": "Rooms where the player may not place a new spawn (zero or one on screeps.com; always empty on OpenScreeps and backend-local)."
+            "description": "Rooms where the player may not place a new spawn (observed zero or one)."
           }
         },
         "required": ["ok", "rooms"]
@@ -5878,25 +5390,6 @@
         "additionalProperties": {
           "type": "number"
         }
-      },
-      "UserRoomsFlatResponse": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "integer",
-            "const": 1,
-            "description": "Success marker; every JSON success body carries `ok: 1`."
-          },
-          "rooms": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoomName"
-            },
-            "description": "Rooms whose controller the user owns, highest controller level first."
-          }
-        },
-        "required": ["ok", "rooms"],
-        "description": "OpenScreeps/backend-local single-world shape (the official client maps it to `shards.privSrv`)."
       },
       "UserRoomsShardedResponse": {
         "type": "object",
@@ -5924,11 +5417,11 @@
                 "$ref": "#/components/schemas/RoomName"
               }
             },
-            "description": "Keyed by shard; the official client observes these arrays always empty."
+            "description": "Reserved room names keyed by shard, requested by the official web client with the `reservation` flag; node-screeps-api observes these arrays empty."
           }
         },
         "required": ["ok", "shards"],
-        "description": "screeps.com shape."
+        "description": "Claimed and reserved rooms grouped by shard."
       },
       "UserSetActiveBranchRequest": {
         "type": "object",
@@ -5957,7 +5450,7 @@
       "UserStatInterval": {
         "type": "integer",
         "enum": [8, 180, 1440],
-        "description": "Minutes per statistics slot: 8 (8 slots, about an hour), 180 (8 slots, a day), 1440 (7 slots on OpenScreeps/backend-local; the official client describes 8 days)."
+        "description": "Minutes per statistics slot: 8 (8 slots, about an hour), 180 (8 slots, a day), 1440 (daily slots; node-screeps-api describes 8 days)."
       },
       "UserStatsResponse": {
         "type": "object",
@@ -5983,7 +5476,7 @@
           },
           "timestamp": {
             "type": "integer",
-            "description": "Server wall-clock time of the change in Unix milliseconds (clone-branch on OpenScreeps returns the branch timestamp, the same clock)."
+            "description": "Server time of the change in Unix milliseconds."
           }
         },
         "required": ["ok", "timestamp"],
@@ -6002,7 +5495,7 @@
             "maxItems": 1,
             "items": {
               "type": "string",
-              "description": "Room name (`W5N5`) or, on screeps.com when no `shard` was requested, `shard/room` (e.g. `shard3/W5N5`)."
+              "description": "Room name (`W5N5`) or, when no `shard` was requested, `shard/room` (e.g. `shard3/W5N5`)."
             },
             "description": "Zero or one room names to center the map on."
           }

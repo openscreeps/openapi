@@ -1,101 +1,145 @@
-# Screeps HTTP OpenAPI
+# Screeps contracts and TypeScript clients
 
-OpenAPI 3.1 contracts for **official Screeps World** and the **OpenScreeps standalone server**. Community-maintained; not an official Screeps API guarantee.
+Canonical, evidence-backed **official Screeps HTTP contracts**, an explicit **OpenScreeps standalone compatibility profile**, and generated **runnable TypeScript clients**. Community-maintained, not an official Screeps API guarantee.
 
-- [YAML bundle](openapi.yaml) — self-contained, ready for OpenAPI tools.
-- [JSON bundle](openapi.json) — the identical contract in JSON.
-- [Source fragments](spec/) — edit these, not the bundles.
-- [Pinned upstream revisions](sources.json) and [route coverage inventory](coverage.json).
+## Ownership and direction
 
-## Use
+- This repository owns the official [OpenAPI JSON](openapi.json), [YAML](openapi.yaml), source schemas, source inventory and [standalone profile](profiles/standalone.json).
+- The official contract describes official wire behavior. It is not a union widened to accommodate OpenScreeps implementation differences.
+- The profile partitions official operation IDs into required and excluded operations. Every exclusion has a reason. Necessary standalone adaptations have explicit reasons and precise schema overrides.
+- [`openscreeps/server`](https://github.com/openscreeps/server) owns its extension contracts, including administrator and host endpoints. It combines the pinned official contract, compatibility profile and its extensions to generate its own OpenAPI document, TypeScript client and handler interfaces.
+- Implementations must satisfy their contract. Generated types do not implement game behavior; server route checks and real HTTP conformance checks enforce the boundary.
 
-Download `openapi.yaml` or `openapi.json` from a pinned repository commit for reproducibility. Import it into an OpenAPI viewer, HTTP client, or generator. Set the base URL to `https://screeps.com` or your OpenScreeps server URL. **Not every operation exists on both servers.**
+Hosted account, commerce, seasonal and shard services outside the standalone profile remain documented in the official catalog, but are not advertised as callable methods in the standalone client. No Rust client generation is included.
 
-Each operation includes:
+## Generate clients
 
-- `x-availability.screeps-com` and `x-availability.openscreeps`: `supported`, `unsupported`, or `unverified`.
-- `x-sources`: commit-pinned source links with line anchors.
-- Descriptions and, where applicable, `x-compatibility` notes explaining differences.
+Clients expose named methods derived from `operationId`, with typed request and response models. The maintained native-fetch runtime handles HTTP serialization, authentication and Screeps error envelopes; endpoint paths and operation signatures are generated.
 
-A supported marker means the pinned implementation or reference client documents the operation. It does **not** mean we executed every endpoint live. Shared response schemas can admit multiple server representations; consult the operation notes before relying on a server-specific field. Arbitrary bot Memory, code-defined object data, and snapshot internals intentionally remain extensible.
+```sh
+npm ci --ignore-scripts
+npm run build
+npm run generate:client
+npm run build:clients
+```
 
-### Authentication and errors
+Generate a client and handler contracts from another composed target document:
 
-Send an API/session token in `X-Token`. Legacy clients also send that token in `X-Username`. Preserve the `X-Token` response header when the server rotates a session. OpenScreeps additionally accepts a player bearer token, and its configured `X-Server-Password` is independent of player authentication. Query-string tokens are accepted by its implementation but intentionally not encouraged in this specification: URLs are frequently logged.
+```sh
+node scripts/generate-clients.mjs --input path/to/openapi.json --output path/to/generated --name openscreeps --runtime @openscreeps/openapi/client-runtime
+```
 
-OpenScreeps `/admin` uses a **separate administrator bearer secret**, not a player token. It is disabled unless configured. Several commands delete players, replace a world snapshot, or publish messages. A schema or example is not permission to execute an operation.
+Append `--check` to verify committed output without rewriting it. The generated server interfaces are contracts for real handlers, not generated no-op implementations.
 
-**HTTP 200 does not establish success.** Gameplay endpoints can return `{error: string}` with status 200, and official responses can also include `ok`. Inspect the body. Administrative validation errors use HTTP 400. Never automatically retry an uncertain mutation.
+The package is installable from GitHub; commit the resulting lockfile and pin an immutable revision for releases:
 
-Do not send credentials to untrusted base URLs or follow authenticated cross-host redirects. Official initial spawn placement can reset shard CPU allocation; do not assume the allocation survives placement. Official world-status is account-wide, not proof that one particular shard has no surviving colony. OpenScreeps serves one world.
+```sh
+npm install github:openscreeps/openapi
+```
 
-## Coverage and evidence
+Its `prepare` lifecycle builds the official bundle and compiled TypeScript client from committed source data. Normal consumer use does not require cloned upstream sources. No package has been published to the npm registry as part of this work.
 
-The coverage boundary is the union of HTTP route declarations in pinned `openscreeps/server` controllers and calls in pinned `screepers/node-screeps-api` (including the dynamic official history path). Backend-local is corroborating evidence for shared/private behavior, **not** proof of official availability. Platform endpoints implemented by OpenScreeps cite their source and compatibility notes.
+```ts
+import { createClient } from '@openscreeps/openapi/clients/official';
 
-`coverage.json` is extracted with the TypeScript AST, records method/path/file/line, and is checked against the bundled contract. Duplicate declarations are retained as evidence. Explicit exclusions:
+const client = createClient({ baseUrl: 'https://screeps.com' });
+const version = await client.platformVersion();
+const terrain = await client.gameRoomTerrain({
+  query: { room: 'W1N1', shard: 'shard3', encoded: '1' },
+});
+```
 
-- `/api/authmod`: a private-server extension; the reference client synthesizes the official result without making an HTTP call, and OpenScreeps does not implement it.
-- `/api/warpath/battles`: the reference client explicitly calls it unavailable on official servers; OpenScreeps does not implement it.
+For authenticated calls, supply `credentials: { Token: token }`, where `token` is a secret
+loaded by your application. The standalone client additionally knows its own authentication
+schemes; do not reuse a player token as `AdminToken`. Generated `OperationHandlers<Context>`
+and `RequestOf<OperationId>` types are exported beside each target's `createClient`.
+Consumers need TypeScript's DOM library or compatible Node fetch globals.
 
-The specification does not claim to enumerate undiscovered, undocumented production routes. Seasonal routes may need a seasonal base URL and carry endpoint-specific notes. WebSocket/SockJS subscriptions, browser application routes, and the in-game JavaScript API are outside this HTTP contract. The standalone HTML landing page, health, assets, history, and administrator endpoints are included.
+## Client behavior and safety
 
-Sources:
+- Player tokens and administrator secrets are distinct credentials. The standalone administrator API must never receive a player token as a substitute for its administrator secret.
+- Successful session-token rotation is retained for later calls. Never log credentials or authenticated response bodies.
+- HTTP 200 is not sufficient for success: Screeps can return an `{error: string}` envelope with status 200.
+- Mutations are not automatically retried. An interrupted response can leave the outcome uncertain.
+- Requests reject all redirects, including same-origin redirects. Only configure trusted server URLs.
+- JSON, text and binary responses decode to schema-defined values, strings and `Uint8Array` respectively; bot Memory is not automatically interpreted as game state.
+- Official spawn placement can reset shard CPU allocation. Official world status is account-wide, not proof that one specific shard has no surviving colony.
 
-- [OpenScreeps server](https://github.com/openscreeps/server/tree/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91): authoritative for the pinned standalone implementation (ISC).
-- [OpenScreeps game](https://github.com/openscreeps/game/tree/fd9cde57de20a1e37a0108c46ca78314c8b9bc36) and [engine](https://github.com/openscreeps/engine/tree/55883bef45d0d1c3c8c16e497fca56fe0b43ff11): the server's pinned domain dependencies, including intent payloads and administrator operations.
-- [node-screeps-api](https://github.com/screepers/node-screeps-api/tree/0f861874ff119b7ba37d0d1a4beb90f096209f4e): community client contracts, secondary evidence for the undocumented official HTTP API.
-- [Screeps backend-local](https://github.com/screeps/backend-local/tree/9d079282303ec04e577ac2bb97f64312b25e4ccd): private-server route behavior (MIT).
-- [Official token guidance](https://docs.screeps.com/auth-tokens.html).
+Changing an OpenAPI document changes generated consumer interfaces. Review contract changes as public API changes, not merely documentation edits.
 
-## Development
+Generated methods and `call()` throw on HTTP failure or a logical error envelope. `send()`
+instead exposes the status, headers, media type and decoded body, including declared error
+responses. `onCredentialRefresh` can persist rotated credentials without logging them.
+Wildcard asset parameters use `x-openscreeps-wildcard`; bearer refresh headers use
+`x-openscreeps-refresh-header`. These transport extensions are explicit in the composed
+contract rather than hard-coded by endpoint name.
 
-Node 24 LTS is pinned through `mise.toml`. Dependencies are pinned in `package-lock.json`; TypeScript 5.9 is used for tooling because the selected OpenAPI generator declares a TypeScript 5 peer dependency. No TypeScript code needs compiling to consume the specification.
+## Standalone composition
+
+`composeProfile(official, profile, extensions)` is exported from `@openscreeps/openapi/contracts`. The standalone profile uses:
+
+- `required`: official operation IDs the server must implement.
+- `excluded`: official operation IDs mapped to exclusion reasons.
+- `adaptations`: required operation IDs mapped to reasons for precise standalone differences.
+- `overrides`: RFC 7386 merge patches for adapted operations and explicit component changes.
+- `additions`: non-official compatibility operation IDs mapped to reasons; their operation
+  definitions live in `overrides.paths`. These include private-server tick and history routes.
+- `transport`: explicit standalone transport parameters, including the optional server password.
+- `notes` and `evidence`: standalone-specific explanations and source citations.
+
+Server-owned extensions are supplied separately. Unknown IDs, an incomplete operation partition or conflicting extensions are errors, not silently ignored entries. Generating documentation does not establish conformance: the server separately checks route registrations, generated handler contracts and real HTTP responses.
+
+Generated server documents and clients belong with the server implementation. This avoids a dependency cycle in which the canonical official contract depends on a particular server release.
+
+## Evidence and coverage
+
+[Source revisions](sources.json), [coverage inventory](coverage.json), operation source citations and dated observations record where a contract came from. Official web application HTTP calls extend the discovery baseline beyond the community API library. Upstream JavaScript bundles are research inputs, not third-party code redistributed in this package.
+
+The official backend is closed source. The catalog covers discovered and evidenced routes; it does not claim proof that no undiscovered production endpoint exists. Where a request or response field is not established by evidence, that uncertainty must remain explicit. Standalone implementation details are not proof of official behavior.
+
+OpenAPI describes HTTP. WebSocket/SockJS subscriptions and the in-game JavaScript API are outside this contract. A schema or an example never grants permission to mutate an account, purchase something or reset a world.
+
+## Development and CI
+
+Node 24 LTS is pinned through `mise.toml`. Dependencies are locked. TypeScript 5.9 is used for generation because the selected OpenAPI generator declares a TypeScript 5 peer dependency.
 
 ```sh
 mise install
-npm ci
-npm run build
+npm ci --ignore-scripts
+npm run prepare
 npm run check
 npm run format:check
-npm run types
 ```
 
-`build` merges fragments, rejects duplicate operations/components, adds shared transport metadata, and produces deterministic JSON/YAML. `check` verifies that committed bundles are current, compiles schemas with JSON Schema 2020-12, checks references/provenance/coverage, then runs Redocly. `types` generates and type-checks a throwaway TypeScript client contract under ignored `build/`. CI also checks out the pinned server/client sources and verifies the extracted route inventory. No account credentials are needed.
+`check` verifies deterministic bundles, route coverage, schema validity, generated-file freshness, compiled client types and consumer-facing regressions. CI installs without running `prepare` first so regeneration cannot hide stale committed outputs. Upstream source inventory refresh is separate from offline artifact generation.
 
-To refresh the source inventory, clone each repository into `.sources/server`, `.sources/client`, and `.sources/backend`, check out the exact commits in `sources.json`, then run `npm run inventory`. To verify rather than overwrite it, run `node scripts/inventory.mjs --check`. Source checkouts are ignored and never published. Update revisions, fragments and inventory together when upgrading the coverage baseline.
+The separate **Check upstream source drift** workflow runs weekly or on manual dispatch.
+It fetches the current official web assets and compares the source inventory without
+overwriting its baseline (`node scripts/inventory.mjs --fetch --check`). Official web assets
+are mutable; a deployment there must not make an unchanged, reproducible contract build fail.
 
-### Read-only live verification
+Edit source contracts and profile decisions, regenerate, then commit source and generated output together. Do not hand-edit generated clients, handler interfaces or OpenAPI bundles. The server pins the contract revision independently and verifies its own generated outputs and conformance before upgrading.
+
+### Read-only official smoke
 
 ```sh
 npm run smoke
 ```
 
-The default target is official Screeps. Optional environment variables:
+The smoke command defaults to official Screeps. `SCREEPS_TOKEN` enables authenticated checks; `SCREEPS_API_URL`, `SCREEPS_SHARD`, and `SCREEPS_ROOM` select the trusted origin and room. It uses only read requests, rejects redirects and validates replies without printing or saving account data, bot Memory or credentials. Local server verification uses a disposable database and the generated standalone client, not an official account.
 
-| Variable                  | Purpose                                                              |
-| ------------------------- | -------------------------------------------------------------------- |
-| `SCREEPS_TARGET`          | `screeps-com` (default) or `openscreeps`                             |
-| `SCREEPS_API_URL`         | Server origin; defaults to official or localhost according to target |
-| `SCREEPS_TOKEN`           | Enables authenticated read-only checks; never logged                 |
-| `SCREEPS_SHARD`           | Official shard; default `shard3`                                     |
-| `SCREEPS_ROOM`            | Room to inspect; default `W1N1`                                      |
-| `SCREEPS_SERVER_PASSWORD` | Optional standalone server password                                  |
+### Verified baseline
 
-The smoke script makes only GET requests, rejects redirects, validates real response bodies against the bundled schemas, and logs only endpoint/status results. It does not print or save Memory, account details, tokens, or raw response bodies. An endpoint error fails the smoke even if its error envelope validates. Public checks alone do not verify authenticated contracts.
+The official catalog contains **163 operations**, reconciled against 240 request sites
+in the official web client and the pinned reference sources. The standalone profile
+requires 84 official operations, explicitly excludes 79, and adds two private-server
+compatibility routes; the server adds its own extension contracts.
 
-## Verified baseline
-
-Validated on 2026-10-10 against the pinned sources:
-
-- **100 paths, 103 operations, 250 reusable schemas**; every inventoried target route covered.
-- Deterministic JSON/YAML parity, JSON Schema 2020-12 compilation, and Redocly validation without warnings.
-- Generated TypeScript declarations compile; four consumer-facing schema regression tests pass.
-- **14 official read-only HTTP responses** validated, including authenticated account, branches, Memory, rooms and world status.
-- **21 disposable OpenScreeps HTTP JSON responses** validated, including authentication failures, administrator input errors, account creation, world ticks and snapshot export; PNG terrain and HTML responses also exercised.
-
-Live checks corrected two stale reference-type assumptions: official capability entries have optional `menuData`, and `steam.ownership` can be an array of Steam application IDs. These are documented with dated operation observations and retained regression tests. No official account/world mutations were made during verification. The local smoke used an isolated temporary database, removed afterward; raw authenticated responses are not published.
+Verification includes 17 contract/client regressions, 14 real read-only official
+responses, authenticated calls through the generated client, and a packed-package
+consumer that compiles and runs after its TypeScript source directory is removed.
+The standalone server separately exercises all 91 composed operations over real HTTP.
 
 ## License
 
-[ISC](LICENSE). Upstream implementations and reference materials retain their own licenses; source checkouts are not distributed here.
+[ISC](LICENSE). Upstream source material retains its own license; research checkouts and raw authenticated responses are not distributed.

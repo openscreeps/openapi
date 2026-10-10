@@ -10,7 +10,7 @@ addFormats(ajv);
 ajv.addSchema({ $id: 'urn:screeps:test', components: spec.components });
 const schema = (name) => ajv.getSchema(`urn:screeps:test#/components/schemas/${name}`);
 
-test('capabilities admit official optional menuData and standalone omission of features', () => {
+test('official capabilities admit optional menuData on feature entries', () => {
   const validate = schema('PlatformVersion');
   const shared = {
     ok: 1,
@@ -31,39 +31,14 @@ test('capabilities admit official optional menuData and standalone omission of f
   assert.equal(validate(official), true, ajv.errorsText(validate.errors));
 });
 
-test('Steam ownership accepts both real server representations, not arbitrary objects', () => {
+test('official Steam ownership contains application IDs, not standalone flags', () => {
   const validate = schema('AuthSteamAccount');
-  assert.equal(validate({ ownership: false }), true);
+  assert.equal(validate({ ownership: false }), false);
   assert.equal(validate({ ownership: [464350] }), true);
   assert.equal(validate({ ownership: { app: 464350 } }), false);
 });
 
-test('administrator mutations require one identity, real changes and whitelisted fields', () => {
-  const validate = schema('AdminCommand');
-  assert.equal(validate({ action: 'user-update', username: 'ContractPlayer', cpu: 20 }), true);
-  assert.equal(validate({ action: 'user-update', username: 'ContractPlayer' }), false);
-  assert.equal(
-    validate({ action: 'user-update', username: 'ContractPlayer', userId: 'id', cpu: 20 }),
-    false,
-  );
-  assert.equal(validate({ action: 'user-remove' }), false);
-  assert.equal(validate({ action: 'user-remove', username: 'ContractPlayer', force: true }), false);
-  assert.equal(
-    validate({ action: 'user-update', username: 'ContractPlayer', resources: { energy: 100 } }),
-    false,
-  );
-  assert.equal(
-    validate({ action: 'user-update', username: 'ContractPlayer', resources: { pixel: 0 } }),
-    true,
-  );
-  assert.equal(validate({ action: 'tick', count: 1001 }), false);
-});
-
-test('bot modules require main and history diffs preserve null deletion markers', () => {
-  const modules = schema('AdminModules');
-  assert.equal(modules({ main: 'module.exports.loop = () => {}' }), true);
-  assert.equal(modules({ library: 'module.exports = {}' }), false);
-  assert.equal(modules({ main: '', '../escape': '' }), false);
+test('history diffs preserve null deletion markers and partial object updates', () => {
   const history = schema('PlatformHistory');
   assert.equal(
     history({

@@ -3,7 +3,9 @@ import { pathToFileURL } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 
-const spec = JSON.parse(await readFile(new URL('../openapi.json', import.meta.url), 'utf8'));
+const spec = JSON.parse(
+  await readFile(process.env.SCREEPS_SPEC ?? new URL('../openapi.json', import.meta.url), 'utf8'),
+);
 const ajv = new Ajv2020({ strict: false, allErrors: true });
 addFormats(ajv);
 for (const name of ['binary', 'byte', 'int32', 'int64', 'float', 'double', 'password'])
@@ -41,7 +43,9 @@ export async function smoke({
   let count = 0;
   const failures = [];
   async function get(path, query = {}, authenticated = true) {
-    if (spec.paths[path]?.get?.['x-availability']?.[target] !== 'supported') return undefined;
+    const operation = spec.paths[path]?.get;
+    if (!operation) throw new Error(`Smoke requires a documented operation: GET ${path}`);
+    if (operation['x-availability']?.[target] === 'unsupported') return undefined;
     const url = new URL(path, base);
     for (const [name, value] of Object.entries(query))
       if (value !== undefined) url.searchParams.set(name, value);
@@ -74,8 +78,8 @@ export async function smoke({
   }
   const routed = target === 'screeps-com' ? { shard } : {};
   await get('/api/version');
-  await get('/health');
-  await get('/api/game/shards/info');
+  if (target === 'openscreeps') await get('/health');
+  if (target === 'screeps-com') await get('/api/game/shards/info');
   await get('/api/game/room-status', { ...routed, room });
   await get('/api/game/room-terrain', { ...routed, room, encoded: '1' });
   await get('/api/game/room-terrain', { ...routed, room });
@@ -101,6 +105,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const target = process.env.SCREEPS_TARGET ?? 'screeps-com';
   if (!['screeps-com', 'openscreeps'].includes(target))
     throw new Error('SCREEPS_TARGET must be screeps-com or openscreeps');
+  if (target === 'openscreeps' && !process.env.SCREEPS_SPEC)
+    throw new Error(
+      'SCREEPS_SPEC must point to the server-generated OpenAPI document for OpenScreeps',
+    );
   await smoke({
     base:
       process.env.SCREEPS_API_URL ??

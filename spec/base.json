@@ -1,10 +1,10 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Screeps World and OpenScreeps HTTP API",
-    "version": "0.1.0",
-    "summary": "Source-derived contracts with explicit server compatibility",
-    "description": "Community-maintained HTTP contracts, not an official Screeps specification. Coverage is pinned to sources.json and coverage.json. Each operation declares x-availability and cites source evidence. A supported marker means the pinned implementation or reference client documents the operation, not that every operation was exercised live. Shapes shared by differing implementations are unions; read x-compatibility and descriptions before using a server-specific field. WebSocket/SockJS channels and the in-game JavaScript API are not HTTP operations and are outside this document. Never infer gameplay success from HTTP 200: inspect error and ok. Endpoints can have destructive effects; specification examples are not authorization to invoke them.",
+    "title": "Screeps World HTTP API",
+    "version": "0.2.0",
+    "summary": "Source-derived contract of the official Screeps World (screeps.com) HTTP API",
+    "description": "Community-maintained contract of the official Screeps World HTTP API at https://screeps.com, not published by Screeps. Evidence: static analysis of the official web client assets (pinned by bust and SHA-256 in coverage.json), the community client node-screeps-api and the official private-server source screeps/backend-local, all pinned in sources.json/coverage.json and cited per operation in x-sources. `x-availability['screeps-com']` is `supported` when official evidence shows the operation is used against screeps.com, `unverified` otherwise; `x-unverified` states known evidence gaps. A supported marker does not mean every operation was exercised live. The official web client treats a response as successful only when the JSON body has a truthy `ok`; logical failures arrive as `{error}` usually with HTTP 200, so never infer success from the status code. Signed-in requests send `X-Token` (and the legacy `X-Username` with the same value); a returned `X-Token` response header replaces the stored token. The client may also send `X-Ignore-Server-Down: 1`. Standalone/private servers are described by the separate standalone compatibility profile (profiles/standalone.json), not by this document. WebSocket/SockJS channels and the in-game JavaScript API are outside this document. Endpoints can have destructive effects; examples are not authorization to invoke them.",
     "contact": {
       "name": "OpenScreeps",
       "url": "https://github.com/openscreeps/openapi/issues"
@@ -17,22 +17,11 @@
   "servers": [
     {
       "url": "https://screeps.com",
-      "description": "Official Screeps World; shard query/body fields route shard-specific operations."
-    },
-    {
-      "url": "http://{host}:{port}",
-      "description": "OpenScreeps standalone server; configure host and port for your deployment. Check x-availability before calling.",
-      "variables": {
-        "host": {
-          "default": "localhost",
-          "description": "Your standalone server hostname or IP address."
-        },
-        "port": { "default": "21025", "description": "The standalone server HTTP port." }
-      }
+      "description": "Official Screeps World; `shard` query/body fields route shard-specific operations."
     }
   ],
   "externalDocs": {
-    "description": "Pinned source provenance, coverage and compatibility policy",
+    "description": "Pinned source provenance, coverage and the standalone compatibility profile",
     "url": "https://github.com/openscreeps/openapi#coverage-and-evidence"
   },
   "paths": {},
@@ -42,17 +31,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-Token",
-        "description": "Official API token or server-issued session token. OpenScreeps refreshes successful authenticated responses in X-Token; preserve rotated tokens. Never send tokens to untrusted hosts or follow authenticated cross-host redirects."
-      },
-      "Bearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "OpenScreeps player-session alternative to X-Token. Do not assume official servers accept it."
-      },
-      "AdminToken": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "OpenScreeps administrator secret (at least 32 characters), distinct from all player tokens. Disabled unless SCREEPS_ADMIN_TOKEN is configured."
+        "description": "Official API auth token or session token. Servers may return a rotated token in the X-Token response header; store it for subsequent requests. Never send tokens to untrusted hosts or follow authenticated cross-host redirects."
       }
     },
     "parameters": {
@@ -63,16 +42,7 @@
         "schema": {
           "$ref": "#/components/schemas/ShardName"
         },
-        "description": "Official shard routing where the operation accepts it. OpenScreeps serves one world; this field does not select a different world."
-      },
-      "ServerPassword": {
-        "name": "X-Server-Password",
-        "in": "header",
-        "required": false,
-        "schema": {
-          "type": "string"
-        },
-        "description": "Required by OpenScreeps ApiGuard routes only when the host configures SERVER_PASSWORD; independent of player authentication. Missing/wrong value returns the API error envelope, usually HTTP 200."
+        "description": "Official shard routing for operations that accept it (for example `shard3`)."
       },
       "LegacyUsername": {
         "name": "X-Username",
@@ -81,7 +51,7 @@
         "schema": {
           "type": "string"
         },
-        "description": "Legacy Screeps API clients send the token value here as well as X-Token. OpenScreeps does not require this header."
+        "description": "Legacy header: the official web client sends the token value here as well as in X-Token."
       }
     },
     "responses": {

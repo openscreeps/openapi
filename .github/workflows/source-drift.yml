@@ -1,0 +1,37 @@
+name: Check upstream source drift
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  source-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/checkout@v5
+        with:
+          repository: openscreeps/server
+          ref: 3954fd26f107a4b508ccaf6b5f64e4aa951d9e91
+          path: .sources/server
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: screepers/node-screeps-api
+          ref: 0f861874ff119b7ba37d0d1a4beb90f096209f4e
+          path: .sources/client
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: screeps/backend-local
+          ref: 9d079282303ec04e577ac2bb97f64312b25e4ccd
+          path: .sources/backend
+          persist-credentials: false
+      # Official web assets are mutable. Report drift separately from offline contract CI.
+      - run: node scripts/inventory.mjs --fetch --check
