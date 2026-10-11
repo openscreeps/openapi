@@ -214,8 +214,6 @@
     "userDecorationsThemes": "No hosted pixel/decoration economy on a standalone server: the theme list is always empty.",
     "userEmailSet": "Standalone success bodies are exactly `{ok: 1}` without database-driver write metadata (override: UserDbWriteResponse).",
     "userMemorySet": "Standalone Memory writes return exactly `{ok: 1}` without a database-driver insert echo (override: UserConsoleQueuedResponse).",
-    "userMessagesIndex": "Standalone message documents carry `date` as Unix milliseconds instead of an ISO date-time string (override: UserMessage).",
-    "userMessagesList": "Standalone message documents carry `date` as Unix milliseconds instead of an ISO date-time string (override: UserMessage).",
     "userMessagesMarkRead": "Standalone success bodies are exactly `{ok: 1}` without internal publish/update results (override: UserMessagesMarkReadResponse).",
     "userMoneyHistory": "Standalone market money-log entries additionally carry the related order id and counterparty (override: UserMoneyHistoryMarketInfo).",
     "userNotifyPrefsSet": "Standalone success bodies are exactly `{ok: 1}` without database-driver write metadata (override: UserDbWriteResponse).",
@@ -231,7 +229,7 @@
   "notes": {
     "authMe": "Returns the private-server projection only (`_id`, `email`, `emailDirty`, `username`, `cpu`, `badge`, `password`, `lastRespawnDate`, `notifyPrefs`, `gcl`, `lastChargeTime`, `blocked`, `customBadge`, `power`, `money`, `steam`, `powerExperimentations`, `powerExperimentationTime`); never `cpuShard`, `cpuShardUpdatedTime`, `resources`, SSO links or legacy fields. `steam` is an empty object when no Steam account is linked. Token may be sent as `X-Token`, `Authorization: Bearer`, or `?token=`; each authenticated call issues a fresh token in the `X-Token` response header (default lifetime 60 s).",
     "authSignin": "Primary authentication method of a standalone server. `email` accepts an e-mail address or a username (looked up case-insensitively unless it contains `@`); `recaptcha` and `steamTicket` are ignored. Passwords (8-1024 characters when set) are verified as scrypt hashes in constant time (unknown accounts still hash a dummy); every failure answers HTTP 401 `unauthorized`, and accounts without a configured password cannot sign in. Tokens are 64 lowercase hex characters, valid for `tokenLifetimeMs` (60 s default) and refreshed through the `X-Token` response header of authenticated calls.",
-    "authSteamTicket": "Verifies the ticket with the Steam Web API `ISteamUserAuth/AuthenticateUserTicket` (app 464350) using the operator-configured Steam Web API key, outside the world lock and with a 10 s timeout; tickets must be 1-8192 hex characters. Without a configured key, or when `useNativeAuth` is truthy, it answers `authentication method is not supported`; any verification failure yields `could not authenticate`. New accounts get 100 CPU, a default code branch and empty Memory.",
+    "authSteamTicket": "Authentication runs outside the world lock. Web API mode verifies tickets with Valve's AuthenticateUserTicket for app 464350 using an operator key. Opt-in native mode verifies encrypted app tickets with Greenworks and requires useNativeAuth to be true; platformVersion advertises the active mode. An unconfigured or mismatched scheme answers authentication method is not supported. Native mode retains the original published symmetric-key trust model and is not recommended for untrusted players. New accounts get 100 CPU, a default code branch and empty Memory.",
     "gameAddGlobalIntent": "Successive calls append to the caller's pending global intent lists, which the next tick merges into the caller's script intents. `generatePixel`, `unlockCpu` and `activateAccess` are dropped (only the player runtime may record them).",
     "gameAddObjectIntent": "Additionally requires `_id` (`invalid object`), requires the object to be in `room` (`invalid object`) and owned by the caller or, if unowned, in a room whose controller the caller owns (`not owner`), and rejects payload shapes the processor cannot handle (`invalid params`). An array `intent` is accepted only when `_id` is `room`; room-level list intents must be arrays of objects whose `roomName` equals `room`.",
     "gameChangeFlagColor": "Without `room` nothing is saved and the call still succeeds; an empty flag document is created if the caller had none in that room. The success body is exactly `{ok: 1}`.",
@@ -271,8 +269,8 @@
     "userMemorySegmentGet": "Parses `segment` with `parseInt`, so a list reads only its first id and returns a single value.",
     "userMemorySegmentSet": "`data` must be a string, number or boolean (`invalid params` otherwise); its string form is stored.",
     "userMemorySet": "Rejects invalid paths (empty segments, `__proto__`) with `Incorrect memory path` and, at execution, fails the hidden command when an intermediate path element is not an object. Returns only `{ok: 1}`.",
-    "userMessagesIndex": "Conversations are keyed by respondent id. Message `date` values are Unix milliseconds.",
-    "userMessagesList": "Message `date` values are Unix milliseconds.",
+    "userMessagesIndex": "Conversations are keyed by respondent id. Message `date` values are ISO 8601 strings, serialized from the original backend's Date values.",
+    "userMessagesList": "Message `date` values are ISO 8601 strings, matching the original storage RPC and HTTP JSON serialization.",
     "userMessagesMarkRead": "Returns only `{ok: 1}`.",
     "userMoneyHistory": "Numeric log dates are converted to ISO 8601 strings at the wire boundary. Market details also carry `orderId`/`anotherUser`.",
     "userMoneyHistoryDetails": "A single world serves the details from its own money ledger (the entries listed by `GET /api/user/money-history`), resolving the counterparties of a market deal by `tick`, `roomName` and `targetRoomName`; the official market history page calls it without an `options.official` branch.",
@@ -1094,16 +1092,6 @@
           "description": "Success (`{ok: 1}`).",
           "properties": {
             "result": null
-          }
-        },
-        "UserMessage": {
-          "x-profile-reason": "The standalone server serializes message send times as Unix milliseconds.",
-          "properties": {
-            "date": {
-              "type": "integer",
-              "format": null,
-              "description": "Send time in Unix milliseconds."
-            }
           }
         },
         "UserMessagesMarkReadResponse": {
