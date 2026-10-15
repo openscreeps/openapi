@@ -1110,7 +1110,7 @@
             "password": {
               "minLength": 8,
               "maxLength": 1024,
-              "description": "Password for `POST /api/auth/signin`, stored as an scrypt hash."
+              "description": "Account password, used with `POST /api/auth/signin`."
             },
             "modules": {
               "description": "Initial code of the `default` branch; defaults to `{main: ''}`."
