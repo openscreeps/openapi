@@ -391,7 +391,7 @@
         },
         "GameMapStatsRoom": {
           "x-profile-reason": "Standalone map-stats rankings are arrays instead of a single entry.",
-          "description": "Per-room map stats. Room-status fields are copied from the room document; `own`, `sign`, `safeMode` and `minerals0` come from room objects; the requested `statName` key (e.g. `energyHarvested8`) holds the ranking for that stat as an array of `{user, value}` sorted by value descending.",
+          "description": "Per-room map stats. Room-status fields are copied from the room document; `own`, `sign`, `safeMode`, `isPowerEnabled` and `minerals0` come from room objects (no `decorations`: standalone servers have no decoration inventory); the requested `statName` key (e.g. `energyHarvested8`) holds the ranking for that stat as an array of `{user, value}` sorted by value descending.",
           "additionalProperties": {
             "$ref": null,
             "type": "array",
