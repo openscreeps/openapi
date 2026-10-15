@@ -1,16 +1,22 @@
 # Screeps contracts and TypeScript clients
 
-Canonical, evidence-backed **official Screeps HTTP contracts**, an explicit **OpenScreeps standalone compatibility profile**, and generated **runnable TypeScript clients**. Community-maintained, not an official Screeps API guarantee.
+Canonical, evidence-backed **official Screeps HTTP and socket contracts**, an explicit **OpenScreeps standalone compatibility profile**, and generated **runnable TypeScript clients**. Community-maintained, not an official Screeps API guarantee.
 
 ## Ownership and direction
 
-- This repository owns the official [OpenAPI JSON](openapi.json), [YAML](openapi.yaml), source schemas, source inventory and [standalone profile](profiles/standalone.json).
+- This repository owns the official [OpenAPI JSON](openapi.json), [YAML](openapi.yaml), the official socket contract ([AsyncAPI JSON](asyncapi.json), [YAML](asyncapi.yaml)), source schemas, source inventory and [standalone profile](profiles/standalone.json).
 - The official contract describes official wire behavior. It is not a union widened to accommodate OpenScreeps implementation differences.
 - The profile partitions official operation IDs into required and excluded operations. Every exclusion has a reason. Necessary standalone adaptations have explicit reasons and precise schema overrides.
 - [`openscreeps/server`](https://github.com/openscreeps/server) owns its extension contracts, including administrator and host endpoints. It combines the pinned official contract, compatibility profile and its extensions to generate its own OpenAPI document, TypeScript client and handler interfaces.
 - Implementations must satisfy their contract. Generated types do not implement game behavior; server route checks and real HTTP conformance checks enforce the boundary.
 
 Hosted account, commerce, seasonal and shard services outside the standalone profile remain documented in the official catalog, but are not advertised as callable methods in the standalone client. No Rust client generation is included.
+
+## Socket contract
+
+[`asyncapi.json`](asyncapi.json) (AsyncAPI 3.0, built from [`socket/`](socket)) describes the official socket protocol: the SockJS endpoint `/socket` and its raw WebSocket transport `/socket/websocket`, the greeting lines, `auth`/`subscribe`/`unsubscribe`/`gzip` commands, `gz:` compressed frames and every channel the official client subscribes to, with payload schemas for each `[channel, data]` event. Payload schemas are draft-07 AsyncAPI schemas; channel names are expressed as patterns of the first tuple item. `RoomObjectsDiff` documents how the official client applies incremental room updates: a new id carries a complete `RoomObject`, a held id a `RoomObjectPatch` (partial at every depth, `null` for removed properties, top-level arrays possibly keyed by index). Room objects are typed field by field after the upstream room object documents, in the socket contract and as `GameRoomObject` in the HTTP contract. The document is written from the server's perspective: `receive` operations are client commands.
+
+The package exports it as `@openscreeps/openapi/socket`. Standalone servers name channels without a shard and differ in a few messages; compose their socket contract with `composeSocketProfile` rather than reading the official document.
 
 ## Generate clients
 
@@ -76,7 +82,7 @@ contract rather than hard-coded by endpoint name.
 
 ## Standalone composition
 
-`composeProfile(official, profile, extensions)` is exported from `@openscreeps/openapi/contracts`. The standalone profile uses:
+`composeProfile(official, profile, extensions)` and `composeSocketProfile(officialSocket, profile)` are exported from `@openscreeps/openapi/contracts`. The standalone profile uses:
 
 - `required`: official operation IDs the server must implement.
 - `excluded`: official operation IDs mapped to exclusion reasons.
@@ -86,8 +92,12 @@ contract rather than hard-coded by endpoint name.
   definitions live in `overrides.paths`. These include private-server tick and history routes.
 - `transport`: explicit standalone transport parameters, including the optional server password.
 - `notes` and `evidence`: standalone-specific explanations and source citations.
+- `socket`: the standalone socket contract: `info` and `servers`, `excluded` official messages
+  with reasons, `adaptations` with reasons, `evidence`, and RFC 7386 `overrides` of `messages`
+  and `schemas` (each schema override with `x-profile-reason`). Every message that uses an
+  overridden schema must be adapted, and every adaptation must change something.
 
-Server-owned extensions are supplied separately. Unknown IDs, an incomplete operation partition or conflicting extensions are errors, not silently ignored entries. Generating documentation does not establish conformance: the server separately checks route registrations, generated handler contracts and real HTTP responses.
+Server-owned extensions are supplied separately. Unknown IDs or messages, an incomplete operation partition or conflicting extensions are errors, not silently ignored entries. Generating documentation does not establish conformance: the server separately checks route registrations, generated handler contracts and real HTTP responses.
 
 Generated server documents and clients belong with the server implementation. This avoids a dependency cycle in which the canonical official contract depends on a particular server release.
 
@@ -97,7 +107,7 @@ Generated server documents and clients belong with the server implementation. Th
 
 The official backend is closed source. The catalog covers discovered and evidenced routes; it does not claim proof that no undiscovered production endpoint exists. Where a request or response field is not established by evidence, that uncertainty must remain explicit. Standalone implementation details are not proof of official behavior.
 
-OpenAPI describes HTTP. WebSocket/SockJS subscriptions and the in-game JavaScript API are outside this contract. A schema or an example never grants permission to mutate an account, purchase something or reset a world.
+OpenAPI describes HTTP and AsyncAPI describes the socket protocol; the in-game JavaScript API is outside these contracts. A schema or an example never grants permission to mutate an account, purchase something or reset a world. Subscribing to socket channels is read-only, but a socket token grants full account access.
 
 ## Development and CI
 
@@ -126,7 +136,7 @@ Edit source contracts and profile decisions, regenerate, then commit source and 
 npm run smoke
 ```
 
-The smoke command runs the checked TypeScript harness (`node scripts/smoke.ts`) with Node 24's native type stripping and defaults to official Screeps. `SCREEPS_TOKEN` enables authenticated checks; `SCREEPS_API_URL`, `SCREEPS_SHARD`, and `SCREEPS_ROOM` select the trusted origin and room. It uses only read requests, rejects redirects and validates replies without printing or saving account data, bot Memory or credentials. Local server verification uses a disposable database and the generated standalone client, not an official account.
+The smoke command runs the checked TypeScript harness (`node scripts/smoke.ts`) with Node 24's native type stripping and defaults to official Screeps. `SCREEPS_TOKEN` enables authenticated checks; `SCREEPS_API_URL`, `SCREEPS_SHARD`, and `SCREEPS_ROOM` select the trusted origin and room. Keep the token in an ignored `.env` file and run `node --env-file=.env scripts/smoke.ts`. It uses only read requests, rejects redirects and validates replies without printing or saving account data, bot Memory or credentials. The socket pass then opens `/socket/websocket` with `gzip on`, authenticates, subscribes to one room, its map view, map visuals and passive account channels, and requires every frame (compressed or not) to match a message of the socket contract; it prints message names only. Local server verification uses a disposable database and the generated standalone client, not an official account.
 
 ### Verified baseline
 
@@ -135,10 +145,22 @@ in the official web client and the pinned reference sources. The standalone prof
 requires 84 official operations, explicitly excludes 79, and adds two private-server
 compatibility routes; the server adds its own extension contracts.
 
-Verification includes 17 contract/client regressions, 14 real read-only official
-responses, authenticated calls through the generated client, and a packed-package
+Verification includes 27 contract/client regressions, 15 real read-only official HTTP
+responses, 12 kinds of real official socket messages (greeting, authentication,
+compressed frames, room diffs, room map views, map visuals, CPU, console, Memory watch and
+resources), authenticated calls through the generated client, and a packed-package
 consumer that compiles and runs after its TypeScript source directory is removed.
+Room objects are a `oneOf` union discriminated by `type` (`GameRoomObject` over HTTP,
+`RoomObject` on the socket, kept structurally identical by `check`): one schema per object
+type whose required fields are set by every upstream creator and present on every observed
+object, `GameRoomObjectResource` for dropped resources (integer amounts under the resource
+key) and `GameRoomObjectOther` for any other type. They were checked against 225,534 real
+official room objects of 31 types from 2,429 non-empty rooms on five shards and 79 socket
+first room events, with zero failures; the smoke validates every complete room object it
+receives against the union and its own variant. Room and map visual strings are typed per
+line as `RoomVisualItem` and `MapVisualItem` (examples produced by the upstream serializers).
 The standalone server separately exercises all 91 composed operations over real HTTP.
+The official socket contract holds 26 messages; the standalone socket profile composes 22.
 
 ## License
 

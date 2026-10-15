@@ -337,7 +337,7 @@
           "x-profile-reason": "Standalone-only: invader document returned by gameCreateInvader.",
           "allOf": [
             {
-              "$ref": "#/components/schemas/GameRoomObject"
+              "$ref": "#/components/schemas/GameRoomObjectCreep"
             },
             {
               "type": "object",

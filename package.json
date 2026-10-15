@@ -3,15 +3,19 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Official Screeps contracts, standalone compatibility profile, and generated TypeScript clients",
+  "description": "Official Screeps HTTP and socket contracts, standalone compatibility profile, and generated TypeScript clients",
   "license": "ISC",
   "engines": {
     "node": ">=24.21.0"
   },
   "exports": {
     "./official": "./openapi.json",
+    "./socket": "./asyncapi.json",
     "./profiles/standalone": "./profiles/standalone.json",
-    "./contracts": "./lib/contracts.mjs",
+    "./contracts": {
+      "types": "./lib/contracts.d.mts",
+      "import": "./lib/contracts.mjs"
+    },
     "./generate": "./scripts/generate-clients.mjs",
     "./client-runtime": {
       "types": "./dist/clients/runtime.d.ts",
@@ -26,9 +30,12 @@
   "files": [
     "openapi.json",
     "openapi.yaml",
+    "asyncapi.json",
+    "asyncapi.yaml",
     "profiles/",
     "lib/",
     "spec/",
+    "socket/",
     "clients/",
     "dist/clients/",
     "scripts/build.mjs",
@@ -40,7 +47,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node scripts/build.mjs --check && node scripts/check.mjs && redocly lint openapi.yaml && npm run check:generated && npm run build:clients && npm run typecheck && npm test",
+    "check": "node scripts/build.mjs --check && node scripts/check.mjs && redocly lint openapi.yaml asyncapi.yaml && npm run check:generated && npm run build:clients && npm run typecheck && npm test",
     "inventory": "node scripts/inventory.mjs",
     "smoke": "node scripts/smoke.ts",
     "generate:client": "node scripts/generate-clients.mjs --input openapi.json --output clients/generated/official --name official",

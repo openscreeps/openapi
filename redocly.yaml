@@ -5,3 +5,7 @@ rules:
   no-unused-components: off
   # Some game endpoints report logical failures only through HTTP 200.
   operation-4xx-response: off
+async3Rules:
+  # Socket clients authenticate in-band with the `auth` command, which no AsyncAPI security
+  # scheme expresses; the auth operation documents it instead.
+  security-defined: off

@@ -1,0 +1,47 @@
+{
+  "asyncapi": "3.0.0",
+  "info": {
+    "title": "Screeps World socket API",
+    "version": "0.2.0",
+    "description": "Community-maintained contract of the official Screeps World (screeps.com) socket protocol, not published by Screeps. One SockJS connection carries unframed text protocol lines, client commands and JSON channel events. Evidence: static analysis of the official web client assets (pinned by bust and SHA-256 in coverage.json), node-screeps-api and the official private-server source screeps/backend-local, pinned in sources.json/coverage.json and cited per message in `x-sources`, plus dated read-only observations of screeps.com (`x-observations`). `x-unverified` states evidence gaps.\n\nSession: open the connection; the server greets with `time`, `protocol` and `package`; send `auth <token>` (the HTTP API token) and wait for `auth ok <token>`, which also returns the token to keep using; then `subscribe <channel>` for each channel. Optionally send `gzip on` to receive larger channel events compressed. Subscriptions belong to one connection: after reconnecting, authenticate and subscribe again. The official client reconnects after one second and resubscribes everything it had subscribed.\n\nThis document describes the server: `receive` operations are client commands and `send` operations are server messages. Standalone/private servers are described by the separate standalone compatibility profile (profiles/standalone.json, `socket`), not by this document. Subscribing is read-only, but a token grants full account access: never send it to an untrusted host.",
+    "contact": {
+      "name": "OpenScreeps",
+      "url": "https://github.com/openscreeps/openapi/issues"
+    },
+    "license": {
+      "name": "ISC",
+      "url": "https://opensource.org/license/isc-license-txt"
+    },
+    "externalDocs": {
+      "description": "Pinned source provenance, coverage and the standalone compatibility profile",
+      "url": "https://github.com/openscreeps/openapi#coverage-and-evidence"
+    }
+  },
+  "defaultContentType": "text/plain",
+  "servers": {
+    "screeps-com": {
+      "host": "screeps.com",
+      "pathname": "/socket",
+      "protocol": "wss",
+      "description": "SockJS endpoint configured as `https://screeps.com/socket/` in the official client. Clients without a SockJS library open a plain WebSocket to `wss://screeps.com/socket/websocket` (the SockJS raw WebSocket transport): every protocol line, command and event is exactly one text frame, without SockJS framing. Other SockJS transports wrap the same messages in SockJS frames."
+    }
+  },
+  "channels": {
+    "socket": {
+      "address": "/websocket",
+      "title": "Socket connection",
+      "description": "The raw WebSocket transport of the SockJS endpoint; one connection multiplexes every message below. Channel events are JSON text `[channel, data]`; `err@<channel>` instead of `<channel>` marks an error event of that channel. Any channel event may arrive as a `gz:` compressed frame after `gzip on`. Text that starts with `[` is a channel event; everything else is a protocol line. Subscription channel names are case-sensitive and must be sent exactly as described by each event message.",
+      "servers": [
+        {
+          "$ref": "#/servers/screeps-com"
+        }
+      ],
+      "messages": {}
+    }
+  },
+  "operations": {},
+  "components": {
+    "messages": {},
+    "schemas": {}
+  }
+}

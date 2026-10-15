@@ -41,11 +41,17 @@
             "url": "https://screeps.com/api/version",
             "date": "2026-10-10",
             "notes": "Live official features use optional menuData, not the reference client's required menuItems. Official historyChunkSize is 100."
+          },
+          {
+            "url": "https://screeps.com/api/version",
+            "date": "2026-10-15",
+            "notes": "Menu items carry string `id`, `class`, `label`, `svg`, `href`, `routerLink`, `redirectUrl`, `template`, `templateBefore`, string-array `conditions` and object `config`; `customObjectTypes`, `renderer.resources` and `renderer.metadata` are empty objects."
           }
         ],
         "x-sources": [
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L220605C46",
-          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/base.ts#L103-L151"
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/base.ts#L103-L151",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C180790"
         ]
       }
     },
@@ -233,10 +239,13 @@
                           "const": 1
                         },
                         "discount": {
-                          "description": "Official promotion amount; upstream field type not established by pinned source."
+                          "type": "number",
+                          "description": "Discount in percent; while it is non-zero the official client marks the item shop with a sale badge."
                         },
                         "dateUntil": {
-                          "description": "Official promotion end; upstream representation not established by pinned source."
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "End of the promotion."
                         }
                       },
                       "required": ["ok"],
@@ -260,8 +269,18 @@
         "x-availability": {
           "screeps-com": "supported"
         },
-        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C287497"],
-        "x-unverified": "The official client passes the result to the top bar without reading fields at the call site; `discount`/`dateUntil` value types are not established."
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C287497",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C288523"
+        ],
+        "x-unverified": "No promotion was active when observed. `discount` is only tested for truthiness (a percentage inferred from the shop price pipes); no client code reads `dateUntil`, typed after the date strings of other store documents.",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/xsolla/active-promotion",
+            "date": "2026-10-15",
+            "notes": "Without an active promotion the response is `{ok: 1}`."
+          }
+        ]
       }
     },
     "/api/experimental/pvp": {
@@ -496,7 +515,8 @@
             "properties": {
               "customObjectTypes": {
                 "type": "object",
-                "additionalProperties": {}
+                "description": "Room object types added by server mods, keyed by type name; values are mod-defined descriptors (arbitrary JSON).",
+                "additionalProperties": true
               },
               "historyChunkSize": {
                 "type": "integer"
@@ -512,11 +532,15 @@
                 "properties": {
                   "resources": {
                     "type": "object",
-                    "additionalProperties": {}
+                    "description": "Extra renderer textures keyed by resource name: asset URLs, where `{ASSETS_URL}` is replaced with the server asset base URL.",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
                   },
                   "metadata": {
                     "type": "object",
-                    "additionalProperties": {}
+                    "description": "Renderer metadata of extra object types, keyed by object type and merged into the renderer's object metadata; renderer-defined arbitrary JSON.",
+                    "additionalProperties": true
                   }
                 },
                 "required": ["resources", "metadata"],
@@ -552,7 +576,62 @@
                           },
                           "item": {
                             "type": "object",
-                            "additionalProperties": {}
+                            "description": "Menu entry to add.",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Element id."
+                              },
+                              "class": {
+                                "type": "string",
+                                "description": "CSS class."
+                              },
+                              "label": {
+                                "type": "string",
+                                "description": "Label."
+                              },
+                              "svg": {
+                                "type": "string",
+                                "description": "Icon SVG markup or URL."
+                              },
+                              "href": {
+                                "type": "string",
+                                "description": "External link."
+                              },
+                              "target": {
+                                "type": "string",
+                                "description": "Link target."
+                              },
+                              "routerLink": {
+                                "type": "string",
+                                "description": "In-app route."
+                              },
+                              "redirectUrl": {
+                                "type": "string",
+                                "description": "URL to redirect to."
+                              },
+                              "conditions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Conditions under which the entry is shown (e.g. `isNotNw`, `isNotPtr`)."
+                              },
+                              "template": {
+                                "type": "string",
+                                "description": "HTML template of the entry."
+                              },
+                              "templateBefore": {
+                                "type": "string",
+                                "description": "HTML template placed before the entry."
+                              },
+                              "config": {
+                                "type": "object",
+                                "description": "Feature-specific configuration (arbitrary JSON).",
+                                "additionalProperties": true
+                              }
+                            },
+                            "additionalProperties": true
                           }
                         },
                         "required": ["section", "item"],

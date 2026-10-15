@@ -4,7 +4,7 @@
     "title": "Screeps World HTTP API",
     "version": "0.2.0",
     "summary": "Source-derived contract of the official Screeps World (screeps.com) HTTP API",
-    "description": "Community-maintained contract of the official Screeps World HTTP API at https://screeps.com, not published by Screeps. Evidence: static analysis of the official web client assets (pinned by bust and SHA-256 in coverage.json), the community client node-screeps-api and the official private-server source screeps/backend-local, all pinned in sources.json/coverage.json and cited per operation in x-sources. `x-availability['screeps-com']` is `supported` when official evidence shows the operation is used against screeps.com, `unverified` otherwise; `x-unverified` states known evidence gaps. A supported marker does not mean every operation was exercised live. The official web client treats a response as successful only when the JSON body has a truthy `ok`; logical failures arrive as `{error}` usually with HTTP 200, so never infer success from the status code. Signed-in requests send `X-Token` (and the legacy `X-Username` with the same value); a returned `X-Token` response header replaces the stored token. The client may also send `X-Ignore-Server-Down: 1`. Standalone/private servers are described by the separate standalone compatibility profile (profiles/standalone.json), not by this document. WebSocket/SockJS channels and the in-game JavaScript API are outside this document. Endpoints can have destructive effects; examples are not authorization to invoke them.",
+    "description": "Community-maintained contract of the official Screeps World HTTP API at https://screeps.com, not published by Screeps. Evidence: static analysis of the official web client assets (pinned by bust and SHA-256 in coverage.json), the community client node-screeps-api and the official private-server source screeps/backend-local, all pinned in sources.json/coverage.json and cited per operation in x-sources. `x-availability['screeps-com']` is `supported` when official evidence shows the operation is used against screeps.com, `unverified` otherwise; `x-unverified` states known evidence gaps. A supported marker does not mean every operation was exercised live. The official web client treats a response as successful only when the JSON body has a truthy `ok`; logical failures arrive as `{error}` usually with HTTP 200, so never infer success from the status code. Signed-in requests send `X-Token` (and the legacy `X-Username` with the same value); a returned `X-Token` response header replaces the stored token. Authenticated responses report the per-endpoint request limit in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (Unix seconds); HTTP 429 without these headers is the global limit. The client may also send `X-Ignore-Server-Down: 1`. Standalone/private servers are described by the separate standalone compatibility profile (profiles/standalone.json), not by this document. WebSocket/SockJS channels and the in-game JavaScript API are outside this document. Endpoints can have destructive effects; examples are not authorization to invoke them.",
     "contact": {
       "name": "OpenScreeps",
       "url": "https://github.com/openscreeps/openapi/issues"
@@ -54,6 +54,41 @@
         "description": "Legacy header: the official web client sends the token value here as well as in X-Token."
       }
     },
+    "headers": {
+      "RateLimitLimit": {
+        "description": "Requests allowed in the current window of this endpoint.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L66-L70",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2106-L2116"
+        ]
+      },
+      "RateLimitRemaining": {
+        "description": "Requests left in the current window of this endpoint.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L66-L70",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2106-L2116"
+        ]
+      },
+      "RateLimitReset": {
+        "description": "When the current window of this endpoint resets, in seconds since the Unix epoch.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L66-L70",
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2106-L2116"
+        ]
+      }
+    },
     "responses": {
       "BadRequest": {
         "description": "Invalid HTTP input.",
@@ -76,14 +111,28 @@
         }
       },
       "RateLimited": {
-        "description": "Request limit exceeded.",
+        "description": "Request limit exceeded. An endpoint limit carries the `X-RateLimit-*` headers; wait until `X-RateLimit-Reset`. A 429 without them is the global limit, which the community client retries after a short random delay.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ApiError"
             }
           }
-        }
+        },
+        "headers": {
+          "X-RateLimit-Limit": {
+            "$ref": "#/components/headers/RateLimitLimit"
+          },
+          "X-RateLimit-Remaining": {
+            "$ref": "#/components/headers/RateLimitRemaining"
+          },
+          "X-RateLimit-Reset": {
+            "$ref": "#/components/headers/RateLimitReset"
+          }
+        },
+        "x-sources": [
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2063-L2090"
+        ]
       },
       "ServerError": {
         "description": "Server failed to process the request.",

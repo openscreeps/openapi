@@ -3175,8 +3175,8 @@ export interface components {
             ok: 1;
             list?: ({
                 email?: string;
-                /** @description Truthy when the early-access e-mail was already sent; value type not evidenced. */
-                sent?: unknown;
+                /** @description Whether the early-access e-mail was already sent; the page hides the selection checkbox of sent entries and can hide them. */
+                sent?: boolean;
             } & {
                 [key: string]: unknown;
             })[];
@@ -3277,8 +3277,8 @@ export interface components {
             power?: number;
             /** @description Credit balance (stored thousandths divided by 1000). */
             money: number;
-            /** @description Legacy field; node-screeps-api marks it deprecated and observes it always 0. The official web client compares it with the CPU-limit charge amount. */
-            credits?: unknown;
+            /** @description Legacy CPU credit balance (superseded by `money`); the official web client compares it with the CPU-limit charge amount. */
+            credits?: number;
             steam?: components["schemas"]["AuthSteamAccount"];
             /** @description GitHub SSO data. */
             github?: {
@@ -3296,8 +3296,8 @@ export interface components {
             resources?: {
                 [key: string]: number;
             };
-            /** @description Type not documented by node-screeps-api. */
-            restrictedAccessUntil?: unknown;
+            /** @description Real time in Unix milliseconds until which the account has restricted (access-key) world access; `null` when none. The official client passes it to a countdown as its numeric end time. */
+            restrictedAccessUntil?: number | null;
             /** @description Remaining power-creep experimentation periods. */
             powerExperimentations: number;
             /** @description Unix ms start of the last experimentation period (0 if never). */
@@ -3398,7 +3398,7 @@ export interface components {
              * @example renamePowerCreep
              */
             name: string;
-            /** @description Single payload object for the named intent (queued as one list element). Extra fields are allowed and discarded. */
+            /** @description Single payload object for the named intent (queued as one list element). Names with a `GameIntent*` schema are typed by the conditions below; for any other name the payload is arbitrary JSON, which the server discards. Extra fields are allowed and discarded. */
             intent?: {
                 [key: string]: unknown;
             } | null;
@@ -3420,7 +3420,7 @@ export interface components {
              * @example notifyWhenAttacked
              */
             name: string;
-            /** @description Intent payload. `null`/absent stores nothing. The official client sends a JSON object (e.g. `{id}` for `suicide`); the community client types this parameter as a JSON string, but its documented examples send objects and arrays. */
+            /** @description Intent payload. `null`/absent stores nothing. The official client sends a JSON object (e.g. `{id}` for `suicide`); the community client types this parameter as a JSON string, but its documented examples send objects and arrays. Names with a `GameIntent*` schema are typed by the conditions below; for any other name the payload is arbitrary JSON, which the server discards. */
             intent?: {
                 [key: string]: unknown;
             } | {
@@ -4191,8 +4191,8 @@ export interface components {
             stats: {
                 [key: string]: components["schemas"]["GameMapStatsRoom"];
             };
-            /** @description Largest ranked value keyed by `statName`; the official world map scales stat circles by it. */
-            statsMax: {
+            /** @description Largest ranked value keyed by `statName`; the official world map scales stat circles by it. Absent for `owner0` and `claim0` requests. */
+            statsMax?: {
                 [key: string]: number;
             };
             users: components["schemas"]["GamePublicUsers"];
@@ -4280,10 +4280,8 @@ export interface components {
         GameRoomDecoration: {
             _id?: string;
             user: components["schemas"]["UserId"];
-            /** @description Selected property values of the active decoration; `null` when inactive. */
-            active?: {
-                [key: string]: unknown;
-            } | null;
+            /** @description Values of the active decoration; `null` when inactive. */
+            active?: components["schemas"]["UserDecorationActivation"] | null;
             decoration: components["schemas"]["UserDecoration"];
             /** Format: date-time */
             createdAt?: string;
@@ -4301,17 +4299,1914 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description Raw room object document (`rooms.objects`). Only the base fields are stable across object types; every other field is type-specific and is passed through as stored. */
-        GameRoomObject: {
-            _id: string;
-            /** @description Object type tag, e.g. `creep`, `spawn`, `controller`, `source`, `constructionSite`, `ruin`, or a resource type for dropped resources. */
+        /** @description Room object document (`rooms.objects`), discriminated by `type`. Each described type has its own schema; required fields are present on every object of that type, other fields depend on how and when the object was created. Dropped resources use `GameRoomObjectResource`; any other `type` (seasonal or mod objects) validates as `GameRoomObjectOther`. Documents may carry further, undocumented legacy fields. */
+        GameRoomObject: components["schemas"]["GameRoomObjectCreep"] | components["schemas"]["GameRoomObjectPowerCreep"] | components["schemas"]["GameRoomObjectSpawn"] | components["schemas"]["GameRoomObjectExtension"] | components["schemas"]["GameRoomObjectController"] | components["schemas"]["GameRoomObjectSource"] | components["schemas"]["GameRoomObjectMineral"] | components["schemas"]["GameRoomObjectDeposit"] | components["schemas"]["GameRoomObjectConstructionSite"] | components["schemas"]["GameRoomObjectConstructedWall"] | components["schemas"]["GameRoomObjectRampart"] | components["schemas"]["GameRoomObjectRoad"] | components["schemas"]["GameRoomObjectLink"] | components["schemas"]["GameRoomObjectStorage"] | components["schemas"]["GameRoomObjectTower"] | components["schemas"]["GameRoomObjectObserver"] | components["schemas"]["GameRoomObjectPowerBank"] | components["schemas"]["GameRoomObjectPowerSpawn"] | components["schemas"]["GameRoomObjectExtractor"] | components["schemas"]["GameRoomObjectLab"] | components["schemas"]["GameRoomObjectTerminal"] | components["schemas"]["GameRoomObjectContainer"] | components["schemas"]["GameRoomObjectNuker"] | components["schemas"]["GameRoomObjectFactory"] | components["schemas"]["GameRoomObjectInvaderCore"] | components["schemas"]["GameRoomObjectKeeperLair"] | components["schemas"]["GameRoomObjectPortal"] | components["schemas"]["GameRoomObjectRuin"] | components["schemas"]["GameRoomObjectTombstone"] | components["schemas"]["GameRoomObjectNuke"] | components["schemas"]["GameRoomObjectResource"] | components["schemas"]["GameRoomObjectOther"];
+        /** @description Actions of the last tick keyed by action (`attack`, `attacked`, `attackController`, `build`, `harvest`, `heal`, `healed`, `power`, `produce`, `rangedAttack`, `rangedHeal`, `rangedMassAttack`, `repair`, `reserveController`, `reverseReaction`, `runReaction`, `say`, `spawned`, `transferEnergy`, `upgradeController`, …). An entry is `null` when the action did not happen; `spawned: true` marks a power creep spawned in the last tick. */
+        GameRoomObjectActionLog: {
+            [key: string]: components["schemas"]["GameRoomObjectActionLogEntry"] | true | null;
+        };
+        /** @description Details of one action of the last tick: usually the target position. */
+        GameRoomObjectActionLogEntry: {
+            /** @description Target x. */
+            x?: number;
+            /** @description Target y. */
+            y?: number;
+            /** @description Target id, or the power constant of a power creep `power` entry. */
+            id?: string | number;
+            /** @description Text of a `say` entry. */
+            message?: string;
+            /** @description Whether a `say` message is visible to other players. */
+            isPublic?: boolean;
+            /** @description Power constant of a power creep `power` entry. */
+            power?: number;
+            /** @description x of the first source lab (`runReaction`, `reverseReaction`). */
+            x1?: number;
+            /** @description y of the first source lab. */
+            y1?: number;
+            /** @description x of the second source lab. */
+            x2?: number;
+            /** @description y of the second source lab. */
+            y2?: number;
+            /** @description Product of a factory `produce` entry. */
+            resourceType?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One body part of a creep. */
+        GameRoomObjectBodyPart: {
+            /** @description Body part type (`move`, `work`, `carry`, `attack`, `ranged_attack`, `heal`, `claim` or `tough`). */
             type: string;
+            /** @description Hit points of the part (0 to 100). */
+            hits: number;
+            /** @description Compound boosting the part. */
+            boost?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A constructed wall. Player walls carry `hits`, `hitsMax` and `notifyWhenAttacked`; walls of protected (novice and respawn) areas and portal centers may carry none of them and disappear at `decayTime`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f09",
+         *       "type": "constructedWall",
+         *       "room": "W8N3",
+         *       "x": 29,
+         *       "y": 20,
+         *       "hits": 1000000,
+         *       "hitsMax": 300000000,
+         *       "notifyWhenAttacked": true
+         *     }
+         */
+        GameRoomObjectConstructedWall: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "constructedWall";
+            /** @description Room name. */
             room: string;
             x: number;
             y: number;
-            /** @description Owner user id; NPCs use `2` (Invader) and `3` (Source Keeper). */
+            /** @description Hit points. */
+            hits?: number;
+            /** @description Maximum hit points. */
+            hitsMax?: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+            /** @description User whose protected area the wall belongs to. */
+            user?: string;
+            /** @description Game time at which the object disappears (tombstones, ruins, deposits, power banks, walls of protected areas); a wall removed in real time holds an object instead. */
+            decayTime?: number | components["schemas"]["GameRoomObjectWallDecay"] | null;
+            /** @description Remaining lifetime of a wall, converted into `decayTime` and then cleared. */
+            ticksToLive?: number | null;
+            /** @description Wall of a protected area; its hits do not follow the controller level. */
+            newbieWall?: boolean;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A construction site. Completing it removes the site and inserts a new structure.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f08",
+         *       "type": "constructionSite",
+         *       "room": "W8N3",
+         *       "x": 28,
+         *       "y": 20,
+         *       "structureType": "road",
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "progress": 150,
+         *       "progressTotal": 300
+         *     }
+         */
+        GameRoomObjectConstructionSite: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "constructionSite";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Structure type of a construction site. */
+            structureType: string;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Controller upgrade or construction progress. */
+            progress: number;
+            /** @description Progress needed for the next controller level or to finish construction. */
+            progressTotal: number;
+            /** @description Name of the spawn to build. */
+            name?: string | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A container. Stronghold containers hold rewards despite `storeCapacity: 0`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f15",
+         *       "type": "container",
+         *       "room": "W8N3",
+         *       "x": 21,
+         *       "y": 22,
+         *       "hits": 250000,
+         *       "hitsMax": 250000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 1200
+         *       },
+         *       "storeCapacity": 2000,
+         *       "nextDecayTime": 71234800
+         *     }
+         */
+        GameRoomObjectContainer: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "container";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity: number | null;
+            /** @description Game time of the next decay damage (roads, containers, ramparts). */
+            nextDecayTime: number;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description Stronghold the object belongs to. */
+            strongholdId?: string;
+            /** @description Game time at which the stronghold container collapses. */
+            decayTime?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A room controller. The world generator creates it with `level: 0` only; ownership, progress, timers and safe mode fields are added when it is claimed, reserved or signed, and stay (possibly `null`) afterwards.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f04",
+         *       "type": "controller",
+         *       "room": "W8N3",
+         *       "x": 24,
+         *       "y": 20,
+         *       "level": 8,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "progress": 0,
+         *       "progressTotal": 0,
+         *       "downgradeTime": 71434567,
+         *       "safeMode": null,
+         *       "safeModeAvailable": 3,
+         *       "safeModeCooldown": null,
+         *       "upgradeBlocked": null,
+         *       "reservation": null,
+         *       "sign": {
+         *         "user": "5a1b2c3d4e5f60718293a4b5",
+         *         "text": "Hello",
+         *         "time": 71230000,
+         *         "datetime": 1791936000000
+         *       },
+         *       "isPowerEnabled": true,
+         *       "hits": 0,
+         *       "hitsMax": 0,
+         *       "effects": []
+         *     }
+         */
+        GameRoomObjectController: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "controller";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Controller, power creep, factory or invader core level. */
+            level: number;
+            /** @description Owner user id; `null` when unowned. */
             user?: string | null;
+            /** @description Controller upgrade or construction progress. */
+            progress?: number;
+            /** @description Progress needed for the next controller level or to finish construction. */
+            progressTotal?: number;
+            /** @description Game time at which the controller downgrades. */
+            downgradeTime?: number | null;
+            /** @description Game time at which safe mode ends. */
+            safeMode?: number | null;
+            /** @description Available safe mode activations. */
+            safeModeAvailable?: number;
+            /** @description Game time until which safe mode cannot be activated. */
+            safeModeCooldown?: number | null;
+            /** @description Game time until which the controller cannot be upgraded. */
+            upgradeBlocked?: number | null;
+            reservation?: components["schemas"]["GameRoomObjectReservation"] | null;
+            sign?: components["schemas"]["GameRoomObjectSign"] | null;
+            /** @description Sign set by the game, shown instead of `sign`. */
+            hardSign?: components["schemas"]["GameRoomObjectHardSign"] | null;
+            /** @description Whether power is enabled in the room. */
+            isPowerEnabled?: boolean | null;
+            /** @description Time stamp in Unix milliseconds. */
+            promoPeriodUntil?: number;
+            /** @description Only this user may claim the controller. */
+            bindUser?: string;
+            /** @description Hit points. */
+            hits?: number;
+            /** @description Maximum hit points. */
+            hitsMax?: number;
+            /** @description Legacy downgrade counter of old controllers; superseded by `downgradeTime`. */
+            ticksToDowngrade?: number | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A creep. Spawned creeps start with `spawning: true`; NPC creeps (invaders `2`, source keepers `3`, stronghold defenders) are created without `spawning`, `ageTime` or `notifyWhenAttacked`, and `ageTime` is added on the first processed tick.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f00",
+         *       "type": "creep",
+         *       "room": "W8N3",
+         *       "x": 20,
+         *       "y": 20,
+         *       "name": "harvester1",
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "body": [
+         *         {
+         *           "type": "work",
+         *           "hits": 100,
+         *           "boost": null
+         *         },
+         *         {
+         *           "type": "carry",
+         *           "hits": 100
+         *         },
+         *         {
+         *           "type": "move",
+         *           "hits": 100
+         *         }
+         *       ],
+         *       "hits": 300,
+         *       "hitsMax": 300,
+         *       "fatigue": 0,
+         *       "store": {
+         *         "energy": 50
+         *       },
+         *       "storeCapacity": 50,
+         *       "spawning": false,
+         *       "ageTime": 71235000,
+         *       "notifyWhenAttacked": true,
+         *       "actionLog": {
+         *         "harvest": {
+         *           "x": 20,
+         *           "y": 30
+         *         },
+         *         "say": null
+         *       }
+         *     }
+         */
+        GameRoomObjectCreep: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "creep";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Creep name. */
+            name: string;
+            /** @description Body parts of a creep. */
+            body: components["schemas"]["GameRoomObjectBodyPart"][];
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Fatigue; `null` on mission creeps. */
+            fatigue: number | null;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity?: number | null;
+            /** @description `true` while the creep is being spawned. */
+            spawning?: boolean;
+            /** @description Game time at which the creep dies of old age. */
+            ageTime?: number;
+            /** @description Lifetime an NPC invader is created with; the engine derives `ageTime` from the body on the first tick instead. */
+            ticksToLive?: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+            actionLog?: components["schemas"]["GameRoomObjectActionLog"];
+            /** @description Pending move to another room or shard; `null` once applied. */
+            interRoom?: components["schemas"]["GameRoomObjectPosition"] | null;
+            memory_move?: components["schemas"]["GameRoomObjectMemoryMove"] | null;
+            /** @description Source or mineral a source keeper guards. */
+            memory_sourceId?: string;
+            /** @description Stronghold the object belongs to. */
+            strongholdId?: string;
+            /** @description User who summoned the invader creep. */
+            userSummoned?: string;
+            /** @description Object of a tutorial room. */
+            tutorial?: boolean;
+            /** @description Store capacity is not recomputed from CARRY parts. */
+            noCapacityRecalc?: boolean;
+            /** @description Lifetime in ticks of the tombstone the creep leaves. */
+            tombstoneDecay?: number;
+            /** @description Mission the creep belongs to (creeps created by the game for a mission). */
+            mission?: string;
+            /** @description The creep cannot travel through inter-shard portals. */
+            noInterShard?: boolean;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A highway deposit.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f07",
+         *       "type": "deposit",
+         *       "room": "W8N3",
+         *       "x": 27,
+         *       "y": 20,
+         *       "depositType": "silicon",
+         *       "harvested": 1200,
+         *       "decayTime": 71239000,
+         *       "cooldownTime": 71234570
+         *     }
+         */
+        GameRoomObjectDeposit: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "deposit";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Resource type of a deposit. */
+            depositType: string;
+            /** @description Total amount harvested from a deposit. */
+            harvested: number;
+            /** @description Game time at which the deposit disappears; extended by harvesting. */
+            decayTime: number;
+            /** @description Game time at which the cooldown ends (terminals, nukers, factories, labs, deposits). */
+            cooldownTime?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One active effect. */
+        GameRoomObjectEffect: {
+            /** @description Effect id: a power (`PWR_*`) or natural effect (`EFFECT_*`) constant. Absent on the shield effect of ramparts created by a power. */
+            effect?: number;
+            /** @description Power constant of an effect applied by a power creep. */
+            power?: number;
+            /** @description Power level the effect was applied with. */
+            level?: number;
+            /** @description Game time at which the effect ends. */
+            endTime: number;
+            /** @description Total duration in ticks. */
+            duration?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Active effects. Usually an array, but after a power creep applies a power upstream persists the collection as an object keyed by array index (`{"0": {…}}`); read both forms as a collection. */
+        GameRoomObjectEffects: components["schemas"]["GameRoomObjectEffect"][] | {
+            [key: string]: components["schemas"]["GameRoomObjectEffect"];
+        };
+        /**
+         * @description An extension.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f03",
+         *       "type": "extension",
+         *       "room": "W8N3",
+         *       "x": 23,
+         *       "y": 20,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 1000,
+         *       "hitsMax": 1000,
+         *       "notifyWhenAttacked": true,
+         *       "off": false,
+         *       "store": {
+         *         "energy": 200
+         *       },
+         *       "storeCapacityResource": {
+         *         "energy": 200
+         *       }
+         *     }
+         */
+        GameRoomObjectExtension: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "extension";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Disabled spawn or extension: the room has more of them than its controller level allows. */
+            off?: boolean;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description An extractor. Player extractors carry the owner, hits and `notifyWhenAttacked`; unowned extractors of center and source keeper rooms carry none of them.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f12",
+         *       "type": "extractor",
+         *       "room": "W8N3",
+         *       "x": 28,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 500,
+         *       "hitsMax": 500,
+         *       "notifyWhenAttacked": true,
+         *       "cooldown": 0
+         *     }
+         */
+        GameRoomObjectExtractor: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "extractor";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user?: string;
+            /** @description Hit points. */
+            hits?: number;
+            /** @description Maximum hit points. */
+            hitsMax?: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+            /** @description Ticks until the structure can act again (links, labs, extractors, factories). */
+            cooldown?: number;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A factory. `level` is set by the first `PWR_OPERATE_FACTORY`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f17",
+         *       "type": "factory",
+         *       "room": "W8N3",
+         *       "x": 23,
+         *       "y": 22,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 1000,
+         *       "hitsMax": 1000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 10000,
+         *         "battery": 500
+         *       },
+         *       "storeCapacity": 50000,
+         *       "cooldown": 0,
+         *       "cooldownTime": 71234500,
+         *       "actionLog": {
+         *         "produce": null
+         *       }
+         *     }
+         */
+        GameRoomObjectFactory: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "factory";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity: number | null;
+            /** @description Ticks until the structure can act again (links, labs, extractors, factories). */
+            cooldown: number;
+            /** @description Controller, power creep, factory or invader core level. */
+            level?: number;
+            /** @description Game time at which the cooldown ends (terminals, nukers, factories, labs, deposits). */
+            cooldownTime?: number;
+            actionLog?: components["schemas"]["GameRoomObjectActionLog"];
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Controller sign set by the game, shown instead of the player sign until `endDatetime`. */
+        GameRoomObjectHardSign: {
+            /** @description Sign text. */
+            text: string;
+            /** @description Game time of signing. */
+            time: number;
+            /** @description Real time of signing in Unix milliseconds. */
+            datetime: number;
+            /** @description Real time in Unix milliseconds until which the sign is shown. */
+            endDatetime?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description An invader core: a stronghold core (level 1 to 5) or a level 0 core that reserves rooms around it.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f18",
+         *       "type": "invaderCore",
+         *       "room": "W8N3",
+         *       "x": 24,
+         *       "y": 22,
+         *       "user": "2",
+         *       "level": 2,
+         *       "hits": 1000000,
+         *       "hitsMax": 1000000,
+         *       "strongholdId": "W5N5_71200000",
+         *       "templateName": "bunker2",
+         *       "strongholdBehavior": "default",
+         *       "depositType": "mist",
+         *       "deployTime": null,
+         *       "nextExpandTime": 71250000,
+         *       "decayTime": 71300000,
+         *       "effects": [
+         *         {
+         *           "effect": 1001,
+         *           "power": 1001,
+         *           "endTime": 71300000,
+         *           "duration": 75000
+         *         }
+         *       ],
+         *       "population": {
+         *         "0": {
+         *           "body": "fighter2",
+         *           "behavior": "default"
+         *         }
+         *       },
+         *       "spawning": null,
+         *       "actionLog": {
+         *         "transferEnergy": null,
+         *         "reserveController": null,
+         *         "attackController": null,
+         *         "upgradeController": null
+         *       }
+         *     }
+         */
+        GameRoomObjectInvaderCore: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "invaderCore";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Controller, power creep, factory or invader core level. */
+            level: number;
+            /** @description Stronghold the object belongs to. */
+            strongholdId: string;
+            /** @description Active effects; `null` when cleared. */
+            effects: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description Stronghold template of an invader core. */
+            templateName?: string;
+            /** @description Behavior of a stronghold structure. */
+            strongholdBehavior?: string;
+            /** @description Deposit type of the stronghold rewards. */
+            depositType?: string;
+            /** @description Deposit types of the stronghold. */
+            depositTypes?: string[];
+            /** @description Game time at which the stronghold deploys. */
+            deployTime?: number | null;
+            /** @description Game time of the next expansion of an invader core. */
+            nextExpandTime?: number;
+            /** @description Game time at which the stronghold collapses. */
+            decayTime?: number;
+            population?: components["schemas"]["GameRoomObjectStrongholdPopulation"] | null;
+            /** @description The defender being spawned, or `null`. */
+            spawning?: components["schemas"]["GameRoomObjectSpawning"] | null;
+            actionLog?: components["schemas"]["GameRoomObjectActionLog"];
+            store?: components["schemas"]["GameRoomObjectStore"];
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A source keeper lair.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f19",
+         *       "type": "keeperLair",
+         *       "room": "W8N3",
+         *       "x": 25,
+         *       "y": 22,
+         *       "nextSpawnTime": 71234800
+         *     }
+         */
+        GameRoomObjectKeeperLair: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "keeperLair";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Game time of the next spawn (keeper lairs). */
+            nextSpawnTime?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A lab. `storeCapacity` becomes `null` and `storeCapacityResource` gains the mineral while it holds a mineral.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f13",
+         *       "type": "lab",
+         *       "room": "W8N3",
+         *       "x": 29,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 500,
+         *       "hitsMax": 500,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 2000,
+         *         "XGH2O": 3000
+         *       },
+         *       "storeCapacity": null,
+         *       "storeCapacityResource": {
+         *         "energy": 2000,
+         *         "XGH2O": 3000
+         *       },
+         *       "cooldown": 0,
+         *       "cooldownTime": 71234560,
+         *       "actionLog": {
+         *         "runReaction": null,
+         *         "reverseReaction": null
+         *       }
+         *     }
+         */
+        GameRoomObjectLab: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "lab";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Ticks until the structure can act again (links, labs, extractors, factories). */
+            cooldown: number;
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity?: number | null;
+            /** @description Legacy mineral amount written when the lab is built. */
+            mineralAmount?: number;
+            /** @description Game time at which the cooldown ends (terminals, nukers, factories, labs, deposits). */
+            cooldownTime?: number;
+            actionLog?: components["schemas"]["GameRoomObjectActionLog"];
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A link.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f0c",
+         *       "type": "link",
+         *       "room": "W8N3",
+         *       "x": 22,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 1000,
+         *       "hitsMax": 1000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 800
+         *       },
+         *       "storeCapacityResource": {
+         *         "energy": 800
+         *       },
+         *       "cooldown": 0,
+         *       "actionLog": {
+         *         "transferEnergy": null
+         *       }
+         *     }
+         */
+        GameRoomObjectLink: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "link";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Ticks until the structure can act again (links, labs, extractors, factories). */
+            cooldown: number;
+            actionLog?: components["schemas"]["GameRoomObjectActionLog"];
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Cached movement of a non-player creep (invaders, source keepers). */
+        GameRoomObjectMemoryMove: {
+            /** @description Destination key. */
+            dest?: string | null;
+            /** @description Serialized path. */
+            path?: string | null;
+            /** @description Game time the path was found. */
+            time?: number | null;
+            /** @description Game time of the last move. */
+            lastMove?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A mineral deposit.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f06",
+         *       "type": "mineral",
+         *       "room": "W8N3",
+         *       "x": 26,
+         *       "y": 20,
+         *       "mineralType": "H",
+         *       "mineralAmount": 70000,
+         *       "density": 3,
+         *       "nextRegenerationTime": null
+         *     }
+         */
+        GameRoomObjectMineral: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "mineral";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Mineral resource type. */
+            mineralType: string;
+            /** @description Mineral amount; fractional after a regeneration with a fractional density factor. */
+            mineralAmount: number;
+            /** @description Mineral density. */
+            density: number;
+            /** @description Game time at which the source or mineral regenerates. */
+            nextRegenerationTime?: number | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A launched nuke on its way to its landing position.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f1d",
+         *       "type": "nuke",
+         *       "room": "W8N3",
+         *       "x": 29,
+         *       "y": 22,
+         *       "landTime": 71284567,
+         *       "launchRoomName": "W9N3"
+         *     }
+         */
+        GameRoomObjectNuke: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "nuke";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Game time at which the nuke lands. */
+            landTime: number;
+            /** @description Room a nuke was launched from. */
+            launchRoomName: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A nuker.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f16",
+         *       "type": "nuker",
+         *       "room": "W8N3",
+         *       "x": 22,
+         *       "y": 22,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 1000,
+         *       "hitsMax": 1000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 300000,
+         *         "G": 5000
+         *       },
+         *       "storeCapacityResource": {
+         *         "energy": 300000,
+         *         "G": 5000
+         *       },
+         *       "cooldownTime": 71200000
+         *     }
+         */
+        GameRoomObjectNuker: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "nuker";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Game time at which the cooldown ends (terminals, nukers, factories, labs, deposits). */
+            cooldownTime: number;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description An observer.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f0f",
+         *       "type": "observer",
+         *       "room": "W8N3",
+         *       "x": 25,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 500,
+         *       "hitsMax": 500,
+         *       "notifyWhenAttacked": true,
+         *       "observeRoom": null
+         *     }
+         */
+        GameRoomObjectObserver: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "observer";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            /** @description Room observed in the last tick. */
+            observeRoom?: string | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A room object of a type this contract does not describe (for example seasonal objects or objects of server mods listed in `serverData.customObjectTypes`). Only the base fields are known.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632fca",
+         *       "type": "scoreCollector",
+         *       "room": "W8N3",
+         *       "x": 25,
+         *       "y": 25
+         *     }
+         */
+        GameRoomObjectOther: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type, none of the described types. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "GameRoomObjectOther";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A portal. The official portal generator is not published; fields follow the engine portal processor and live documents.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f1a",
+         *       "type": "portal",
+         *       "room": "W8N3",
+         *       "x": 26,
+         *       "y": 22,
+         *       "destination": {
+         *         "shard": "shard2",
+         *         "room": "W5N5"
+         *       },
+         *       "unstableDate": null
+         *     }
+         */
+        GameRoomObjectPortal: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "portal";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            destination: components["schemas"]["GameRoomObjectPosition"];
+            /** @description Real time in Unix milliseconds after which the portal starts to decay. */
+            unstableDate?: number | null;
+            /** @description Game time at which an unstable portal disappears. */
+            decayTime?: number;
+            /** @description The portal is disabled and does not move creeps. */
+            disabled?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description A room position; `shard` is set for positions on another shard. The destination of an inter-shard portal holds only `shard` and `room`. */
+        GameRoomObjectPosition: {
+            /** @description Room name. */
+            room: string;
+            x?: number;
+            y?: number;
+            /** @description Shard name. */
+            shard?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A highway power bank; its power is in `store.power`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f10",
+         *       "type": "powerBank",
+         *       "room": "W8N3",
+         *       "x": 26,
+         *       "y": 21,
+         *       "hits": 2000000,
+         *       "hitsMax": 2000000,
+         *       "store": {
+         *         "power": 3500
+         *       },
+         *       "decayTime": 71239000
+         *     }
+         */
+        GameRoomObjectPowerBank: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "powerBank";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Game time at which the power bank disappears. */
+            decayTime: number;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A spawned power creep: the account power creep document copied into the room with its position, `hits`, `ageTime` and `actionLog`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f01",
+         *       "type": "powerCreep",
+         *       "room": "W8N3",
+         *       "x": 21,
+         *       "y": 20,
+         *       "name": "operator1",
+         *       "className": "operator",
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "level": 3,
+         *       "hits": 4000,
+         *       "hitsMax": 4000,
+         *       "store": {
+         *         "ops": 20
+         *       },
+         *       "storeCapacity": 400,
+         *       "powers": {
+         *         "1": {
+         *           "level": 1,
+         *           "cooldownTime": 71234900
+         *         },
+         *         "2": {
+         *           "level": 2
+         *         }
+         *       },
+         *       "ageTime": 71238000,
+         *       "shard": "shard3",
+         *       "spawnCooldownTime": null,
+         *       "deleteTime": null,
+         *       "actionLog": {
+         *         "spawned": null,
+         *         "attack": null,
+         *         "attacked": null,
+         *         "healed": null,
+         *         "power": {
+         *           "id": 1,
+         *           "x": 25,
+         *           "y": 26
+         *         },
+         *         "say": null
+         *       },
+         *       "notifyWhenAttacked": true
+         *     }
+         */
+        GameRoomObjectPowerCreep: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "powerCreep";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Power creep name. */
+            name: string;
+            /** @description Power creep class. */
+            className: string;
+            /** @description Controller, power creep, factory or invader core level. */
+            level: number;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity: number | null;
+            /** @description Powers of a power creep keyed by power constant. */
+            powers: {
+                [key: string]: components["schemas"]["GameRoomObjectPowerInfo"];
+            };
+            /** @description Game time at which the creep dies of old age. */
+            ageTime: number;
+            /** @description Shard the power creep is spawned on. */
+            shard: string;
+            /** @description Real time in Unix milliseconds until which the power creep cannot be spawned. */
+            spawnCooldownTime: number | null;
+            /** @description Real time in Unix milliseconds at which the power creep is deleted. */
+            deleteTime: number | null;
+            actionLog: components["schemas"]["GameRoomObjectActionLog"];
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            /** @description Fatigue; `null` on mission creeps. */
+            fatigue?: number | null;
+            /** @description Pending move to another room or shard; `null` once applied. */
+            interRoom?: components["schemas"]["GameRoomObjectPosition"] | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One power of a power creep. */
+        GameRoomObjectPowerInfo: {
+            /** @description Power level. */
+            level: number;
+            /** @description Game time at which the power is ready again. */
+            cooldownTime?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A power spawn.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f11",
+         *       "type": "powerSpawn",
+         *       "room": "W8N3",
+         *       "x": 27,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 5000,
+         *       "hitsMax": 5000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 5000,
+         *         "power": 100
+         *       },
+         *       "storeCapacityResource": {
+         *         "energy": 5000,
+         *         "power": 100
+         *       }
+         *     }
+         */
+        GameRoomObjectPowerSpawn: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "powerSpawn";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A rampart. Stronghold ramparts and ramparts created by a power carry no `notifyWhenAttacked`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f0a",
+         *       "type": "rampart",
+         *       "room": "W8N3",
+         *       "x": 20,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 3000000,
+         *       "hitsMax": 300000000,
+         *       "nextDecayTime": 71234600,
+         *       "notifyWhenAttacked": true,
+         *       "isPublic": false
+         *     }
+         */
+        GameRoomObjectRampart: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "rampart";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Game time of the next decay damage (roads, containers, ramparts). */
+            nextDecayTime: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+            /** @description Whether a rampart is public. */
+            isPublic?: boolean;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description Stronghold the object belongs to. */
+            strongholdId?: string;
+            /** @description Game time at which the stronghold rampart collapses. */
+            decayTime?: number;
+            /** @description Hits a stronghold repairs the structure to. */
+            hitsTarget?: number;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Controller reservation. */
+        GameRoomObjectReservation: {
+            /** @description Reserving user id. */
+            user: string;
+            /** @description Game time at which the reservation ends. */
+            endTime: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A dropped resource. The amount is stored under the resource type key and `resourceType` names that key. The engine writes every dropped resource with `type: "energy"`; `type` is still declared as any resource type. A pile created without `resourceType` holds energy under `energy`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632fc8",
+         *       "type": "energy",
+         *       "room": "W8N3",
+         *       "x": 22,
+         *       "y": 31,
+         *       "resourceType": "energy",
+         *       "energy": 20
+         *     }
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632fc9",
+         *       "type": "energy",
+         *       "room": "W8N3",
+         *       "x": 23,
+         *       "y": 31,
+         *       "resourceType": "H",
+         *       "H": 140
+         *     }
+         */
+        GameRoomObjectResource: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "energy" | "power" | "H" | "O" | "U" | "K" | "L" | "Z" | "X" | "G" | "OH" | "ZK" | "UL" | "UH" | "UO" | "KH" | "KO" | "LH" | "LO" | "ZH" | "ZO" | "GH" | "GO" | "UH2O" | "UHO2" | "KH2O" | "KHO2" | "LH2O" | "LHO2" | "ZH2O" | "ZHO2" | "GH2O" | "GHO2" | "XUH2O" | "XUHO2" | "XKH2O" | "XKHO2" | "XLH2O" | "XLHO2" | "XZH2O" | "XZHO2" | "XGH2O" | "XGHO2" | "ops" | "silicon" | "metal" | "biomass" | "mist" | "utrium_bar" | "lemergium_bar" | "zynthium_bar" | "keanium_bar" | "ghodium_melt" | "oxidant" | "reductant" | "purifier" | "battery" | "composite" | "crystal" | "liquid" | "wire" | "switch" | "transistor" | "microchip" | "circuit" | "device" | "cell" | "phlegm" | "tissue" | "muscle" | "organoid" | "organism" | "alloy" | "tube" | "fixtures" | "frame" | "hydraulics" | "machine" | "condensate" | "concentrate" | "extract" | "spirit" | "emanation" | "essence";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            resourceType?: components["schemas"]["ResourceType"];
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+        } & {
+            [key: string]: number;
+        };
+        /**
+         * @description A road.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f0b",
+         *       "type": "road",
+         *       "room": "W8N3",
+         *       "x": 21,
+         *       "y": 21,
+         *       "hits": 5000,
+         *       "hitsMax": 5000,
+         *       "nextDecayTime": 71235000,
+         *       "notifyWhenAttacked": true
+         *     }
+         */
+        GameRoomObjectRoad: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "road";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Game time of the next decay damage (roads, containers, ramparts). */
+            nextDecayTime: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description Stronghold the object belongs to. */
+            strongholdId?: string;
+            /** @description Game time at which the stronghold road collapses. */
+            decayTime?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A ruin of a destroyed structure.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f1b",
+         *       "type": "ruin",
+         *       "room": "W8N3",
+         *       "x": 27,
+         *       "y": 22,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "structure": {
+         *         "id": "5bbcab1d9099fc012e632f63",
+         *         "type": "extension",
+         *         "hits": 0,
+         *         "hitsMax": 1000,
+         *         "user": "5a1b2c3d4e5f60718293a4b5"
+         *       },
+         *       "destroyTime": 71234000,
+         *       "decayTime": 71234500,
+         *       "store": {
+         *         "energy": 50
+         *       }
+         *     }
+         */
+        GameRoomObjectRuin: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "ruin";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            structure: components["schemas"]["GameRoomObjectRuinStructure"];
+            /** @description Game time at which the structure was destroyed. */
+            destroyTime: number;
+            /** @description Game time at which the ruin disappears. */
+            decayTime: number;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Owner of the destroyed structure. */
+            user?: string;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description The destroyed structure a ruin remembers. */
+        GameRoomObjectRuinStructure: {
+            /** @description Id of the destroyed structure. */
+            id: string;
+            /** @description Structure type. */
+            type: string;
+            /** @description Hit points at destruction. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax?: number;
+            /** @description Owner user id. */
+            user?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Controller sign. */
+        GameRoomObjectSign: {
+            /** @description Signing user id. */
+            user: string;
+            /** @description Sign text. */
+            text: string;
+            /** @description Game time of signing. */
+            time: number;
+            /** @description Real time of signing in Unix milliseconds. */
+            datetime: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description An energy source.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f05",
+         *       "type": "source",
+         *       "room": "W8N3",
+         *       "x": 25,
+         *       "y": 20,
+         *       "energy": 3000,
+         *       "energyCapacity": 3000,
+         *       "ticksToRegeneration": 300,
+         *       "nextRegenerationTime": null,
+         *       "invaderHarvested": 0
+         *     }
+         */
+        GameRoomObjectSource: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "source";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Energy left. */
+            energy: number;
+            /** @description Energy capacity of a source. */
+            energyCapacity: number;
+            /** @description Legacy regeneration counter written when the world is generated; the engine schedules regeneration with `nextRegenerationTime` instead. */
+            ticksToRegeneration: number;
+            /** @description Game time at which the source or mineral regenerates. */
+            nextRegenerationTime?: number | null;
+            /** @description Energy harvested from the source, counted towards the next invasion. */
+            invaderHarvested?: number;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A spawn. `name` is absent when the spawn was placed without one.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f02",
+         *       "type": "spawn",
+         *       "room": "W8N3",
+         *       "x": 22,
+         *       "y": 20,
+         *       "name": "Spawn1",
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 5000,
+         *       "hitsMax": 5000,
+         *       "notifyWhenAttacked": true,
+         *       "off": false,
+         *       "store": {
+         *         "energy": 300
+         *       },
+         *       "storeCapacityResource": {
+         *         "energy": 300
+         *       },
+         *       "spawning": {
+         *         "name": "harvester2",
+         *         "needTime": 9,
+         *         "spawnTime": 71234570,
+         *         "directions": [
+         *           2,
+         *           3
+         *         ]
+         *       }
+         *     }
+         */
+        GameRoomObjectSpawn: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "spawn";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Spawn name. */
             name?: string;
+            /** @description Disabled spawn or extension: the room has more of them than its controller level allows. */
+            off?: boolean;
+            /** @description The creep being spawned, or `null`. */
+            spawning?: components["schemas"]["GameRoomObjectSpawning"] | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description The creep a spawn is spawning. */
+        GameRoomObjectSpawning: {
+            /** @description Name of the creep being spawned. */
+            name: string;
+            /** @description Total spawn time in ticks. */
+            needTime?: number;
+            /** @description Game time at which spawning completes. */
+            spawnTime: number;
+            /** @description Directions the new creep may leave the spawn in. */
+            directions?: number[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A storage.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f0d",
+         *       "type": "storage",
+         *       "room": "W8N3",
+         *       "x": 23,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 10000,
+         *       "hitsMax": 10000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 500000,
+         *         "H": 12000
+         *       },
+         *       "storeCapacity": 1000000
+         *     }
+         */
+        GameRoomObjectStorage: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "storage";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked: boolean;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity: number | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Stored resources: amount keyed by resource type. An amount may be `null` after its resource was removed; unowned NPC market terminals can hold negative amounts. */
+        GameRoomObjectStore: {
+            [key: string]: number | null;
+        };
+        /** @description Per-resource store capacity keyed by resource type (labs, nukers, power spawns and similar); `null` releases a resource slot (lab minerals). */
+        GameRoomObjectStoreCapacityResource: {
+            [key: string]: number | null;
+        };
+        /** @description Defenders of a stronghold core. Written as an array, but upstream usually persists it as an object keyed by array index (`{"0": {…}}`). */
+        GameRoomObjectStrongholdPopulation: components["schemas"]["GameRoomObjectStrongholdPopulationEntry"][] | {
+            [key: string]: components["schemas"]["GameRoomObjectStrongholdPopulationEntry"];
+        };
+        /** @description One defender a stronghold core spawns. */
+        GameRoomObjectStrongholdPopulationEntry: {
+            /** @description Body template name. */
+            body: string;
+            /** @description Behavior name. */
+            behavior: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A terminal. Unowned terminals (NPC market terminals) carry no owner, hits or `notifyWhenAttacked`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f14",
+         *       "type": "terminal",
+         *       "room": "W8N3",
+         *       "x": 20,
+         *       "y": 22,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 3000,
+         *       "hitsMax": 3000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 50000
+         *       },
+         *       "storeCapacity": 300000,
+         *       "cooldownTime": 71234500,
+         *       "send": null
+         *     }
+         */
+        GameRoomObjectTerminal: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "terminal";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user?: string;
+            /** @description Hit points. */
+            hits?: number;
+            /** @description Maximum hit points. */
+            hitsMax?: number;
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+            /** @description Total capacity shared by all resources; `null` when only per-resource capacities apply. */
+            storeCapacity?: number | null;
+            /** @description Game time at which the cooldown ends (terminals, nukers, factories, labs, deposits). */
+            cooldownTime?: number;
+            send?: components["schemas"]["GameRoomObjectTerminalSend"] | null;
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description A pending terminal `send` order, executed by the global market processing. */
+        GameRoomObjectTerminalSend: {
+            /** @description Receiving room. */
+            targetRoomName: string;
+            /** @description Resource type. */
+            resourceType: string;
+            /** @description Amount to send. */
+            amount: number;
+            /** @description Transaction description. */
+            description?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A tombstone of a dead creep (`creep*` fields) or power creep (`powerCreep*` fields).
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f1c",
+         *       "type": "tombstone",
+         *       "room": "W8N3",
+         *       "x": 28,
+         *       "y": 22,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "deathTime": 71234000,
+         *       "decayTime": 71234250,
+         *       "store": {
+         *         "energy": 25
+         *       },
+         *       "creepId": "5bbcab1d9099fc012e632f62",
+         *       "creepName": "harvester3",
+         *       "creepTicksToLive": 1,
+         *       "creepBody": [
+         *         "work",
+         *         "carry",
+         *         "move"
+         *       ],
+         *       "creepSaying": null
+         *     }
+         */
+        GameRoomObjectTombstone: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "tombstone";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Game time of death. */
+            deathTime: number;
+            /** @description Game time at which the tombstone disappears. */
+            decayTime: number;
+            store: components["schemas"]["GameRoomObjectStore"];
+            /** @description Id of the dead creep. */
+            creepId?: string;
+            /** @description Name of the dead creep. */
+            creepName?: string;
+            /** @description Remaining lifetime of the creep at death; negative for some creeps without a lifetime. */
+            creepTicksToLive?: number;
+            /** @description Body part types of the dead creep. */
+            creepBody?: string[];
+            /** @description Public message the creep said when it died. */
+            creepSaying?: string | null;
+            /** @description Id of the dead power creep. */
+            powerCreepId?: string;
+            /** @description Name of the dead power creep. */
+            powerCreepName?: string;
+            /** @description Remaining lifetime of the power creep at death. */
+            powerCreepTicksToLive?: number;
+            /** @description Class of the dead power creep. */
+            powerCreepClassName?: string;
+            /** @description Level of the dead power creep. */
+            powerCreepLevel?: number;
+            /** @description Powers of the dead power creep keyed by power constant. */
+            powerCreepPowers?: {
+                [key: string]: components["schemas"]["GameRoomObjectPowerInfo"];
+            };
+            /** @description Public message the power creep said when it died. */
+            powerCreepSaying?: string | null;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description A tower. Stronghold towers carry no `notifyWhenAttacked`.
+         * @example {
+         *       "_id": "5bbcab1d9099fc012e632f0e",
+         *       "type": "tower",
+         *       "room": "W8N3",
+         *       "x": 24,
+         *       "y": 21,
+         *       "user": "5a1b2c3d4e5f60718293a4b5",
+         *       "hits": 3000,
+         *       "hitsMax": 3000,
+         *       "notifyWhenAttacked": true,
+         *       "store": {
+         *         "energy": 1000
+         *       },
+         *       "storeCapacityResource": {
+         *         "energy": 1000
+         *       },
+         *       "actionLog": {
+         *         "attack": null,
+         *         "heal": null,
+         *         "repair": {
+         *           "x": 22,
+         *           "y": 25
+         *         }
+         *       }
+         *     }
+         */
+        GameRoomObjectTower: {
+            /** @description Object id. */
+            _id: string;
+            /**
+             * @description Object type. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "tower";
+            /** @description Room name. */
+            room: string;
+            x: number;
+            y: number;
+            /** @description Owner user id; `2` is Invader and `3` is Source Keeper. */
+            user: string;
+            /** @description Hit points. */
+            hits: number;
+            /** @description Maximum hit points. */
+            hitsMax: number;
+            store: components["schemas"]["GameRoomObjectStore"];
+            storeCapacityResource: components["schemas"]["GameRoomObjectStoreCapacityResource"];
+            /** @description Whether the owner is notified when the object is attacked. */
+            notifyWhenAttacked?: boolean;
+            actionLog?: components["schemas"]["GameRoomObjectActionLog"];
+            /** @description Active effects; `null` when cleared. */
+            effects?: components["schemas"]["GameRoomObjectEffects"] | null;
+            /** @description Stronghold the object belongs to. */
+            strongholdId?: string;
+            /** @description Game time at which the stronghold tower collapses. */
+            decayTime?: number;
+            /** @description The owner is inactive; the object does not keep its room processed. */
+            userNotActive?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Real-time removal of a constructed wall. */
+        GameRoomObjectWallDecay: {
+            /** @description Removal time in Unix milliseconds. */
+            timestamp: number;
         } & {
             [key: string]: unknown;
         };
@@ -4729,6 +6624,7 @@ export interface components {
             decorationConvertationCost?: number;
             decorationPixelizationCost?: number;
             serverData: {
+                /** @description Room object types added by server mods, keyed by type name; values are mod-defined descriptors (arbitrary JSON). */
                 customObjectTypes: {
                     [key: string]: unknown;
                 };
@@ -4736,9 +6632,11 @@ export interface components {
                 socketUpdateThrottle?: number;
                 welcomeText?: string;
                 renderer: {
+                    /** @description Extra renderer textures keyed by resource name: asset URLs, where `{ASSETS_URL}` is replaced with the server asset base URL. */
                     resources: {
-                        [key: string]: unknown;
+                        [key: string]: string;
                     };
+                    /** @description Renderer metadata of extra object types, keyed by object type and merged into the renderer's object metadata; renderer-defined arbitrary JSON. */
                     metadata: {
                         [key: string]: unknown;
                     };
@@ -4753,7 +6651,35 @@ export interface components {
                         start?: number;
                         after?: string;
                         module?: string;
+                        /** @description Menu entry to add. */
                         item: {
+                            /** @description Element id. */
+                            id?: string;
+                            /** @description CSS class. */
+                            class?: string;
+                            /** @description Label. */
+                            label?: string;
+                            /** @description Icon SVG markup or URL. */
+                            svg?: string;
+                            /** @description External link. */
+                            href?: string;
+                            /** @description Link target. */
+                            target?: string;
+                            /** @description In-app route. */
+                            routerLink?: string;
+                            /** @description URL to redirect to. */
+                            redirectUrl?: string;
+                            /** @description Conditions under which the entry is shown (e.g. `isNotNw`, `isNotPtr`). */
+                            conditions?: string[];
+                            /** @description HTML template of the entry. */
+                            template?: string;
+                            /** @description HTML template placed before the entry. */
+                            templateBefore?: string;
+                            /** @description Feature-specific configuration (arbitrary JSON). */
+                            config?: {
+                                [key: string]: unknown;
+                            };
+                        } & {
                             [key: string]: unknown;
                         };
                     } & {
@@ -4916,8 +6842,11 @@ export interface components {
             _id?: string;
             /** @description Replay access secret used as the `s` query parameter. */
             secret?: string;
-            /** @description Upload date; the client converts it with `new Date(...)`, representation not established. */
-            date?: unknown;
+            /**
+             * Format: date-time
+             * @description Upload date; the client converts it with `new Date(...)` and shows it with the `short` date filter.
+             */
+            date?: string;
         } & {
             [key: string]: unknown;
         };
@@ -4928,6 +6857,11 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * @description Resource type (`RESOURCES_ALL`).
+         * @enum {string}
+         */
+        ResourceType: "energy" | "power" | "H" | "O" | "U" | "K" | "L" | "Z" | "X" | "G" | "OH" | "ZK" | "UL" | "UH" | "UO" | "KH" | "KO" | "LH" | "LO" | "ZH" | "ZO" | "GH" | "GO" | "UH2O" | "UHO2" | "KH2O" | "KHO2" | "LH2O" | "LHO2" | "ZH2O" | "ZHO2" | "GH2O" | "GHO2" | "XUH2O" | "XUHO2" | "XKH2O" | "XKHO2" | "XLH2O" | "XLHO2" | "XZH2O" | "XZHO2" | "XGH2O" | "XGHO2" | "ops" | "silicon" | "metal" | "biomass" | "mist" | "utrium_bar" | "lemergium_bar" | "zynthium_bar" | "keanium_bar" | "ghodium_melt" | "oxidant" | "reductant" | "purifier" | "battery" | "composite" | "crystal" | "liquid" | "wire" | "switch" | "transistor" | "microchip" | "circuit" | "device" | "cell" | "phlegm" | "tissue" | "muscle" | "organoid" | "organism" | "alloy" | "tube" | "fixtures" | "frame" | "hydraulics" | "machine" | "condensate" | "concentrate" | "extract" | "spirit" | "emanation" | "essence";
         /** @example W8N2 */
         RoomName: string;
         ScoreboardListResponse: {
@@ -4972,8 +6906,8 @@ export interface components {
         SeasonsAccessGrantedResponse: {
             /** @constant */
             ok: 1;
-            /** @description Truthy when the caller has access to the current Seasonal World; value type not established. */
-            access?: unknown;
+            /** @description Whether the caller has access to the current Seasonal World. */
+            access?: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -5041,6 +6975,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Lifetime subscription offer: its price, plus the currency (Steam) or SKU (Xsolla). */
+        StoreCatalogLifetime: {
+            /** @description Price. */
+            price: number;
+            /** @description Currency code (Steam catalog). */
+            currency?: string;
+            /** @description Xsolla SKU (Xsolla catalog). */
+            sku?: string;
+        } & {
+            [key: string]: unknown;
+        };
         StoreCatalogResource: {
             /** @description Resource sold by these packages (for example `accessKey`). */
             resourceType: string;
@@ -5051,8 +6996,7 @@ export interface components {
         StoreCatalogResponse: {
             /** @constant */
             ok: 1;
-            /** @description Lifetime subscription offer data kept alongside the resources; shape not established. */
-            lifetime?: unknown;
+            lifetime?: components["schemas"]["StoreCatalogLifetime"];
             resources: components["schemas"]["StoreCatalogResource"][];
         } & {
             [key: string]: unknown;
@@ -5060,18 +7004,22 @@ export interface components {
         StoreSteamInventoryResponse: {
             /** @constant */
             ok: 1;
-            /** @description Steam inventory resources; shape not established. */
-            resources?: unknown;
-            /** @description Steam inventory decorations; shape not established. */
-            decorations?: unknown;
+            /** @description Steam inventory amounts keyed by account resource (e.g. `pixel`, `cpuUnlock`, `accessKey`, `token`). */
+            resources?: {
+                [key: string]: number;
+            };
+            /** @description Decorations in the Steam inventory. */
+            decorations?: {
+                [key: string]: unknown;
+            }[];
         } & {
             [key: string]: unknown;
         };
         StoreSteamPullResponse: {
             /** @constant */
             ok: 1;
-            /** @description Identifier returned by the transfer; meaning and type not established. */
-            id?: unknown;
+            /** @description Identifier of the transfer, returned to the caller. */
+            id?: string;
         } & {
             [key: string]: unknown;
         };
@@ -5175,8 +7123,8 @@ export interface components {
         SurvivalReplayResponse: {
             /** @constant */
             ok: 1;
-            /** @description Truthy once the replay is uploaded; value type not established. */
-            uploaded?: unknown;
+            /** @description Whether the replay has been uploaded; the client polls until it is true. */
+            uploaded?: boolean;
             /** @description Replay id. */
             _id?: string;
             /** @description Replay access secret used as the `s` query parameter. */
@@ -5192,12 +7140,25 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One API token of the account. */
+        UserAuthTokenListEntry: {
+            /** @description Token id, passed as `id` to `POST /api/user/delete-auth-token`. */
+            _id: string;
+            /** @description The token. */
+            token: string;
+            /** @description Whether the token grants full access; restricted tokens list their allowed endpoints and websockets. */
+            full: boolean;
+            /** @description Description given at creation; `null` when none. */
+            description?: string | null;
+            /** @description Real time in Unix milliseconds until which the token is exempt from rate limits. */
+            noRatelimitUntil?: number;
+        } & {
+            [key: string]: unknown;
+        };
         UserAuthTokenListResponse: {
             /** @constant */
             ok: 1;
-            tokens?: {
-                [key: string]: unknown;
-            }[];
+            tokens?: components["schemas"]["UserAuthTokenListEntry"][];
         } & {
             [key: string]: unknown;
         };
@@ -5208,8 +7169,8 @@ export interface components {
             color1: components["schemas"]["UserBadgeColor"];
             color2: components["schemas"]["UserBadgeColor"];
             color3: components["schemas"]["UserBadgeColor"];
-            /** @description Shape parameter; submissions are limited to -100..100. */
-            param: number;
+            /** @description Shape parameter; submissions are limited to -100..100. Absent on custom-path badges. */
+            param?: number;
             /** @description Mirror/rotate the shape according to its flip rule. */
             flip: boolean;
             /** @description Decoration id of a non-standard badge (node-screeps-api type). */
@@ -5233,7 +7194,8 @@ export interface components {
             rarity: number;
             rarityMultiplier?: number;
             group: string;
-            groupDescription: string | null;
+            /** @description Group description; absent from decorations sent with room socket events. */
+            groupDescription?: string | null;
             /** @description Theme id. */
             theme: string;
             /** @description Preview image URLs. */
@@ -5242,7 +7204,8 @@ export interface components {
                 "128x128"?: string;
                 "256x256"?: string;
             };
-            steam: number;
+            /** @description Absent from decorations that are not Steam items. */
+            steam?: number;
             steamItemDefId: number;
             __v: number;
             /** @constant */
@@ -5370,6 +7333,26 @@ export interface components {
         };
         /** @description Decoration definition (node-screeps-api shape). */
         UserDecoration: components["schemas"]["UserBadgeDecoration"] | components["schemas"]["UserObjectDecoration"];
+        /**
+         * @description Values of an active decoration: its configurable `props` keyed by property name (booleans, numbers, strings or `null`; list values are strings joined with `!SEP!`), plus `shard` and `room` for a decoration placed in a room.
+         * @example {
+         *       "lighting": true,
+         *       "position": "below",
+         *       "width": 256,
+         *       "height": 256,
+         *       "color": "#670106",
+         *       "alpha": 1,
+         *       "flip": null
+         *     }
+         */
+        UserDecorationActivation: {
+            /** @description Shard of the room the decoration is placed in. */
+            shard?: string;
+            /** @description Room the decoration is placed in. */
+            room?: string;
+        } & {
+            [key: string]: boolean | number | string | null;
+        };
         UserDecorationIdsRequest: {
             /** @description Ids of owned decoration instances. */
             decorations: string[];
@@ -5378,10 +7361,8 @@ export interface components {
         UserDecorationInstance: {
             _id: string;
             user: components["schemas"]["UserId"];
-            /** @description Selected property values while active; null or absent when inactive. */
-            active?: {
-                [key: string]: unknown;
-            } | null;
+            /** @description Values while active; `null` or absent when inactive. */
+            active?: components["schemas"]["UserDecorationActivation"] | null;
             decoration: components["schemas"]["UserDecoration"];
             /** Format: date-time */
             createdAt: string;
@@ -5396,14 +7377,17 @@ export interface components {
         UserDecorationProperty: {
             /** @enum {string} */
             type: "boolean" | "color" | "number" | "range" | "string";
-            label: boolean;
+            /** @description Human-readable property name shown in the decoration editor. */
+            label: string;
             readonly: boolean;
-            /** @description Default value matching `type` (boolean, `#rrggbb`-style color string, number or string). */
-            default?: boolean | number | string;
-            /** @description `range` properties only. */
-            min?: number;
-            /** @description `range` properties only. */
-            max?: number;
+            /** @description Default value matching `type` (boolean, `#rrggbb`-style color string, number or string); `null` when unset. `range` defaults may be numeric strings. */
+            default?: boolean | number | string | null;
+            /** @description `range` properties only: lower bound, a number or numeric string. */
+            min?: number | string;
+            /** @description `range` properties only: upper bound, a number or numeric string. */
+            max?: number | string;
+            /** @description `range` properties only: increment, a number or numeric string. */
+            step?: number | string;
         };
         UserDecorationTheme: {
             _id: string;
@@ -5419,10 +7403,8 @@ export interface components {
         UserDecorationsActivateRequest: {
             /** @description Owned decoration instance id. */
             _id: string;
-            /** @description Values for the decoration's configurable `props` (and placement data such as room/object, not documented by node-screeps-api). */
-            active: {
-                [key: string]: unknown;
-            };
+            /** @description Values for the decoration's configurable `props` and, for room decorations, `shard` and `room`. */
+            active: components["schemas"]["UserDecorationActivation"];
         };
         UserDecorationsInventoryResponse: {
             /**
@@ -5520,8 +7502,8 @@ export interface components {
             value?: components["schemas"]["JsonValue"];
             /** @description Shard whose Memory is edited; the official web client sends the current shard and node-screeps-api refuses to call screeps.com without one. */
             shard?: components["schemas"]["ShardName"];
-            /** @description Whole Memory sent by a legacy official web client code path; server handling unverified. */
-            memory?: unknown;
+            /** @description Whole Memory sent by a legacy official web client code path: arbitrary JSON (the bot's Memory). Server handling unverified. */
+            memory?: components["schemas"]["JsonValue"];
         };
         /** @description One copy of a private message. Each send creates an `out` copy owned by the sender and an `in` copy owned by the recipient. */
         UserMessage: {
@@ -5574,10 +7556,10 @@ export interface components {
         };
         /** @description Success. The array of internal publish/update results is merged into the body under keys `0`-`2`; not a stable contract, rely on `ok`. */
         UserMessagesMarkReadResponse: {
-            /** @description Internal publish result (node-screeps-api types a number). */
-            0?: unknown;
-            /** @description As `0`. */
-            1?: unknown;
+            /** @description Internal publish result (number of notified subscribers) merged into the body as `0` (node-screeps-api types a number). */
+            0?: number;
+            /** @description Internal publish result (number of notified subscribers) merged into the body as `1` (node-screeps-api types a number). */
+            1?: number;
             2?: components["schemas"]["UserDbWriteResult"];
             /**
              * @description Success marker; every JSON success body carries `ok: 1`.
@@ -5609,11 +7591,9 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            /** @description Users keyed by id. */
+            /** @description Users referenced by `orders`, keyed by id; the official client attaches them to the ledger entry as `seller` and `buyer`. */
             users?: {
-                [key: string]: {
-                    [key: string]: unknown;
-                };
+                [key: string]: components["schemas"]["GamePublicUser"];
             };
         } & {
             [key: string]: unknown;
@@ -5718,7 +7698,8 @@ export interface components {
             rarity: number;
             rarityMultiplier?: number;
             group: string;
-            groupDescription: string | null;
+            /** @description Group description; absent from decorations sent with room socket events. */
+            groupDescription?: string | null;
             /** @description Theme id. */
             theme: string;
             /** @description Preview image URLs. */
@@ -5727,7 +7708,8 @@ export interface components {
                 "128x128"?: string;
                 "256x256"?: string;
             };
-            steam: number;
+            /** @description Absent from decorations that are not Steam items. */
+            steam?: number;
             steamItemDefId: number;
             __v: number;
             /** @enum {string} */
@@ -5898,9 +7880,12 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
-        /** @description Request limit exceeded. */
+        /** @description Request limit exceeded. An endpoint limit carries the `X-RateLimit-*` headers; wait until `X-RateLimit-Reset`. A 429 without them is the global limit, which the community client retries after a short random delay. */
         RateLimited: {
             headers: {
+                "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                 [name: string]: unknown;
             };
             content: {
@@ -5942,7 +7927,14 @@ export interface components {
         Shard: components["schemas"]["ShardName"];
     };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Requests allowed in the current window of this endpoint. */
+        RateLimitLimit: number;
+        /** @description Requests left in the current window of this endpoint. */
+        RateLimitRemaining: number;
+        /** @description When the current window of this endpoint resets, in seconds since the Unix epoch. */
+        RateLimitReset: number;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
@@ -5967,6 +7959,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -5999,6 +7994,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6026,6 +8024,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6053,6 +8054,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6080,6 +8084,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6107,6 +8114,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6138,6 +8148,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6188,6 +8201,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6216,6 +8232,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6351,6 +8370,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6388,6 +8410,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6483,6 +8508,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6516,6 +8544,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6549,6 +8580,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6582,6 +8616,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6615,6 +8652,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6648,6 +8688,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6681,6 +8724,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6714,6 +8760,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6746,6 +8795,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6777,6 +8829,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6810,6 +8865,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6843,6 +8901,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6876,6 +8937,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6908,6 +8972,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6937,6 +9004,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -6970,6 +9040,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7001,6 +9074,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7034,6 +9110,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7066,6 +9145,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7099,6 +9181,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7132,6 +9217,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7165,6 +9253,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7198,6 +9289,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7227,6 +9321,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7259,6 +9356,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7292,6 +9392,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7325,6 +9428,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7357,6 +9463,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7388,6 +9497,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7421,6 +9533,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7455,6 +9570,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7487,6 +9605,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7521,6 +9642,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7554,6 +9678,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7645,6 +9772,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -7699,6 +9829,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8012,6 +10145,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8070,6 +10206,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8097,6 +10236,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8173,6 +10315,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8200,6 +10345,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8227,6 +10375,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8254,6 +10405,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8284,6 +10438,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8316,6 +10473,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8351,6 +10511,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8465,6 +10628,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8518,6 +10684,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8585,6 +10754,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8618,6 +10790,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8651,6 +10826,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8682,6 +10860,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8709,6 +10890,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8736,6 +10920,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8763,6 +10950,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8793,6 +10983,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8823,6 +11016,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8859,6 +11055,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8887,6 +11086,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8924,6 +11126,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -8952,6 +11157,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9002,6 +11210,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9034,6 +11245,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9102,6 +11316,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9134,6 +11351,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9166,6 +11386,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9198,6 +11421,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9231,6 +11457,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9260,6 +11489,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9297,6 +11529,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9329,6 +11564,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9360,6 +11598,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9391,6 +11632,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9422,6 +11666,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9449,6 +11696,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9481,6 +11731,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9508,6 +11761,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9545,6 +11801,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9577,6 +11836,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9615,6 +11877,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9647,6 +11912,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9706,6 +11974,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9745,6 +12016,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9773,6 +12047,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9810,6 +12087,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9843,6 +12123,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9875,6 +12158,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9909,6 +12195,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9941,6 +12230,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -9970,6 +12262,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10001,6 +12296,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10033,6 +12331,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10066,6 +12367,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10095,6 +12399,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10126,6 +12433,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10161,6 +12471,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10189,6 +12502,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10227,6 +12543,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10259,6 +12578,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10293,6 +12615,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10332,6 +12657,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10360,17 +12688,20 @@ export interface operations {
                     name?: string;
                     /** @description Birth date entered in the form. */
                     birthDate?: {
-                        /** @description Form-bound value, initialized to an empty string. */
-                        day?: unknown;
-                        /** @description Form-bound value, initialized to an empty string. */
-                        month?: unknown;
-                        /** @description Form-bound value, initialized to an empty string. */
-                        year?: unknown;
+                        /** @description Birth day as typed into a plain text input (initially an empty string). */
+                        day?: string;
+                        /** @description Birth month as typed into a plain text input (initially an empty string). */
+                        month?: string;
+                        /** @description Birth year as typed into a plain text input (initially an empty string). */
+                        year?: string;
                     } & {
                         [key: string]: unknown;
                     };
-                    /** @description Template-bound qualification answer, initially undefined; value type not evidenced. */
-                    qualify?: unknown;
+                    /**
+                     * @description Answer picked from the form drop-down: `student`, `geek` (tech geek), `pro` (tech professional) or `none` (none of the above). Absent until one is picked.
+                     * @enum {string}
+                     */
+                    qualify?: "student" | "geek" | "pro" | "none";
                 } & {
                     [key: string]: unknown;
                 };
@@ -10382,6 +12713,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10410,6 +12744,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10439,6 +12776,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10498,6 +12838,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10531,6 +12874,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10587,6 +12933,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10616,6 +12965,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10644,6 +12996,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10675,6 +13030,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10703,6 +13061,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10753,16 +13114,22 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": ({
                         /** @constant */
                         ok: 1;
-                        /** @description Official promotion amount; upstream field type not established by pinned source. */
-                        discount?: unknown;
-                        /** @description Official promotion end; upstream representation not established by pinned source. */
-                        dateUntil?: unknown;
+                        /** @description Discount in percent; while it is non-zero the official client marks the item shop with a sale badge. */
+                        discount?: number;
+                        /**
+                         * Format: date-time
+                         * @description End of the promotion.
+                         */
+                        dateUntil?: string;
                     } & {
                         [key: string]: unknown;
                     }) | components["schemas"]["ApiError"];
@@ -10789,6 +13156,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10820,6 +13190,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10847,6 +13220,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10878,6 +13254,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10905,6 +13284,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -10946,6 +13328,9 @@ export interface operations {
                 headers: {
                     /** @description Rotated session token when issued by the server; store it for subsequent authenticated requests. */
                     "X-Token"?: string;
+                    "X-RateLimit-Limit": components["headers"]["RateLimitLimit"];
+                    "X-RateLimit-Remaining": components["headers"]["RateLimitRemaining"];
+                    "X-RateLimit-Reset": components["headers"]["RateLimitReset"];
                     [name: string]: unknown;
                 };
                 content: {

@@ -47,6 +47,11 @@
             "url": "https://screeps.com/api/auth/me",
             "date": "2026-10-10",
             "notes": "Authenticated read-only response represents steam.ownership as an array of integer Steam application IDs. No account identifiers or credentials are recorded."
+          },
+          {
+            "url": "https://screeps.com/api/auth/me",
+            "date": "2026-10-15",
+            "notes": "Authenticated read-only response: `credits` is an integer and `restrictedAccessUntil` is `null`. Values were not recorded."
           }
         ],
         "x-sources": [
@@ -54,12 +59,13 @@
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L446-L454",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/http/auth.ts#L15-L74",
           "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L111-L135",
-          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2168-L2179"
+          "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L2168-L2179",
+          "https://screeps.com/a/app2/main.js?bust=1787842760865#L209924C1660"
         ],
         "x-compatibility": {
           "screeps-com": "`cpuShard`, `cpuShardUpdatedTime`, `resources`, `github`, `credits`, `lastChargeTime`, `emailDirty` and `steam.ownership` are read by the official web client; `twitter`, `lastTweetTime` and `restrictedAccessUntil` are typed by node-screeps-api only."
         },
-        "x-unverified": "`blocked` and `customBadge` are neither read by the official web client nor typed by node-screeps-api; their presence on screeps.com is unverified."
+        "x-unverified": "`blocked` and `customBadge` are neither read by the official web client nor typed by node-screeps-api; their presence on screeps.com is unverified. A non-null `restrictedAccessUntil` was not observed."
       }
     },
     "/api/auth/query-token": {
@@ -3383,7 +3389,9 @@
             "description": "Credit balance (stored thousandths divided by 1000)."
           },
           "credits": {
-            "description": "Legacy field; node-screeps-api marks it deprecated and observes it always 0. The official web client compares it with the CPU-limit charge amount."
+            "type": "integer",
+            "minimum": 0,
+            "description": "Legacy CPU credit balance (superseded by `money`); the official web client compares it with the CPU-limit charge amount."
           },
           "steam": {
             "$ref": "#/components/schemas/AuthSteamAccount"
@@ -3424,7 +3432,9 @@
             "description": "Account-bound resources (e.g. pixel, cpuUnlock, accessKey) and amounts."
           },
           "restrictedAccessUntil": {
-            "description": "Type not documented by node-screeps-api."
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Real time in Unix milliseconds until which the account has restricted (access-key) world access; `null` when none. The official client passes it to a countdown as its numeric end time."
           },
           "powerExperimentations": {
             "type": "integer",
@@ -3975,7 +3985,7 @@
           },
           "param": {
             "type": "number",
-            "description": "Shape parameter; submissions are limited to -100..100."
+            "description": "Shape parameter; submissions are limited to -100..100. Absent on custom-path badges."
           },
           "flip": {
             "type": "boolean",
@@ -3986,7 +3996,7 @@
             "description": "Decoration id of a non-standard badge (node-screeps-api type)."
           }
         },
-        "required": ["type", "color1", "color2", "color3", "param", "flip"]
+        "required": ["type", "color1", "color2", "color3", "flip"]
       },
       "UserBadgeColor": {
         "description": "Badge color. Submitted badges use `#rrggbb`; stored legacy badges may contain an integer index into the badge palette, which the official web client converts through its color table.",
@@ -4041,7 +4051,8 @@
             "type": "string"
           },
           "groupDescription": {
-            "type": ["string", "null"]
+            "type": ["string", "null"],
+            "description": "Group description; absent from decorations sent with room socket events."
           },
           "theme": {
             "type": "string",
@@ -4063,7 +4074,8 @@
             "description": "Preview image URLs."
           },
           "steam": {
-            "type": "number"
+            "type": "number",
+            "description": "Absent from decorations that are not Steam items."
           },
           "steamItemDefId": {
             "type": "number"
@@ -4084,10 +4096,8 @@
           "name",
           "rarity",
           "group",
-          "groupDescription",
           "theme",
           "preview",
-          "steam",
           "steamItemDefId",
           "__v",
           "type",
@@ -4450,11 +4460,10 @@
             "$ref": "#/components/schemas/UserId"
           },
           "active": {
-            "description": "Selected property values while active; null or absent when inactive.",
+            "description": "Values while active; `null` or absent when inactive.",
             "anyOf": [
               {
-                "type": "object",
-                "additionalProperties": true
+                "$ref": "#/components/schemas/UserDecorationActivation"
               },
               {
                 "type": "null"
@@ -4492,13 +4501,14 @@
             "enum": ["boolean", "color", "number", "range", "string"]
           },
           "label": {
-            "type": "boolean"
+            "type": "string",
+            "description": "Human-readable property name shown in the decoration editor."
           },
           "readonly": {
             "type": "boolean"
           },
           "default": {
-            "description": "Default value matching `type` (boolean, `#rrggbb`-style color string, number or string).",
+            "description": "Default value matching `type` (boolean, `#rrggbb`-style color string, number or string); `null` when unset. `range` defaults may be numeric strings.",
             "anyOf": [
               {
                 "type": "boolean"
@@ -4508,16 +4518,23 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "min": {
-            "type": "number",
-            "description": "`range` properties only."
+            "description": "`range` properties only: lower bound, a number or numeric string.",
+            "type": ["number", "string"]
           },
           "max": {
-            "type": "number",
-            "description": "`range` properties only."
+            "description": "`range` properties only: upper bound, a number or numeric string.",
+            "type": ["number", "string"]
+          },
+          "step": {
+            "description": "`range` properties only: increment, a number or numeric string.",
+            "type": ["number", "string"]
           }
         },
         "required": ["type", "label", "readonly"]
@@ -4557,9 +4574,8 @@
             "description": "Owned decoration instance id."
           },
           "active": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "Values for the decoration's configurable `props` (and placement data such as room/object, not documented by node-screeps-api)."
+            "$ref": "#/components/schemas/UserDecorationActivation",
+            "description": "Values for the decoration's configurable `props` and, for room decorations, `shard` and `room`."
           }
         },
         "required": ["_id", "active"]
@@ -4760,7 +4776,8 @@
             "description": "Shard whose Memory is edited; the official web client sends the current shard and node-screeps-api refuses to call screeps.com without one."
           },
           "memory": {
-            "description": "Whole Memory sent by a legacy official web client code path; server handling unverified."
+            "$ref": "#/components/schemas/JsonValue",
+            "description": "Whole Memory sent by a legacy official web client code path: arbitrary JSON (the bot's Memory). Server handling unverified."
           }
         }
       },
@@ -4882,10 +4899,14 @@
         "type": "object",
         "properties": {
           "0": {
-            "description": "Internal publish result (node-screeps-api types a number)."
+            "type": "integer",
+            "minimum": 0,
+            "description": "Internal publish result (number of notified subscribers) merged into the body as `0` (node-screeps-api types a number)."
           },
           "1": {
-            "description": "As `0`."
+            "type": "integer",
+            "minimum": 0,
+            "description": "Internal publish result (number of notified subscribers) merged into the body as `1` (node-screeps-api types a number)."
           },
           "2": {
             "$ref": "#/components/schemas/UserDbWriteResult"
@@ -5154,7 +5175,8 @@
             "type": "string"
           },
           "groupDescription": {
-            "type": ["string", "null"]
+            "type": ["string", "null"],
+            "description": "Group description; absent from decorations sent with room socket events."
           },
           "theme": {
             "type": "string",
@@ -5176,7 +5198,8 @@
             "description": "Preview image URLs."
           },
           "steam": {
-            "type": "number"
+            "type": "number",
+            "description": "Absent from decorations that are not Steam items."
           },
           "steamItemDefId": {
             "type": "number"
@@ -5224,10 +5247,8 @@
           "name",
           "rarity",
           "group",
-          "groupDescription",
           "theme",
           "preview",
-          "steam",
           "steamItemDefId",
           "__v",
           "type",
@@ -5520,6 +5541,34 @@
           }
         },
         "required": ["ok", "status"]
+      },
+      "UserDecorationActivation": {
+        "type": "object",
+        "description": "Values of an active decoration: its configurable `props` keyed by property name (booleans, numbers, strings or `null`; list values are strings joined with `!SEP!`), plus `shard` and `room` for a decoration placed in a room.",
+        "properties": {
+          "shard": {
+            "type": "string",
+            "description": "Shard of the room the decoration is placed in."
+          },
+          "room": {
+            "type": "string",
+            "description": "Room the decoration is placed in."
+          }
+        },
+        "additionalProperties": {
+          "type": ["boolean", "number", "string", "null"]
+        },
+        "examples": [
+          {
+            "lighting": true,
+            "position": "below",
+            "width": 256,
+            "height": 256,
+            "color": "#670106",
+            "alpha": 1,
+            "flip": null
+          }
+        ]
       }
     }
   }

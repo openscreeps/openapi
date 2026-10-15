@@ -214,7 +214,14 @@
           "screeps-com": "supported"
         },
         "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C46800"],
-        "x-unverified": "Authorization requirements (presumably staff-only) and entry fields beyond `email`/`sent` are not evidenced."
+        "x-unverified": "Authorization requirements (presumably staff-only) are not evidenced. `sent` is only tested for truthiness (boolean inferred); further entry fields are shown by the page template (`name`, `birthDate`, `qualify`, `description`, `user`, `survival`).",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/a/components/ea/ea.html?bust=1787842657232",
+            "date": "2026-10-15",
+            "notes": "The page template shows `email`, `birthDate`, `name`, `qualify`, `description`, `user` and `survival` of each entry and offers a checkbox only where `!item.sent`."
+          }
+        ]
       }
     },
     "/api/ea/send": {
@@ -698,7 +705,14 @@
           "https://screeps.com/a/build.min.js?bust=1787842760865#L1C264481",
           "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/guides/servers.md#L19-L21"
         ],
-        "x-unverified": "Fields of `tokens` entries are read only by the page template, which is not in the analyzed assets; the entry shape (id passed to `POST /api/user/delete-auth-token`, token prefix used for the no-rate-limit page) is unverified."
+        "x-unverified": "Only a full-access token was observed; the fields restricted tokens carry for their allowed endpoints, websockets and memory segments are not evidenced.",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/user/auth-token",
+            "date": "2026-10-15",
+            "notes": "Authenticated read-only response: each entry holds `_id` (string), `token` (string), `full` (boolean), `description` (`null`) and `noRatelimitUntil` (integer). Values were not recorded."
+          }
+        ]
       },
       "post": {
         "operationId": "userAuthTokenCreate",
@@ -1357,7 +1371,7 @@
           "screeps-com": "supported"
         },
         "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L200774C66"],
-        "x-unverified": "Which parameters are mandatory, which ledger entries `orders` contains, the fields of `users` values (rendered by the page template, not in the analyzed assets) and the caller of `getDetails` are not evidenced."
+        "x-unverified": "Which parameters are mandatory, which ledger entries `orders` contains and the caller of `getDetails` are not evidenced. `users` values are assumed to be the public user documents other endpoints return (`GamePublicUser`); the template rendering them is not in the analyzed assets."
       }
     },
     "/api/user/noratelimit": {
@@ -1533,19 +1547,24 @@
                     "description": "Birth date entered in the form.",
                     "properties": {
                       "day": {
-                        "description": "Form-bound value, initialized to an empty string."
+                        "type": "string",
+                        "description": "Birth day as typed into a plain text input (initially an empty string)."
                       },
                       "month": {
-                        "description": "Form-bound value, initialized to an empty string."
+                        "type": "string",
+                        "description": "Birth month as typed into a plain text input (initially an empty string)."
                       },
                       "year": {
-                        "description": "Form-bound value, initialized to an empty string."
+                        "type": "string",
+                        "description": "Birth year as typed into a plain text input (initially an empty string)."
                       }
                     },
                     "additionalProperties": true
                   },
                   "qualify": {
-                    "description": "Template-bound qualification answer, initially undefined; value type not evidenced."
+                    "type": "string",
+                    "enum": ["student", "geek", "pro", "none"],
+                    "description": "Answer picked from the form drop-down: `student`, `geek` (tech geek), `pro` (tech professional) or `none` (none of the above). Absent until one is picked."
                   }
                 },
                 "additionalProperties": true
@@ -1584,8 +1603,18 @@
         "x-availability": {
           "screeps-com": "supported"
         },
-        "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C280365"],
-        "x-unverified": "Whether sign-in is required, value types of `birthDate` parts and `qualify`, and error strings are not evidenced."
+        "x-sources": [
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C280365",
+          "https://screeps.com/a/build.min.js?bust=1787842760865#L1C280072"
+        ],
+        "x-unverified": "Whether sign-in is required and the error strings are not evidenced; the value types of `birthDate` parts and `qualify` come from the page template, which is served separately from the pinned bundle.",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/a/components/profile/early-preview-request/early-preview-request.html?bust=1787842657232",
+            "date": "2026-10-15",
+            "notes": "The page template binds `birthDate.day`, `.month` and `.year` to plain text inputs and `qualify` to a required drop-down with the options `student`, `geek`, `pro` and `none`."
+          }
+        ]
       }
     },
     "/api/user/unlink-github": {
@@ -1779,7 +1808,8 @@
                   "type": "string"
                 },
                 "sent": {
-                  "description": "Truthy when the early-access e-mail was already sent; value type not evidenced."
+                  "type": "boolean",
+                  "description": "Whether the early-access e-mail was already sent; the page hides the selection checkbox of sent entries and can hide them."
                 }
               },
               "additionalProperties": true
@@ -1862,8 +1892,7 @@
           "tokens": {
             "type": "array",
             "items": {
-              "type": "object",
-              "additionalProperties": true
+              "$ref": "#/components/schemas/UserAuthTokenListEntry"
             }
           }
         },
@@ -1940,14 +1969,42 @@
           },
           "users": {
             "type": "object",
-            "description": "Users keyed by id.",
+            "description": "Users referenced by `orders`, keyed by id; the official client attaches them to the ledger entry as `seller` and `buyer`.",
             "additionalProperties": {
-              "type": "object",
-              "additionalProperties": true
+              "$ref": "#/components/schemas/GamePublicUser"
             }
           }
         },
         "required": ["ok", "orders"],
+        "additionalProperties": true
+      },
+      "UserAuthTokenListEntry": {
+        "type": "object",
+        "description": "One API token of the account.",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "Token id, passed as `id` to `POST /api/user/delete-auth-token`."
+          },
+          "token": {
+            "type": "string",
+            "description": "The token."
+          },
+          "full": {
+            "type": "boolean",
+            "description": "Whether the token grants full access; restricted tokens list their allowed endpoints and websockets."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Description given at creation; `null` when none."
+          },
+          "noRatelimitUntil": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Real time in Unix milliseconds until which the token is exempt from rate limits."
+          }
+        },
+        "required": ["_id", "token", "full"],
         "additionalProperties": true
       }
     }

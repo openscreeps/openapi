@@ -1,0 +1,483 @@
+{
+  "messages": {
+    "time": {
+      "name": "time",
+      "title": "Server time",
+      "contentType": "text/plain",
+      "summary": "Server clock in milliseconds since the Unix epoch, sent first on every connection.",
+      "description": "Unframed protocol line `time <milliseconds>`. Sent uncompressed immediately after the connection opens, before any client command. The official client stores the difference to its own clock as a time correction.",
+      "payload": {
+        "type": "string",
+        "pattern": "^time [0-9]+$"
+      },
+      "examples": [
+        {
+          "name": "greeting",
+          "payload": "time 1792035138367"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L92",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338480"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "Received as the first message after opening the raw WebSocket, before authentication."
+        }
+      ]
+    },
+    "protocol": {
+      "name": "protocol",
+      "title": "Protocol version",
+      "contentType": "text/plain",
+      "summary": "Socket protocol version, sent after `time`.",
+      "description": "Unframed protocol line `protocol <integer>`, sent uncompressed after `time`. The value matches `protocol` of `GET /api/version`; screeps.com reported 14.",
+      "payload": {
+        "type": "string",
+        "pattern": "^protocol [0-9]+$"
+      },
+      "examples": [
+        {
+          "name": "greeting",
+          "payload": "protocol 14"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L93",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338552"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "Received `protocol 14` after `time`, matching `GET /api/version`."
+        }
+      ]
+    },
+    "package": {
+      "name": "package",
+      "title": "Client package version",
+      "contentType": "text/plain",
+      "summary": "Current official desktop client package version, sent after `protocol`.",
+      "description": "Unframed protocol line `package <integer>`, sent uncompressed after `protocol`. The value matches `package` of `GET /api/version`. The official desktop (NW.js) client downloads a newer package when this exceeds its own version; browsers only record it.",
+      "payload": {
+        "type": "string",
+        "pattern": "^package [0-9]+$"
+      },
+      "examples": [
+        {
+          "name": "greeting",
+          "payload": "package 247"
+        }
+      ],
+      "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C338854"],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "Received `package 247` after `protocol`, matching `GET /api/version`."
+        }
+      ]
+    },
+    "authOk": {
+      "name": "authOk",
+      "title": "Authentication succeeded",
+      "contentType": "text/plain",
+      "summary": "Reply to `auth`: the connection is signed in; carries the token to keep using.",
+      "description": "Unframed protocol line `auth ok <token>`, sent uncompressed. The official client replaces its stored token with the returned value, then sends the subscriptions it queued. For a persistent account API token the returned token equalled the sent one. User channels of the signed-in account and room channels are accepted only after this reply.",
+      "payload": {
+        "type": "string",
+        "pattern": "^auth ok [^\\s]+$"
+      },
+      "examples": [
+        {
+          "name": "signed-in",
+          "payload": "auth ok 00000000-0000-0000-0000-000000000000"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L124-L136",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338337",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338394",
+        "https://screeps.com/a/app2/main.js?bust=1787842760865#L214126C5"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "`auth` with a persistent API token was answered with `auth ok` and the same token value. No token is recorded."
+        }
+      ]
+    },
+    "authFailed": {
+      "name": "authFailed",
+      "title": "Authentication failed",
+      "contentType": "text/plain",
+      "summary": "Reply to `auth` when the token is not accepted.",
+      "description": "Unframed protocol line `auth failed`, sent uncompressed. The connection stays open and anonymous: the official client still sends its queued subscriptions, of which only public ones (`server-message`) are served.",
+      "payload": {
+        "type": "string",
+        "const": "auth failed"
+      },
+      "examples": [
+        {
+          "name": "rejected",
+          "payload": "auth failed"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L135",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338426"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "An invalid token was answered with `auth failed`; the connection remained open until the client closed it."
+        }
+      ]
+    },
+    "serverDown": {
+      "name": "serverDown",
+      "title": "Server maintenance",
+      "contentType": "text/plain",
+      "summary": "The server is under maintenance.",
+      "description": "Unframed protocol line `server down`. The official client shows a maintenance notice and closes the connection (unless the user enabled ignoring server-down state).",
+      "payload": {
+        "type": "string",
+        "const": "server down"
+      },
+      "examples": [
+        {
+          "name": "maintenance",
+          "payload": "server down"
+        }
+      ],
+      "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C338628"],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-unverified": "Not observed live; when and how often screeps.com sends it during maintenance is not evidenced."
+    },
+    "cannotSubscribe": {
+      "name": "cannotSubscribe",
+      "title": "Subscription rejected",
+      "contentType": "text/plain",
+      "summary": "A protocol line starting with `cannot subscribe`.",
+      "description": "Unframed protocol line beginning with `cannot subscribe`. The official client recognises and ignores it, so it never reaches channel handlers.",
+      "payload": {
+        "type": "string",
+        "pattern": "^cannot subscribe"
+      },
+      "examples": [
+        {
+          "name": "rejected",
+          "payload": "cannot subscribe"
+        }
+      ],
+      "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C339086"],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-unverified": "Only the prefix is evidenced; the remainder of the line and the conditions that produce it are unknown. Rejected subscriptions were otherwise observed to be silently ignored."
+    },
+    "compressedFrame": {
+      "name": "compressedFrame",
+      "title": "Compressed event",
+      "contentType": "text/plain",
+      "summary": "A channel event compressed after `gzip on`.",
+      "description": "`gz:` followed by the base64 encoding of a zlib (RFC 1950) deflate stream. Inflating it yields the UTF-8 text of exactly one channel event (`[channel, data]`). The server compresses channel events only while the client has `gzip on` and only when the encoded form is shorter; protocol lines (`time`, `protocol`, `package`, `auth ...`) are never compressed. The official client inflates with `pako.ungzip`, which also accepts gzip (RFC 1952) streams.",
+      "payload": {
+        "type": "string",
+        "pattern": "^gz:[A-Za-z0-9+/]+={0,2}$"
+      },
+      "examples": [
+        {
+          "name": "compressed",
+          "summary": "Inflates to a `user:<id>/console` event.",
+          "payload": "gz:eAGLViotTi2yMk00TDJKNk4xSTVNMzMwN7QwsjRONEky1U/OzyvOz0lV0qlWyk0tLk5MTy1WsqpWyslPV7KKVirJTM5WMFDSgTAMYQwjGMMYxjCBMUxhDDMYwxzGsIAxLGEMQ4TRhkqxOkpFqcWlOSXFSlbRsbU6SsUZiUUpSlYQ2lipNhYADT07/A=="
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L45-L63",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338245",
+        "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsSocketClient.ts#L774-L775",
+        "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsSocketClient.ts#L810-L814"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "After `gzip on`, larger channel events arrived as `gz:` frames whose decoded bytes start with the zlib header `78 01`; small events and protocol lines stayed plain text."
+        }
+      ]
+    },
+    "auth": {
+      "name": "auth",
+      "title": "Authenticate",
+      "contentType": "text/plain",
+      "summary": "Sign the connection in with an API or session token.",
+      "description": "Client command `auth <token>`, using the same token as the HTTP `X-Token` header. The official client sends it as soon as the connection opens when signed in (anonymous clients skip it). The server answers with `auth ok <token>` or `auth failed`.",
+      "payload": {
+        "type": "string",
+        "pattern": "^auth [^\\s]+$"
+      },
+      "examples": [
+        {
+          "name": "token",
+          "payload": "auth 00000000-0000-0000-0000-000000000000"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L124-L136",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338121",
+        "https://screeps.com/a/app2/main.js?bust=1787842760865#L214065C13",
+        "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsSocketClient.ts#L692"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "Sent as the first command on a raw WebSocket; both valid and invalid tokens were answered."
+        }
+      ]
+    },
+    "subscribe": {
+      "name": "subscribe",
+      "title": "Subscribe",
+      "contentType": "text/plain",
+      "summary": "Start receiving events of one channel.",
+      "description": "Client command `subscribe <channel>`. Send after `auth ok`: user and room channels sent before authentication are rejected, and rejections are silent (no event ever arrives). A channel of another user is rejected. Subscribing again to a channel already subscribed on the same connection is not idempotent on every server implementation (room channels can be delivered twice); clients keep one subscription per channel and connection. Several channels publish an initial event right after subscribing (`room:`, `roomMap2:`, `mapVisual:`, `user:<id>/cpu`, `user:<id>/memory/...`).",
+      "payload": {
+        "type": "string",
+        "pattern": "^subscribe [^\\r\\n]+$"
+      },
+      "examples": [
+        {
+          "name": "cpu",
+          "payload": "subscribe user:5a1b2c3d4e5f60718293a4b5/cpu"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L97-L111",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L142-L222",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C337557",
+        "https://screeps.com/a/app2/main.js?bust=1787842760865#L214089C17",
+        "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsSocketClient.ts#L627-L629"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "Subscriptions sent after `auth ok` to user, room, roomMap2 and mapVisual channels each produced events; an initial room event arrived within about 300 ms."
+        }
+      ]
+    },
+    "unsubscribe": {
+      "name": "unsubscribe",
+      "title": "Unsubscribe",
+      "contentType": "text/plain",
+      "summary": "Stop receiving events of one channel.",
+      "description": "Client command `unsubscribe <channel>`. The official client only unsubscribes channels it actually subscribed on the current connection. Events already in flight may still arrive.",
+      "payload": {
+        "type": "string",
+        "pattern": "^unsubscribe [^\\r\\n]+$"
+      },
+      "examples": [
+        {
+          "name": "cpu",
+          "payload": "unsubscribe user:5a1b2c3d4e5f60718293a4b5/cpu"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L112-L122",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C337655",
+        "https://screeps.com/a/app2/main.js?bust=1787842760865#L214109C9",
+        "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsSocketClient.ts#L661-L663"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      }
+    },
+    "gzip": {
+      "name": "gzip",
+      "title": "Toggle compression",
+      "contentType": "text/plain",
+      "summary": "Enable or disable compressed channel events for this connection.",
+      "description": "Client command `gzip on` or `gzip off` (default off). While on, the server may send channel events as `gz:` frames; clients must accept both forms either way. The official client sends `gzip on` right after opening when configured to.",
+      "payload": {
+        "type": "string",
+        "enum": ["gzip on", "gzip off"]
+      },
+      "examples": [
+        {
+          "name": "enable",
+          "payload": "gzip on"
+        }
+      ],
+      "x-sources": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L138-L144",
+        "https://screeps.com/a/build.min.js?bust=1787842760865#L1C338185",
+        "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsSocketClient.ts#L734"
+      ],
+      "x-availability": {
+        "screeps-com": "supported"
+      },
+      "x-observations": [
+        {
+          "url": "wss://screeps.com/socket/websocket",
+          "date": "2026-10-14",
+          "notes": "`gzip on` sent before `auth` made subsequent larger channel events arrive compressed."
+        }
+      ]
+    }
+  },
+  "operations": {
+    "receiveAuth": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Authenticate a connection",
+      "summary": "Clients sign in with `auth <token>`.",
+      "description": "The server checks the token and replies on the same connection. A failed attempt is answered with `auth failed`; whether an earlier successful authentication of the same connection stays in effect afterwards is not evidenced, so clients authenticate once per connection.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/auth"
+        }
+      ],
+      "reply": {
+        "channel": {
+          "$ref": "#/channels/socket"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/socket/messages/authOk"
+          },
+          {
+            "$ref": "#/channels/socket/messages/authFailed"
+          }
+        ]
+      }
+    },
+    "receiveSubscribe": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Subscribe to a channel",
+      "summary": "Clients subscribe to one channel per command.",
+      "description": "Events of the channel follow as channel event messages. There is no acknowledgement.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/subscribe"
+        }
+      ]
+    },
+    "receiveUnsubscribe": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Unsubscribe from a channel",
+      "summary": "Clients unsubscribe from one channel per command.",
+      "description": "There is no acknowledgement.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/unsubscribe"
+        }
+      ]
+    },
+    "receiveGzip": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Toggle compression",
+      "summary": "Clients opt in to compressed channel events.",
+      "description": "There is no acknowledgement; later channel events may arrive as `gz:` frames.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/gzip"
+        }
+      ]
+    },
+    "sendGreeting": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Greet a new connection",
+      "summary": "The server announces its clock and versions as soon as a connection opens.",
+      "description": "Sent in this order, uncompressed, before any reply to client commands.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/time"
+        },
+        {
+          "$ref": "#/channels/socket/messages/protocol"
+        },
+        {
+          "$ref": "#/channels/socket/messages/package"
+        }
+      ]
+    },
+    "sendServerStatus": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Report server conditions",
+      "summary": "Maintenance and subscription rejection notices.",
+      "description": "Unframed protocol lines that are not replies to a specific command.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/serverDown"
+        },
+        {
+          "$ref": "#/channels/socket/messages/cannotSubscribe"
+        }
+      ]
+    },
+    "sendCompressedEvents": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/socket"
+      },
+      "title": "Send compressed channel events",
+      "summary": "Any channel event can arrive compressed after `gzip on`.",
+      "description": "Inflate, then handle the result like an uncompressed channel event.",
+      "messages": [
+        {
+          "$ref": "#/channels/socket/messages/compressedFrame"
+        }
+      ]
+    }
+  }
+}

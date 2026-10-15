@@ -1,6 +1,8 @@
 package-lock.json
 openapi.json
 openapi.yaml
+asyncapi.json
+asyncapi.yaml
 coverage.json
 build/
 .sources/

@@ -379,7 +379,7 @@
           "screeps-com": "supported"
         },
         "x-sources": ["https://screeps.com/a/build.min.js?bust=1787842760865#L1C108954"],
-        "x-unverified": "Which replays are listed (all, own, recent), paging and entry fields beyond `date`, `_id` and `secret` (template-only) are not evidenced; authentication requirements are not evidenced."
+        "x-unverified": "Which replays are listed (all, own, recent), paging and entry fields beyond `date`, `_id` and `secret` (template-only) are not evidenced; authentication requirements are not evidenced. The representation of `date` (string date-time) is inferred from the date strings of other stored documents; the observed request returned HTTP 404."
       }
     },
     "/api/seasons/replay/{code}": {
@@ -538,7 +538,13 @@
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L198597C46",
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L199982C46"
         ],
-        "x-unverified": "The value type of `access` is not established (the client only treats it as truthy)."
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/seasons/access/granted",
+            "date": "2026-10-15",
+            "notes": "Authenticated read-only response: `access` is a boolean."
+          }
+        ]
       },
       "post": {
         "operationId": "seasonsAccessGrant",
@@ -836,7 +842,14 @@
           "screeps-com": "unverified"
         },
         "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214167C46"],
-        "x-unverified": "`SteamService.inventory` has no caller in the pinned bundle; the shapes of `resources` and `decorations` and authentication requirements are not evidenced."
+        "x-unverified": "`SteamService.inventory` has no caller in the pinned bundle and only an empty `decorations` list was observed, so decoration entry fields are not evidenced; authentication requirements are not evidenced.",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/steam/inventory",
+            "date": "2026-10-15",
+            "notes": "Authenticated read-only response: `resources` maps `token`, `cpuUnlock`, `pixel` and `accessKey` to integers; `decorations` is an empty array."
+          }
+        ]
       }
     },
     "/api/steam/push-decorations": {
@@ -948,7 +961,7 @@
           "screeps-com": "unverified"
         },
         "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214205C46"],
-        "x-unverified": "`SteamService.pull` has no caller in the pinned bundle; request fields, the meaning of `id`, errors and authentication requirements are not evidenced."
+        "x-unverified": "`SteamService.pull` has no caller in the pinned bundle; request fields, the meaning of `id` (a string identifier, inferred), errors and authentication requirements are not evidenced."
       }
     },
     "/api/steam/push-resources": {
@@ -1062,7 +1075,7 @@
           "screeps-com": "unverified"
         },
         "x-sources": ["https://screeps.com/a/app2/main.js?bust=1787842760865#L214252C46"],
-        "x-unverified": "`SteamService.pullResources` has no caller in the pinned bundle; request fields, the meaning of `id` and authentication requirements are not evidenced."
+        "x-unverified": "`SteamService.pullResources` has no caller in the pinned bundle; request fields, the meaning of `id` (a string identifier, inferred), errors and authentication requirements are not evidenced."
       }
     },
     "/api/steam/store": {
@@ -1111,7 +1124,14 @@
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L214317C35",
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L214322C46"
         ],
-        "x-unverified": "Item fields other than `amount`, the shape of `lifetime` and authentication requirements are not evidenced."
+        "x-unverified": "Item fields other than `amount` and authentication requirements are not evidenced.",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/steam/store",
+            "date": "2026-10-15",
+            "notes": "Authenticated read-only response: `lifetime` is an object with a numeric `price` and a string `currency`."
+          }
+        ]
       }
     },
     "/api/xsolla/store": {
@@ -1160,7 +1180,14 @@
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L214315C31",
           "https://screeps.com/a/app2/main.js?bust=1787842760865#L214322C46"
         ],
-        "x-unverified": "Item fields other than `amount`, the shape of `lifetime` and authentication requirements are not evidenced."
+        "x-unverified": "Item fields other than `amount` and authentication requirements are not evidenced.",
+        "x-observations": [
+          {
+            "url": "https://screeps.com/api/xsolla/store",
+            "date": "2026-10-15",
+            "notes": "Authenticated read-only response: `lifetime` is an object with a numeric `price` and a string `sku`."
+          }
+        ]
       }
     },
     "/api/xsolla/cancel-subscription": {
@@ -1561,7 +1588,7 @@
           "https://screeps.com/a/build.min.js?bust=1787842760865#L1C79743",
           "https://screeps.com/a/build.min.js?bust=1787842760865#L1C92843"
         ],
-        "x-unverified": "The type of `uploaded`, the response before upload and authentication requirements are not evidenced."
+        "x-unverified": "The client only tests `uploaded` for truthiness (boolean inferred); the response before upload and authentication requirements are not evidenced."
       }
     }
   },
@@ -1691,7 +1718,9 @@
             "description": "Replay access secret used as the `s` query parameter."
           },
           "date": {
-            "description": "Upload date; the client converts it with `new Date(...)`, representation not established."
+            "type": "string",
+            "format": "date-time",
+            "description": "Upload date; the client converts it with `new Date(...)` and shows it with the `short` date filter."
           }
         },
         "additionalProperties": true
@@ -1756,7 +1785,8 @@
             "const": 1
           },
           "access": {
-            "description": "Truthy when the caller has access to the current Seasonal World; value type not established."
+            "type": "boolean",
+            "description": "Whether the caller has access to the current Seasonal World."
           }
         },
         "required": ["ok"],
@@ -1865,10 +1895,20 @@
             "const": 1
           },
           "resources": {
-            "description": "Steam inventory resources; shape not established."
+            "type": "object",
+            "description": "Steam inventory amounts keyed by account resource (e.g. `pixel`, `cpuUnlock`, `accessKey`, `token`).",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
           },
           "decorations": {
-            "description": "Steam inventory decorations; shape not established."
+            "type": "array",
+            "description": "Decorations in the Steam inventory.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": ["ok"],
@@ -1882,7 +1922,8 @@
             "const": 1
           },
           "id": {
-            "description": "Identifier returned by the transfer; meaning and type not established."
+            "type": "string",
+            "description": "Identifier of the transfer, returned to the caller."
           }
         },
         "required": ["ok"],
@@ -1939,7 +1980,7 @@
             "const": 1
           },
           "lifetime": {
-            "description": "Lifetime subscription offer data kept alongside the resources; shape not established."
+            "$ref": "#/components/schemas/StoreCatalogLifetime"
           },
           "resources": {
             "type": "array",
@@ -2098,7 +2139,8 @@
             "const": 1
           },
           "uploaded": {
-            "description": "Truthy once the replay is uploaded; value type not established."
+            "type": "boolean",
+            "description": "Whether the replay has been uploaded; the client polls until it is true."
           },
           "_id": {
             "type": "string",
@@ -2110,6 +2152,26 @@
           }
         },
         "required": ["ok"],
+        "additionalProperties": true
+      },
+      "StoreCatalogLifetime": {
+        "type": "object",
+        "description": "Lifetime subscription offer: its price, plus the currency (Steam) or SKU (Xsolla).",
+        "properties": {
+          "price": {
+            "type": "number",
+            "description": "Price."
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code (Steam catalog)."
+          },
+          "sku": {
+            "type": "string",
+            "description": "Xsolla SKU (Xsolla catalog)."
+          }
+        },
+        "required": ["price"],
         "additionalProperties": true
       }
     }

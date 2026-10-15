@@ -1,5 +1,6 @@
-// Offline build: bundles spec/ fragments into the official openapi.json/.yaml and profile
-// fragments into profiles/<name>.json, then proves every profile composes. Needs no .sources.
+// Offline build: bundles spec/ fragments into the official openapi.json/.yaml, socket/ fragments
+// into the official asyncapi.json/.yaml and profile fragments into profiles/<name>.json, then
+// proves every profile composes with both contracts. Needs no .sources.
 //
 //   node scripts/build.mjs           write outputs
 //   node scripts/build.mjs --check   fail when any output is stale (no writes)
@@ -7,7 +8,12 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { stringify } from 'yaml';
-import { assembleProfile, composeProfile, listOperations } from '../lib/contracts.mjs';
+import {
+  assembleProfile,
+  composeProfile,
+  composeSocketProfile,
+  listOperations,
+} from '../lib/contracts.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const check = process.argv.includes('--check');
@@ -41,7 +47,8 @@ for (const name of (await readdir(resolve(root, 'spec'))).sort(compare)) {
 }
 
 // Official web client transport conventions (Auth interceptor): signed-in requests also send the
-// token as X-Username, and an X-Token response header replaces the stored token.
+// token as X-Username, and an X-Token response header replaces the stored token. Authenticated
+// responses also report the per-endpoint request limit (node-screeps-api rate limit tracker).
 const tags = new Set();
 const operations = listOperations(spec);
 for (const { path, operation } of operations) {
@@ -67,6 +74,10 @@ for (const { path, operation } of operations) {
         'Rotated session token when issued by the server; store it for subsequent authenticated requests.',
       schema: { type: 'string' },
     };
+    for (const name of ['Limit', 'Remaining', 'Reset'])
+      success.headers[`X-RateLimit-${name}`] ??= {
+        $ref: `#/components/headers/RateLimit${name}`,
+      };
   }
 }
 spec.tags = [...tags].sort(compare).map((name) => ({
@@ -77,9 +88,43 @@ spec.paths = sortKeys(spec.paths);
 for (const [name, entries] of Object.entries(spec.components))
   spec.components[name] = sortKeys(entries);
 
+// Socket contract: socket/base.json + fragments of messages, schemas and operations. Every
+// message is offered on the single connection channel; operations reference channel messages.
+const socket = await readJson('socket/base.json');
+const [channelName, ...otherChannels] = Object.keys(socket.channels);
+if (!channelName || otherChannels.length)
+  throw new Error('socket/base.json must declare exactly one channel');
+for (const name of (await readdir(resolve(root, 'socket'))).sort(compare)) {
+  if (name === 'base.json' || !name.endsWith('.json')) continue;
+  const fragment = await readJson(`socket/${name}`);
+  for (const key of Object.keys(fragment))
+    if (!['messages', 'schemas', 'operations'].includes(key))
+      throw new Error(`socket/${name}: unexpected top-level key ${key}`);
+  for (const [target, entries] of [
+    [socket.components.messages, fragment.messages],
+    [socket.components.schemas, fragment.schemas],
+    [socket.operations, fragment.operations],
+  ]) {
+    for (const [key, value] of Object.entries(entries ?? {})) {
+      if (Object.hasOwn(target, key)) throw new Error(`Duplicate socket entry ${key} in ${name}`);
+      target[key] = value;
+    }
+  }
+}
+socket.channels[channelName].messages = Object.fromEntries(
+  Object.keys(socket.components.messages)
+    .sort(compare)
+    .map((name) => [name, { $ref: `#/components/messages/${name}` }]),
+);
+socket.operations = sortKeys(socket.operations);
+socket.components.messages = sortKeys(socket.components.messages);
+socket.components.schemas = sortKeys(socket.components.schemas);
+
 const outputs = {
   'openapi.json': JSON.stringify(spec, null, 2) + '\n',
   'openapi.yaml': stringify(spec, { lineWidth: 100, aliasDuplicateObjects: false }),
+  'asyncapi.json': JSON.stringify(socket, null, 2) + '\n',
+  'asyncapi.yaml': stringify(socket, { lineWidth: 100, aliasDuplicateObjects: false }),
 };
 
 // Profiles: profiles/<name>/index.json + per-domain fragments -> profiles/<name>.json.
@@ -100,9 +145,10 @@ for (const entry of (await readdir(resolve(root, 'profiles'), { withFileTypes: t
   const profile = assembleProfile(index, fragments);
   // Throws with every partition/override problem; extensions are server-owned and empty here.
   const composed = composeProfile(spec, profile);
+  const composedSocket = composeSocketProfile(socket, profile);
   outputs[`${directory}.json`] = JSON.stringify(profile, null, 2) + '\n';
   profileSummaries.push(
-    `${entry.name}: ${profile.required.length} required, ${Object.keys(profile.excluded).length} excluded, ${Object.keys(profile.additions).length} additions -> ${listOperations(composed).length} operations`,
+    `${entry.name}: ${profile.required.length} required, ${Object.keys(profile.excluded).length} excluded, ${Object.keys(profile.additions).length} additions -> ${listOperations(composed).length} operations, ${Object.keys(composedSocket.components.messages).length} socket messages`,
   );
 }
 
@@ -122,5 +168,5 @@ for (const [name, content] of Object.entries(outputs)) {
 }
 if (stale.length) throw new Error(`Stale build outputs: ${stale.join(', ')}; run npm run build`);
 console.log(
-  `${check ? 'Verified' : 'Built'} official contract (${Object.keys(spec.paths).length} paths, ${operations.length} operations) and profiles (${profileSummaries.join('; ')}).`,
+  `${check ? 'Verified' : 'Built'} official contract (${Object.keys(spec.paths).length} paths, ${operations.length} operations), socket contract (${Object.keys(socket.components.messages).length} messages, ${Object.keys(socket.operations).length} operations) and profiles (${profileSummaries.join('; ')}).`,
 );
