@@ -111,7 +111,7 @@ npm run check
 npm run format:check
 ```
 
-`check` verifies deterministic bundles, route coverage, schema validity, generated-file freshness, compiled client types and consumer-facing regressions. CI installs without running `prepare` first so regeneration cannot hide stale committed outputs. Upstream source inventory refresh is separate from offline artifact generation.
+`check` verifies deterministic bundles, route coverage, schema validity, generated-file freshness, compiled client types and consumer-facing regressions. `npm test` runs the TypeScript tests directly with Node 24's native type stripping and the default per-file process isolation. `npm run typecheck` generates an isolated fixture client and checks the test harnesses against its real types, including expected compile-time misuse errors. Fixture sources are generated once per test process and copied to separate directories; determinism still compares independent generations, and runtime regressions still exercise real local HTTP servers. CI installs without running `prepare` first so regeneration cannot hide stale committed outputs. Upstream source inventory refresh is separate from offline artifact generation.
 
 The separate **Check upstream source drift** workflow runs weekly or on manual dispatch.
 It fetches the current official web assets and compares the source inventory without
@@ -126,7 +126,7 @@ Edit source contracts and profile decisions, regenerate, then commit source and 
 npm run smoke
 ```
 
-The smoke command defaults to official Screeps. `SCREEPS_TOKEN` enables authenticated checks; `SCREEPS_API_URL`, `SCREEPS_SHARD`, and `SCREEPS_ROOM` select the trusted origin and room. It uses only read requests, rejects redirects and validates replies without printing or saving account data, bot Memory or credentials. Local server verification uses a disposable database and the generated standalone client, not an official account.
+The smoke command runs the checked TypeScript harness (`node scripts/smoke.ts`) with Node 24's native type stripping and defaults to official Screeps. `SCREEPS_TOKEN` enables authenticated checks; `SCREEPS_API_URL`, `SCREEPS_SHARD`, and `SCREEPS_ROOM` select the trusted origin and room. It uses only read requests, rejects redirects and validates replies without printing or saving account data, bot Memory or credentials. Local server verification uses a disposable database and the generated standalone client, not an official account.
 
 ### Verified baseline
 

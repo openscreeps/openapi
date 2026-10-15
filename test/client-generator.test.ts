@@ -4,19 +4,38 @@ import { resolve } from 'node:path';
 import { after, test } from 'node:test';
 import ts from 'typescript';
 import { generateClient, generateClientFiles } from '../scripts/generate-clients.mjs';
-import { fixtureDocument, generateFixture, root } from './fixtures/client-fixture.mjs';
+import { fixtureDocument, generateFixture, root } from './fixtures/client-fixture.ts';
 
-const directories = [];
+interface MutableParameter {
+  name?: string;
+  in?: string;
+  required?: boolean;
+  schema?: Record<string, unknown>;
+  style?: string;
+  $ref?: string;
+  'x-openscreeps-wildcard'?: boolean;
+}
+
+interface MutableOperation {
+  operationId?: string;
+  parameters: MutableParameter[];
+  security?: Record<string, string[]>[];
+  servers?: { url: string }[];
+}
+
+type Mutation = (document: typeof fixtureDocument, operation: MutableOperation) => void;
+
+const directories: string[] = [];
 after(() => Promise.all(directories.map((path) => rm(path, { recursive: true, force: true }))));
 
-async function fixture(label) {
+async function fixture(label: string): Promise<string> {
   const directory = await generateFixture(label);
   directories.push(directory);
   return directory;
 }
 
 /** Same strictness the OpenScreeps server compiles generated sources with. */
-const compilerOptions = {
+const compilerOptions: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2024,
   lib: ['lib.es2024.d.ts', 'lib.dom.d.ts'],
   types: [],
@@ -34,7 +53,7 @@ const compilerOptions = {
   noEmit: true,
 };
 
-function diagnostics(files) {
+function diagnostics(files: string[]): string[] {
   const program = ts.createProgram(files, compilerOptions);
   return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
@@ -72,42 +91,42 @@ test('generation is deterministic and --check reports stale files without writin
   assert.equal(await readFile(index, 'utf8'), 'stale');
 
   const changed = structuredClone(fixtureDocument);
-  changed.paths['/api/badge'].get.summary = 'Changed summary';
+  Object.assign(changed.paths['/api/badge'].get, { summary: 'Changed summary' });
   await generateClient({ ...output, document: changed, runtime });
   const regenerated = await generateClient({ ...output, runtime, check: true });
   assert.ok(regenerated.stale.includes(index), 'changed documentation makes the client stale');
 });
 
-function withOperation(mutate) {
+function withOperation(mutate: Mutation) {
   const document = structuredClone(fixtureDocument);
   mutate(document, document.paths['/api/thing/{id}'].get);
   return generateClientFiles({ document, name: 'fixture', runtime: './runtime.js' });
 }
 
 test('unsupported or ambiguous documents fail generation', async () => {
-  const cases = [
+  const cases: [Mutation, RegExp][] = [
     [(d) => (d.openapi = '3.0.3'), /OpenAPI 3\.1 required/],
-    [(d, op) => delete op.operationId, /operationId must be a JavaScript identifier/],
-    [(d, op) => (op.operationId = 'get-thing'), /operationId must be a JavaScript identifier/],
-    [(d, op) => (op.operationId = 'postThing'), /duplicate operationId postThing/],
-    [(d, op) => (op.operationId = 'send'), /operationId send is reserved/],
-    [(d, op) => op.parameters.push({ name: 'c', in: 'cookie', schema: {} }), /only path, query/],
-    [(d, op) => op.parameters.push({ name: 'Accept', in: 'header', schema: {} }), /reserved/],
+    [(_d, op) => delete op.operationId, /operationId must be a JavaScript identifier/],
+    [(_d, op) => (op.operationId = 'get-thing'), /operationId must be a JavaScript identifier/],
+    [(_d, op) => (op.operationId = 'postThing'), /duplicate operationId postThing/],
+    [(_d, op) => (op.operationId = 'send'), /operationId send is reserved/],
+    [(_d, op) => op.parameters.push({ name: 'c', in: 'cookie', schema: {} }), /only path, query/],
+    [(_d, op) => op.parameters.push({ name: 'Accept', in: 'header', schema: {} }), /reserved/],
     [
-      (d, op) => op.parameters.push({ name: 'q', in: 'query', style: 'deepObject', schema: {} }),
+      (_d, op) => op.parameters.push({ name: 'q', in: 'query', style: 'deepObject', schema: {} }),
       /style deepObject is unsupported/,
     ],
     [
-      (d, op) =>
+      (_d, op) =>
         op.parameters.push({ name: 'q', in: 'query', 'x-openscreeps-wildcard': true, schema: {} }),
       /path parameters only/,
     ],
-    [(d, op) => op.parameters.push({ name: 'gone', in: 'path', required: true }), /templated/],
+    [(_d, op) => op.parameters.push({ name: 'gone', in: 'path', required: true }), /templated/],
     [(d) => (d.paths['/api/thing/{id}'].parameters = []), /path parameter id/],
-    [(d, op) => (op.security = [{ Unused: [] }]), /security scheme Unused is unsupported/],
-    [(d, op) => (op.security = [{ Missing: [] }]), /unknown security scheme Missing/],
-    [(d, op) => op.parameters.push({ $ref: 'other.json#/x' }), /external \$ref/],
-    [(d, op) => (op.servers = [{ url: 'https://elsewhere.test' }]), /servers are unsupported/],
+    [(_d, op) => (op.security = [{ Unused: [] }]), /security scheme Unused is unsupported/],
+    [(_d, op) => (op.security = [{ Missing: [] }]), /unknown security scheme Missing/],
+    [(_d, op) => op.parameters.push({ $ref: 'other.json#/x' }), /external \$ref/],
+    [(_d, op) => (op.servers = [{ url: 'https://elsewhere.test' }]), /servers are unsupported/],
   ];
   for (const [mutate, expected] of cases) {
     await assert.rejects(withOperation(mutate), expected);

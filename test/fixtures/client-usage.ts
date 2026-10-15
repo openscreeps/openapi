@@ -1,4 +1,4 @@
-// Type regressions for generated clients. test/client-generator.test.mjs copies this file next to
+// Type regressions for generated clients. test/client-generator.test.ts copies this file next to
 // the generated fixture client and type-checks it; every @ts-expect-error must still fire.
 import {
   Client,

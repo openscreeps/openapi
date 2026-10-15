@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.clients.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": ".",
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "clients/**/*.ts",
+    "test/**/*.ts",
+    "scripts/smoke.ts",
+    "build/client-tests/typecheck/**/*.ts"
+  ],
+  "exclude": ["test/fixtures/client-usage.ts"]
+}

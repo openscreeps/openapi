@@ -33,18 +33,21 @@
     "dist/clients/",
     "scripts/build.mjs",
     "scripts/generate-clients.mjs",
+    "scripts/generate-clients.d.mts",
     "tsconfig.clients.json",
     "sources.json",
     "coverage.json"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node scripts/build.mjs --check && node scripts/check.mjs && redocly lint openapi.yaml && npm run check:generated && npm run build:clients && node --test test/*.test.mjs",
+    "check": "node scripts/build.mjs --check && node scripts/check.mjs && redocly lint openapi.yaml && npm run check:generated && npm run build:clients && npm run typecheck && npm test",
     "inventory": "node scripts/inventory.mjs",
-    "smoke": "node scripts/smoke.mjs",
+    "smoke": "node scripts/smoke.ts",
     "generate:client": "node scripts/generate-clients.mjs --input openapi.json --output clients/generated/official --name official",
     "check:generated": "node scripts/generate-clients.mjs --input openapi.json --output clients/generated/official --name official --check",
     "build:clients": "tsc -p tsconfig.clients.json",
+    "typecheck": "node test/fixtures/client-fixture.ts && tsc -p tsconfig.tests.json",
+    "test": "node --test test/*.test.ts",
     "prepare": "npm run build && npm run generate:client && npm run build:clients",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -56,6 +59,7 @@
   },
   "devDependencies": {
     "@redocly/cli": "2.62.1",
+    "@types/node": "24.19.1",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "prettier": "3.9.9"

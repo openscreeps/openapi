@@ -1,14 +1,23 @@
 // OpenAPI 3.1 fixture exercising every feature the client generator supports, plus a helper that
 // generates it into an ignored build directory importing clients/runtime.ts directly, so Node
 // type stripping can execute the generated client and the TypeScript API can check it.
-import { mkdir, rm } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generateClient } from '../../scripts/generate-clients.mjs';
+import type { GeneratedClientFiles } from '../../scripts/generate-clients.mjs';
+import type * as FixtureModule from '../../build/client-tests/typecheck/index.ts';
 
 export const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
-const json = (schema) => ({ 'application/json': { schema } });
+export type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
+export interface JsonObject {
+  [key: string]: JsonValue;
+}
+
+export type FixtureApi = typeof FixtureModule;
+
+const json = (schema: JsonObject) => ({ 'application/json': { schema } });
 const error = { description: 'Error', content: json({ $ref: '#/components/schemas/ApiError' }) };
 const ok = { description: 'Ok', content: json({ $ref: '#/components/schemas/Ok' }) };
 
@@ -201,20 +210,45 @@ export const fixtureDocument = {
   },
 };
 
+// Each test process generates the immutable fixture once; individual directories remain isolated.
+let sources: Promise<GeneratedClientFiles> | undefined;
+
 /** Generate the fixture client into build/client-tests/<label>; returns its directory. */
-export async function generateFixture(label, document = fixtureDocument) {
-  const directory = resolve(root, 'build', 'client-tests', `${label}-${process.pid}`);
+export async function generateFixture(label: string, isolated = true): Promise<string> {
+  const directory = resolve(
+    root,
+    'build',
+    'client-tests',
+    isolated ? `${label}-${process.pid}` : label,
+  );
   await rm(directory, { recursive: true, force: true });
   await mkdir(directory, { recursive: true });
-  await generateClient({
-    document,
-    output: directory,
-    name: 'fixture',
-    runtime: '../../../clients/runtime.ts',
-  });
+  if (!sources) {
+    sources = generateClient({
+      document: fixtureDocument,
+      output: directory,
+      name: 'fixture',
+      runtime: '../../../clients/runtime.ts',
+    }).then(async () => ({
+      'schema.ts': await readFile(resolve(directory, 'schema.ts'), 'utf8'),
+      'index.ts': await readFile(resolve(directory, 'index.ts'), 'utf8'),
+    }));
+    await sources;
+  } else {
+    const files = await sources;
+    await Promise.all(
+      Object.entries(files).map(([file, content]) => writeFile(resolve(directory, file), content)),
+    );
+  }
   return directory;
 }
 
-export async function importFixture(directory) {
-  return import(pathToFileURL(resolve(directory, 'index.ts')).href);
+export async function importFixture(directory: string): Promise<FixtureApi> {
+  // The typecheck command generates this same source at a stable path before checking the tests.
+  return import(pathToFileURL(resolve(directory, 'index.ts')).href) as Promise<FixtureApi>;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const directory = await generateFixture('typecheck', false);
+  await copyFile(resolve(root, 'test/fixtures/client-usage.ts'), resolve(directory, 'usage.ts'));
 }
