@@ -18,5 +18,9 @@
   "backend": {
     "repository": "https://github.com/screeps/backend-local",
     "commit": "9d079282303ec04e577ac2bb97f64312b25e4ccd"
+  },
+  "auth": {
+    "repository": "https://github.com/screepsmods/screepsmod-auth",
+    "commit": "9195e87424475139d749df6d8063df677c4f9917"
   }
 }

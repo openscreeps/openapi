@@ -9,6 +9,7 @@
     "registerCheckEmail",
     "registerCheckUsername",
     "registerSetUsername",
+    "registerSubmit",
     "userBadgeSet",
     "userBadgeSvg",
     "userBranches",
@@ -46,7 +47,6 @@
   ],
   "excluded": {
     "authQueryToken": "Inspects screeps.com account auth tokens (full vs restricted endpoint/WebSocket permissions); a standalone server has no API auth-token management and issues only short-lived full-access session tokens.",
-    "registerSubmit": "Hosted registration flow (e-mail + reCAPTCHA with e-mail confirmation); standalone accounts are created through Steam sign-in or server administration.",
     "scoreboardList": "Hosted Seasonal World game mode scoreboard; a standalone server runs a single persistent world.",
     "seasonsList": "Hosted Seasonal World competitions; a standalone server runs a single persistent world.",
     "seasonsCurrent": "Hosted Seasonal World competitions; a standalone server runs a single persistent world.",
@@ -61,6 +61,7 @@
     "authMe": "Standalone accounts carry Steam ownership as one boolean flag and profile-link visibility as a boolean, and `steam` is an empty object when no Steam account is linked (override: AuthSteamAccount).",
     "leaderboardList": "Standalone leaderboard user entries additionally carry the users' lifetime control points `gcl` (override: LeaderboardUser).",
     "registerSetUsername": "Standalone success bodies are exactly `{ok: 1}` without database-driver write metadata (override: UserDbWriteResponse).",
+    "registerSubmit": "No reCAPTCHA and no e-mail confirmation, like community private servers with screepsmod-auth: the account (100 CPU, `default` branch from `modules`) is usable immediately; `recaptcha`, `tutorialDone` and `branches` are accepted and ignored. Registration is refused while a server password is set or when the operator disables it (override: RegisterSubmitRequest).",
     "userBadgeSet": "Standalone success bodies are exactly `{ok: 1}` without database-driver write metadata (override: UserDbWriteResponse).",
     "userConsole": "The standalone console queue returns exactly `{ok: 1}` without a database-driver insert echo (override: UserConsoleQueuedResponse).",
     "userDecorationsInventory": "No hosted pixel/decoration economy on a standalone server: the inventory is always an empty list.",
@@ -84,6 +85,7 @@
     "leaderboardList": "Clamps `limit` to 1-20 (default 10), treats invalid `offset` as 0, defaults `season` to the current UTC month and rejects malformed seasons or a missing `mode` with `invalid params`; other modes return empty results. Listed users also carry `gcl`.",
     "leaderboardSeasons": "Lists every month with recorded scores plus the current month.",
     "registerSetUsername": "Also rejects the reserved system user name and an e-mail already used by another account (`email already exists`); `recaptcha` and `tutorialDone` are ignored. Returns only `{ok: 1}`.",
+    "registerSubmit": "Follows the community screepsmod-auth registration: success is exactly `{ok: 1}` and issues no token (sign in with `POST /api/auth/signin`); logical errors use the HTTP 200 `{error}` envelope. Usernames must match `^[a-zA-Z0-9_-]{3,}$`, must not be the reserved system user name and are unique case-insensitively (`invalid username`, `username already exists`). E-mail addresses must match the server e-mail rule and are stored lower-cased, unique case-insensitively (`invalid email`, `email already exists`). Passwords must be 8-1024 characters (`password must be 8-1024 characters long`) and are stored as scrypt hashes. `modules` (default `{main: ''}`) is normalized like `POST /api/user/code` (`code length exceeds 5 MB limit`, `invalid params`) and stored as the `default` branch, active in world and simulation. While a server password is set every call is refused with `Registration is automatically disabled. A server password has been set.` (requests without the password first get `incorrect server password`); when the operator disables registration it answers `Registration is disabled.`.",
     "userBadgeSvg": "Renders 128x128 SVG; users without a valid badge get an empty `<svg>`; unknown users get HTTP 404 `text/plain` `Not Found`.",
     "userBranches": "Ignores `withCode` and always returns complete branch documents including `user`, `modules` and `timestamp` (Unix milliseconds, absent until code is first saved).",
     "userCloneBranch": "Also rejects empty or `$`-prefixed `newName` (`invalid branch name`) and invalid `defaultModules` (`invalid params`). `timestamp` is the cloned branch's timestamp (same Unix-millisecond clock).",
@@ -158,6 +160,15 @@
       "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L18",
       "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L43-L49",
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L16"
+    ],
+    "registerSubmit": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L27-L79",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L72-L77",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L15-L16",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L36-L80",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/auth.ts#L49-L58",
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/transport.ts#L75-L80",
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L51-L100"
     ],
     "userBadgeSet": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L168-L172",
@@ -316,6 +327,16 @@
   },
   "overrides": {
     "paths": {
+      "/api/register/submit": {
+        "post": {
+          "responses": {
+            "200": {
+              "description": "Success (`{ok: 1}`) or a logical error in the HTTP 200 `{error}` envelope. Known `error` values: `Registration is automatically disabled. A server password has been set.`, `Registration is disabled.`, `invalid username`, `username already exists`, `invalid email`, `email already exists`, `password must be 8-1024 characters long`, `code length exceeds 5 MB limit`, `invalid params`."
+            }
+          },
+          "x-unverified": null
+        }
+      },
       "/api/user/overview": {
         "get": {
           "responses": {
@@ -384,6 +405,35 @@
             "gcl": {
               "type": "number",
               "description": "Lifetime control points."
+            }
+          }
+        },
+        "RegisterSubmitRequest": {
+          "x-profile-reason": "The standalone server validates and stores the account immediately (no reCAPTCHA, no e-mail confirmation) and ignores the hosted-only fields.",
+          "properties": {
+            "username": {
+              "pattern": "^[a-zA-Z0-9_-]{3,}$",
+              "description": "New unique (case-insensitive) username."
+            },
+            "email": {
+              "description": "E-mail address; must match the server e-mail rule, stored lower-cased and unique case-insensitively."
+            },
+            "password": {
+              "minLength": 8,
+              "maxLength": 1024,
+              "description": "Password for `POST /api/auth/signin`, stored as an scrypt hash."
+            },
+            "modules": {
+              "description": "Initial code of the `default` branch; defaults to `{main: ''}`."
+            },
+            "recaptcha": {
+              "description": "Accepted and ignored (no reCAPTCHA on a standalone server)."
+            },
+            "tutorialDone": {
+              "description": "Accepted and ignored."
+            },
+            "branches": {
+              "description": "Accepted and ignored; only `modules` is stored."
             }
           }
         },

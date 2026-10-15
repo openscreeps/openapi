@@ -103,7 +103,7 @@ Generated server documents and clients belong with the server implementation. Th
 
 ## Evidence and coverage
 
-[Source revisions](sources.json), [coverage inventory](coverage.json), operation source citations and dated observations record where a contract came from. Official web application HTTP calls extend the discovery baseline beyond the community API library. Upstream JavaScript bundles are research inputs, not third-party code redistributed in this package.
+[Source revisions](sources.json), [coverage inventory](coverage.json), operation source citations and dated observations record where a contract came from. Official web application HTTP calls extend the discovery baseline beyond the community API library. Community private-server mods such as screepsmod-auth (password registration without reCAPTCHA or e-mail confirmation) are pinned as evidence for standalone adaptations only. Upstream JavaScript bundles are research inputs, not third-party code redistributed in this package.
 
 The official backend is closed source. The catalog covers discovered and evidenced routes; it does not claim proof that no undiscovered production endpoint exists. Where a request or response field is not established by evidence, that uncertainty must remain explicit. Standalone implementation details are not proof of official behavior.
 
@@ -142,7 +142,7 @@ The smoke command runs the checked TypeScript harness (`node scripts/smoke.ts`) 
 
 The official catalog contains **163 operations**, reconciled against 240 request sites
 in the official web client and the pinned reference sources. The standalone profile
-requires 84 official operations, explicitly excludes 79, and adds two private-server
+requires 85 official operations, explicitly excludes 78, and adds two private-server
 compatibility routes; the server adds its own extension contracts.
 
 Verification includes 27 contract/client regressions, 15 real read-only official HTTP
@@ -159,7 +159,7 @@ official room objects of 31 types from 2,429 non-empty rooms on five shards and 
 first room events, with zero failures; the smoke validates every complete room object it
 receives against the union and its own variant. Room and map visual strings are typed per
 line as `RoomVisualItem` and `MapVisualItem` (examples produced by the upstream serializers).
-The standalone server separately exercises all 91 composed operations over real HTTP.
+The standalone server separately exercises all 92 composed operations over real HTTP.
 The official socket contract holds 26 messages; the standalone socket profile composes 22.
 
 ## License
