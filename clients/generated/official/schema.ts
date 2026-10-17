@@ -6667,6 +6667,10 @@ export interface components {
             useNativeAuth?: boolean;
             users: number;
             currentSeason?: string;
+            /** @description Season entry fee schedule: each key is a Unix time in seconds from which the value, a fee in access keys, applies. The official client passes it to its season access widget. */
+            seasonAccessCost?: {
+                [key: string]: number;
+            };
             decorationConvertationCost?: number;
             decorationPixelizationCost?: number;
             serverData: {
@@ -6692,6 +6696,8 @@ export interface components {
                 features?: ({
                     name: string;
                     version: number;
+                    /** @description HTML hint about the season entry fee schedule, shown by the official client's season access widget (the `persistent-world` feature). */
+                    seasonHint?: string;
                     menuData?: ({
                         section: number;
                         start?: number;
