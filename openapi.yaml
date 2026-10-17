@@ -6742,10 +6742,12 @@ paths:
     get:
       operationId: userMemorySegmentGet
       summary: Read a RawMemory segment
-      description: Returns the contents of a `RawMemory.segments` entry (0-99), or `null` when it was
-        never written. A comma-separated list of ids returns an array of contents in request order
-        (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The official web client
-        reads single segments of the current shard.
+      description: "Returns the contents of a `RawMemory.segments` entry (0-99). A segment that was never
+        written has no contents: `data` is `null`, or absent when the server's storage reads it as
+        `undefined` (backend-local answers `{data}` as read, and its default LokiJS storage yields
+        `undefined`, which JSON omits). A comma-separated list of ids returns an array of contents
+        in request order (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The
+        official web client reads single segments of the current shard."
       tags:
         - User Memory
       security:
@@ -17543,8 +17545,8 @@ components:
           const: 1
           description: "Success marker; every JSON success body carries `ok: 1`."
         data:
-          description: Segment text, or null for an uninitialized segment. screeps.com returns an array in
-            request order when several comma-separated ids were requested.
+          description: Segment text; `null` or absent for an uninitialized segment. screeps.com returns an
+            array in request order when several comma-separated ids were requested.
           anyOf:
             - type: string
             - type: "null"
@@ -17555,7 +17557,6 @@ components:
                   - type: "null"
       required:
         - ok
-        - data
     UserMemorySegmentSetRequest:
       type: object
       properties:
