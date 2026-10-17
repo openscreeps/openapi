@@ -201,6 +201,8 @@
   "adaptations": {
     "gameMapStats": "Statistics rankings are not implemented: no room ever carries the requested `<stat><interval>` key and `statsMax` is always `{}`. `users` carries the referenced users' complete stored documents (the default storage ignores the requested projection), including private fields such as `email`, instead of public profiles.",
     "gameRoomOverview": "Room statistics are not implemented: `stats`, `statsMax` and `totals` are always `{}`; only `owner` (`username`, `badge` of the controller owner, or `null`) is filled.",
+    "gameRoomTerrain": "Terrain documents carry `type` only where the world data sets it: rooms that the stock CLI creates (`map.generateRoom`) are stored as `{room, terrain}` without `type`, and the handler returns the stored documents as they are (override: GameRoomTerrainDocument).",
+    "gameRooms": "Terrain documents carry `type` only where the world data sets it: rooms that the stock CLI creates (`map.generateRoom`) are stored as `{room, terrain}` without `type`, and the handler returns the stored documents as they are (override: GameRoomTerrainDocument).",
     "leaderboardFind": "Leaderboards are not implemented: without `season` the reply is always `{ok: 1, list: []}`, with `season` always the error `result not found`.",
     "leaderboardList": "Leaderboards are not implemented: the reply is always `{ok: 1, list: [], count: 0, users: {}}`.",
     "leaderboardSeasons": "Leaderboards are not implemented: the reply always lists the two placeholder seasons `{_id: 'empty1', name: '—'}` and `{_id: 'empty2', name: '—'}`.",
@@ -329,10 +331,12 @@
       "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L280-L283"
     ],
     "gameRoomTerrain": [
-      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L263-L278"
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L263-L278",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/cli/map.js#L558"
     ],
     "gameRooms": [
-      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L412-L417"
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L412-L417",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/cli/map.js#L558"
     ],
     "gameSetNotifyWhenAttacked": [
       "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L604-L624"
@@ -716,6 +720,35 @@
         }
       },
       "schemas": {
+        "GameRoomTerrainDocument": {
+          "x-profile-reason": "Rooms that the stock CLI creates store terrain documents without `type`.",
+          "type": "object",
+          "description": "Encoded terrain document (`rooms.terrain`).",
+          "properties": {
+            "_id": {
+              "type": "string",
+              "description": "Document id."
+            },
+            "room": {
+              "type": "string"
+            },
+            "terrain": {
+              "type": "string",
+              "pattern": "^[0-9]{2500}$",
+              "description": "2500 digits indexed by `y * 50 + x`; each digit is a bit mask: 0 plain, 1 wall (`TERRAIN_MASK_WALL`), 2 swamp (`TERRAIN_MASK_SWAMP`), 3 wall."
+            },
+            "type": {
+              "type": "string",
+              "const": "terrain",
+              "description": "Absent in documents of rooms that the stock CLI creates."
+            }
+          },
+          "required": [
+            "room",
+            "terrain"
+          ],
+          "additionalProperties": true
+        },
         "GameTickResponse": {
           "x-profile-reason": "Community-only: response of the private-server gameTick addition.",
           "allOf": [
