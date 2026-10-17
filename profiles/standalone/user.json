@@ -79,8 +79,6 @@
   "additions": {},
   "notes": {
     "authMe": "Returns the private-server projection only (`_id`, `email`, `emailDirty`, `username`, `cpu`, `badge`, `password`, `lastRespawnDate`, `notifyPrefs`, `gcl`, `lastChargeTime`, `blocked`, `customBadge`, `power`, `money`, `steam`, `powerExperimentations`, `powerExperimentationTime`); never `cpuShard`, `cpuShardUpdatedTime`, `resources`, SSO links or legacy fields. `steam` is an empty object when no Steam account is linked. Token may be sent as `X-Token`, `Authorization: Bearer`, or `?token=`; each authenticated call issues a fresh token in the `X-Token` response header (default lifetime 60 s).",
-    "registerCheckEmail": "Community servers serve this check through screepsmod-auth, which answers a taken address with `User Exists` instead of `exists` and compares addresses as stored.",
-    "registerCheckUsername": "Community servers serve this check through screepsmod-auth, which answers a taken name with `User Exists` instead of `exists` and compares usernames case-sensitively.",
     "authSignin": "Primary authentication method of a standalone server. `email` accepts an e-mail address or a username (looked up case-insensitively unless it contains `@`); `recaptcha` and `steamTicket` are ignored. Passwords (8-1024 characters when set) are verified as scrypt hashes in constant time (unknown accounts still hash a dummy); every failure answers HTTP 401 `unauthorized`, and accounts without a configured password cannot sign in. Tokens are 64 lowercase hex characters, valid for `tokenLifetimeMs` (60 s default) and refreshed through the `X-Token` response header of authenticated calls.",
     "authSteamTicket": "Authentication runs outside the world lock. Web API mode verifies tickets with Valve's AuthenticateUserTicket for app 464350 using an operator key. Opt-in native mode verifies encrypted app tickets with Greenworks and requires useNativeAuth to be true; platformVersion advertises the active mode. An unconfigured or mismatched scheme answers authentication method is not supported. Native mode retains the original published symmetric-key trust model and is not recommended for untrusted players. New accounts get 100 CPU, a default code branch and empty Memory.",
     "leaderboardFind": "Usernames are matched case-insensitively; unknown users yield `user not found`. `mode` is required (`invalid params` when omitted); other modes return empty results. `list` is ordered newest season first.",
@@ -96,7 +94,7 @@
     "userDecorationsInventory": "No hosted decoration economy: always `{ok: 1, list: []}`, and the server advertises no `inventory` feature.",
     "userDecorationsThemes": "No hosted decoration economy: always `{ok: 1, list: []}`.",
     "userFind": "Answers `user not found` for unknown users or when neither parameter is given, and omits malformed stored badges.",
-    "userMemorySet": "Rejects invalid paths (empty segments, `__proto__`) with `Incorrect memory path`. At execution, an assignment creates missing intermediate objects and fails the hidden command when an intermediate path element is a primitive or `null`; deleting below a missing element does nothing. The Screeps server (backend-local) instead queues `Memory['a']['b'] = value` (or `delete …`) as written: it accepts any path, and a missing intermediate element makes the hidden command throw, leaving Memory unchanged although the reply is a success. Returns only `{ok: 1}`.",
+    "userMemorySet": "Rejects invalid paths (empty segments, `__proto__`) with `Incorrect memory path`. At execution, an assignment creates missing intermediate objects and fails the hidden command when an intermediate path element is a primitive or `null`; deleting below a missing element does nothing. Returns only `{ok: 1}`.",
     "userMemorySegmentGet": "Parses `segment` with `parseInt`, so a list reads only its first id and returns a single value.",
     "userMemorySegmentSet": "`data` must be a string, number or boolean (`invalid params` otherwise); its string form is stored.",
     "userMessagesIndex": "Conversations are keyed by respondent id. Message `date` values are ISO 8601 strings, serialized from the original backend's Date values.",
@@ -149,14 +147,12 @@
     "registerCheckEmail": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L37-L41",
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L201-L206",
-      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L27-L30",
-      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L14-L25"
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/users.ts#L27-L30"
     ],
     "registerCheckUsername": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L43-L47",
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L208-L215",
-      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L37-L40",
-      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L8-L13"
+      "https://github.com/openscreeps/game/blob/fd9cde57de20a1e37a0108c46ca78314c8b9bc36/src/players.ts#L37-L40"
     ],
     "registerSetUsername": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L49-L53",
@@ -241,8 +237,7 @@
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L137-L141",
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L383-L397",
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/accounts.ts#L66-L84",
-      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/runtime/index.ts#L363",
-      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L285-L319"
+      "https://github.com/openscreeps/engine/blob/55883bef45d0d1c3c8c16e497fca56fe0b43ff11/src/runtime/index.ts#L363"
     ],
     "userMemorySegmentGet": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/accounts.ts#L143-L147",

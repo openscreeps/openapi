@@ -49,7 +49,6 @@
     "gameMapStats": "Standalone rankings for `<stat><interval>` are complete per-player arrays of `{user, value}` sorted descending instead of the single ranking entry documented for screeps.com.",
     "gameRoomDecorations": "No hosted decoration inventory: the decoration list is always empty and is served without authentication.",
     "marketMyOrders": "Single world: the caller's orders are returned as a flat `list` instead of being grouped by shard under `shards`; the official client accepts `list` when `shards` is absent.",
-    "gameRoomObjects": "Community private servers serve the route through screepsmod-admin-utils, which answers `{objects, users}` without `ok` (override: GameRoomObjectsResponse).",
     "powerCreepsCreate": "The standalone success body carries a copy of the created power creep record next to `ok`."
   },
   "additions": {
@@ -78,9 +77,6 @@
     "powerCreepsUpgrade": "Non-integer levels are also rejected with `invalid value for power <id>`."
   },
   "evidence": {
-    "gameRoomObjects": [
-      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L70-L78"
-    ],
     "gameAddGlobalIntent": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L120-L124",
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/game.ts#L249-L256",
@@ -307,28 +303,6 @@
     },
     "components": {
       "schemas": {
-        "GameRoomObjectsResponse": {
-          "x-profile-reason": "screepsmod-admin-utils replaces `GET /api/game/room-objects` and answers `{objects, users}` without the `ok` marker.",
-          "allOf": [
-            {
-              "type": "object",
-              "properties": {
-                "ok": {
-                  "type": "integer",
-                  "const": 1,
-                  "description": "Success marker; absent when screepsmod-admin-utils serves the route."
-                },
-                "objects": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/GameRoomObject" }
-                },
-                "users": { "$ref": "#/components/schemas/GamePublicUsers" }
-              },
-              "additionalProperties": true,
-              "required": ["objects", "users"]
-            }
-          ]
-        },
         "GameCreateInvaderResponse": {
           "x-profile-reason": "Standalone servers return the inserted invader document with the acknowledgement.",
           "description": "`{ok: 1, ...creep}`: the inserted invader creep document.",

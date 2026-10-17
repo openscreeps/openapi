@@ -1,6 +1,7 @@
 // Offline build: bundles spec/ fragments into the official openapi.json/.yaml, socket/ fragments
 // into the official asyncapi.json/.yaml and profile fragments into profiles/<name>.json, then
-// proves every profile composes with both contracts. Needs no .sources.
+// proves every profile composes with both contracts and every plugin with its base profile.
+// Needs no .sources.
 //
 //   node scripts/build.mjs           write outputs
 //   node scripts/build.mjs --check   fail when any output is stale (no writes)
@@ -10,6 +11,8 @@ import { resolve } from 'node:path';
 import { stringify } from 'yaml';
 import {
   assembleProfile,
+  composePlugin,
+  composePlugins,
   composeProfile,
   composeSocketProfile,
   listOperations,
@@ -129,6 +132,7 @@ const outputs = {
 
 // Profiles: profiles/<name>/index.json + per-domain fragments -> profiles/<name>.json.
 const profileSummaries = [];
+const composedProfiles = {};
 for (const entry of (await readdir(resolve(root, 'profiles'), { withFileTypes: true })).sort(
   (a, b) => compare(a.name, b.name),
 )) {
@@ -146,9 +150,37 @@ for (const entry of (await readdir(resolve(root, 'profiles'), { withFileTypes: t
   // Throws with every partition/override problem; extensions are server-owned and empty here.
   const composed = composeProfile(spec, profile);
   const composedSocket = composeSocketProfile(socket, profile);
+  composedProfiles[entry.name] = composed;
   outputs[`${directory}.json`] = JSON.stringify(profile, null, 2) + '\n';
   profileSummaries.push(
     `${entry.name}: ${profile.required.length} required, ${Object.keys(profile.excluded).length} excluded, ${Object.keys(profile.additions).length} additions -> ${listOperations(composed).length} operations, ${Object.keys(composedSocket.components.messages).length} socket messages`,
+  );
+}
+
+// Plugins: plugins/<name>.json are published as written; each must compose on its base profile,
+// and all plugins of one base must compose together in file order.
+const sources = await readJson('sources.json');
+const pluginSummaries = [];
+const stacks = {};
+for (const name of (await readdir(resolve(root, 'plugins'))).sort(compare)) {
+  if (!name.endsWith('.json')) continue;
+  const plugin = await readJson(`plugins/${name}`);
+  if (`${plugin.name}.json` !== name)
+    throw new Error(`plugins/${name} must be named after its plugin (${plugin.name}.json)`);
+  if (!sources[plugin.source])
+    throw new Error(`plugins/${name}: source ${plugin.source} is not pinned in sources.json`);
+  const base = composedProfiles[plugin.base];
+  if (!base) throw new Error(`plugins/${name}: base profile ${plugin.base} does not exist`);
+  composePlugin(spec, base, plugin);
+  (stacks[plugin.base] ??= []).push(plugin);
+  pluginSummaries.push(
+    `${plugin.name} on ${plugin.base}: ${Object.keys(plugin.provides ?? {}).length} provided, ${Object.keys(plugin.adaptations ?? {}).length} adapted, ${Object.keys(plugin.additions ?? {}).length} additions`,
+  );
+}
+for (const [base, stack] of Object.entries(stacks)) {
+  const composed = composePlugins(spec, composedProfiles[base], stack);
+  pluginSummaries.push(
+    `${base} + ${stack.map((plugin) => plugin.name).join(' + ')} -> ${listOperations(composed).length} operations`,
   );
 }
 
@@ -168,5 +200,5 @@ for (const [name, content] of Object.entries(outputs)) {
 }
 if (stale.length) throw new Error(`Stale build outputs: ${stale.join(', ')}; run npm run build`);
 console.log(
-  `${check ? 'Verified' : 'Built'} official contract (${Object.keys(spec.paths).length} paths, ${operations.length} operations), socket contract (${Object.keys(socket.components.messages).length} messages, ${Object.keys(socket.operations).length} operations) and profiles (${profileSummaries.join('; ')}).`,
+  `${check ? 'Verified' : 'Built'} official contract (${Object.keys(spec.paths).length} paths, ${operations.length} operations), socket contract (${Object.keys(socket.components.messages).length} messages, ${Object.keys(socket.operations).length} operations), profiles (${profileSummaries.join('; ')}) and plugins (${pluginSummaries.join('; ')}).`,
 );

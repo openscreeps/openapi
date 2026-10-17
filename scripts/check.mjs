@@ -6,7 +6,13 @@ import { readFile, readdir } from 'node:fs/promises';
 import Ajv from 'ajv';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
-import { composeProfile, composeSocketProfile, listOperations } from '../lib/contracts.mjs';
+import {
+  composePlugin,
+  composePlugins,
+  composeProfile,
+  composeSocketProfile,
+  listOperations,
+} from '../lib/contracts.mjs';
 
 const readJson = async (path) =>
   JSON.parse(await readFile(new URL(`../${path}`, import.meta.url), 'utf8'));
@@ -159,10 +165,23 @@ const shape = (path) => path.replace(/\{[^}]+\}/g, '{}');
 const officialByRoute = new Map(
   officialResult.operations.map((entry) => [`${entry.method} ${shape(entry.path)}`, entry]),
 );
-const exclusions = new Map(
-  coverage.exclusions.map((entry) => [`${entry.method} ${shape(entry.path)}`, entry.reason]),
-);
+const excluded = (route) =>
+  coverage.exclusions.some(
+    (entry) =>
+      `${entry.method} ${shape(entry.path)}` === `${route.method} ${shape(route.path)}` &&
+      (entry.origin === undefined || entry.origin === route.origin),
+  );
 const evidenced = new Set();
+const byRoute = (operations) =>
+  new Map(operations.map((entry) => [`${entry.method} ${shape(entry.path)}`, entry]));
+const additionsOf = (document, status) =>
+  byRoute(
+    listOperations(document).filter(
+      (entry) =>
+        entry.operation['x-profile'].status === status ||
+        entry.operation['x-plugins']?.some((plugin) => plugin.status === status),
+    ),
+  );
 
 // Profiles: rebuild-free composition of each committed profile with empty extensions.
 const profiles = {};
@@ -173,18 +192,67 @@ for (const name of (await readdir(new URL('../profiles/', import.meta.url))).sor
   validateDocument(composed, `profile ${profile.name}`, { evidence: pinnedEvidence });
   profiles[profile.name] = { profile, composed };
 }
-const standalone = profiles.standalone;
+const { standalone, community } = profiles;
 assert.ok(standalone, 'profiles/standalone.json is required');
-const additionsByRoute = new Map(
-  listOperations(standalone.composed)
-    .filter((entry) => entry.operation['x-profile'].status === 'addition')
-    .map((entry) => [`${entry.method} ${shape(entry.path)}`, entry]),
+assert.ok(community, 'profiles/community.json is required');
+const additionsByRoute = additionsOf(standalone.composed, 'addition');
+const standaloneByRoute = byRoute(listOperations(standalone.composed));
+const communityAdditionsByRoute = additionsOf(community.composed, 'addition');
+
+// Plugins: each composes on its base profile alone, and every plugin of a base composes in
+// file order; their evidence is the plugin's own pinned repository, backend-local,
+// node-screeps-api or the official client.
+const plugins = [];
+for (const name of (await readdir(new URL('../plugins/', import.meta.url))).sort()) {
+  if (!name.endsWith('.json')) continue;
+  const plugin = await readJson(`plugins/${name}`);
+  assert.equal(`${plugin.name}.json`, name, `plugins/${name} must be named after its plugin`);
+  const source = coverage.sources[plugin.source];
+  assert.ok(source?.repository, `plugins/${name}: source ${plugin.source} must be pinned`);
+  const own = `${source.repository.replace('https://github.com/', '')}@${source.commit}`;
+  const evidence = (key, url) => {
+    if (officialSource.test(url)) return;
+    const match = pinnedSource.exec(url);
+    assert.ok(match, `Pinned source required: ${key}: ${url}`);
+    const pin = `${match[1]}@${match[2]}`;
+    assert.ok(
+      pin === own || officialRepositories.has(pin),
+      `Plugin evidence must come from ${own}, backend-local, node-screeps-api or the official client: ${key}: ${url}`,
+    );
+  };
+  for (const [index, entry] of (plugin.behaviour ?? []).entries())
+    for (const url of entry.evidence) evidence(`plugin ${plugin.name} behaviour[${index}]`, url);
+  const base = profiles[plugin.base];
+  assert.ok(base, `plugins/${name}: base profile ${plugin.base} is not built`);
+  const composed = composePlugin(spec, base.composed, plugin);
+  validateDocument(composed, `plugin ${plugin.name}`, { evidence });
+  plugins.push({ plugin, composed, evidence });
+}
+const pluginStacks = {};
+for (const { plugin } of plugins) (pluginStacks[plugin.base] ??= []).push(plugin);
+const stacked = Object.entries(pluginStacks).map(([base, stack]) => {
+  const composed = composePlugins(spec, profiles[base].composed, stack);
+  validateDocument(composed, `profile ${base} with ${stack.map((p) => p.name).join(' + ')}`, {
+    evidence: pinnedEvidence,
+  });
+  return { base, stack, composed };
+});
+const pluginAdditionsByRoute = new Map(
+  stacked.flatMap(({ composed }) => [...additionsOf(composed, 'addition')]),
 );
-const standaloneByRoute = new Map(
-  listOperations(standalone.composed).map((entry) => [
-    `${entry.method} ${shape(entry.path)}`,
-    entry,
-  ]),
+
+// The community profile describes stock backend-local exactly: it requires the official
+// operations backend-local routes, no others, and adds every non-official backend-local route.
+const backendRoutes = coverage.routes.filter((route) => route.origin === 'backend-local');
+const backendOfficial = new Set(
+  backendRoutes
+    .map((route) => officialByRoute.get(`${route.method} ${shape(route.path)}`)?.operationId)
+    .filter(Boolean),
+);
+assert.deepEqual(
+  [...community.profile.required].sort(),
+  [...backendOfficial].sort(),
+  'The community profile must require exactly the official operations backend-local routes',
 );
 
 let officialRequests = 0;
@@ -203,8 +271,8 @@ for (const request of coverage.officialRequests) {
   officialRequests++;
 }
 for (const route of coverage.routes) {
+  if (excluded(route)) continue;
   const key = `${route.method} ${shape(route.path)}`;
-  if (exclusions.has(key)) continue;
   const where = `${route.source}:${route.line}`;
   if (route.origin === 'openscreeps') {
     const target = standaloneByRoute.get(key);
@@ -214,7 +282,20 @@ for (const route of coverage.routes) {
     );
     continue;
   }
-  const target = officialByRoute.get(key) ?? additionsByRoute.get(key);
+  if (route.origin === 'backend-local') {
+    const target = officialByRoute.get(key) ?? communityAdditionsByRoute.get(key);
+    assert.ok(
+      target,
+      `backend-local route ${key} at ${where} is neither official nor a community addition`,
+    );
+    evidenced.add(target.operationId);
+    continue;
+  }
+  const target =
+    officialByRoute.get(key) ??
+    additionsByRoute.get(key) ??
+    communityAdditionsByRoute.get(key) ??
+    pluginAdditionsByRoute.get(key);
   assert.ok(target, `Uncovered ${route.origin} route: ${key} at ${where}`);
   evidenced.add(target.operationId);
 }
@@ -400,12 +481,17 @@ for (const { profile, composed: http } of Object.values(profiles)) {
 }
 
 console.log(
-  `Validated ${officialResult.operations.length} official operations, ${officialResult.schemas} component schemas, ${officialRequests} official client request sites (bust ${official.bust}), ${coverage.routes.length} reference routes (${exclusions.size} documented exclusions), ${socketResult.messages} official socket messages (${socketResult.schemas} schemas) and profiles: ${Object.entries(
+  `Validated ${officialResult.operations.length} official operations, ${officialResult.schemas} component schemas, ${officialRequests} official client request sites (bust ${official.bust}), ${coverage.routes.length} reference routes (${coverage.exclusions.length} documented exclusions), ${socketResult.messages} official socket messages (${socketResult.schemas} schemas), profiles: ${Object.entries(
     profiles,
   )
     .map(
       ([name, { composed }]) =>
         `${name} (${listOperations(composed).length} operations, ${socketProfiles[name]} socket messages)`,
+    )
+    .join(', ')} and plugins: ${stacked
+    .map(
+      ({ base, stack, composed }) =>
+        `${base} + ${stack.map((plugin) => plugin.name).join(' + ')} (${listOperations(composed).length} operations)`,
     )
     .join(', ')}.`,
 );

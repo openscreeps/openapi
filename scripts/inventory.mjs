@@ -28,25 +28,15 @@ if (process.argv.includes('--fetch')) {
   console.log(`Downloaded official web client bust ${client.bust} into .sources/official.`);
 }
 
-// Routes that appear in reference sources but are deliberately outside every contract.
+// Routes that appear in reference sources but are deliberately outside every contract; an
+// `origin` limits an exclusion to the routes inventoried from that source.
 const exclusions = [
   {
     method: 'get',
-    path: '/api/authmod',
-    reason:
-      'Private-server authentication-mod (screepsmod-auth) extension; the official client synthesizes its result without an HTTP request and it is not part of the official API.',
-  },
-  {
-    method: 'get',
-    path: '/api/warpath/battles',
-    reason:
-      'Third-party extension the community client documents as unavailable on official servers; not part of the official API or the private-server protocol.',
-  },
-  {
-    method: 'get',
     path: '/assets/{path}',
+    origin: 'openscreeps',
     reason:
-      'Static asset directory of private-server hosts (backend-local ASSET_DIR); not used by the official client. OpenScreeps serves it as the server extension platformAsset.',
+      'OpenScreeps static asset extension (platformAsset) defined by the server api/extensions.json.',
   },
   {
     method: 'get',

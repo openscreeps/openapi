@@ -1,0 +1,253 @@
+{
+  "required": [
+    "gameAddGlobalIntent",
+    "gameAddObjectIntent",
+    "gameChangeFlagColor",
+    "gameCheckUniqueFlagName",
+    "gameCheckUniqueObjectName",
+    "gameCreateConstruction",
+    "gameCreateFlag",
+    "gameCreateInvader",
+    "gameGenUniqueFlagName",
+    "gameGenUniqueObjectName",
+    "gameMapStats",
+    "gamePlaceSpawn",
+    "gameRemoveFlag",
+    "gameRemoveInvader",
+    "gameRoomOverview",
+    "gameRoomStatus",
+    "gameRoomTerrain",
+    "gameRooms",
+    "gameSetNotifyWhenAttacked",
+    "gameTime",
+    "gameWorldSize",
+    "marketMyOrders",
+    "marketOrders",
+    "marketOrdersIndex",
+    "marketStats",
+    "powerCreepsCancelDelete",
+    "powerCreepsCreate",
+    "powerCreepsDelete",
+    "powerCreepsExperimentation",
+    "powerCreepsList",
+    "powerCreepsRename",
+    "powerCreepsUpgrade"
+  ],
+  "excluded": {
+    "gameFindObject": "Not routed by backend-local: the stock server has no lookup of a room object by id, so the official room view cannot jump to an object selected by id.",
+    "gameFinish": "Not routed by backend-local: ending a game session belongs to hosted screeps.com game modes; a persistent private world has no finishable session.",
+    "gameHistoryShare": "Not routed by backend-local: history share links (`screeps.com/s/<code>`) are minted and resolved by the hosted screeps.com replay service.",
+    "gameRandomNoviceRoom": "Not routed by backend-local: the stock server keeps no novice-area room suggestions.",
+    "gameRoomDecorations": "Not routed by backend-local: decorations belong to the hosted screeps.com decoration inventory, which the stock server does not have (the route answers HTTP 404).",
+    "gameRoomObjects": "Not routed by backend-local: the stock server publishes room objects only through the `room:<room>` socket channel (the screepsmod-admin-utils plugin contract provides the HTTP route).",
+    "gameShardsInfo": "Not routed by backend-local: it runs one world and keeps no multi-shard directory; the official client calls it only on its shards pages and, when `options.official` is true, before first-spawn placement (the screepsmod-admin-utils plugin contract provides it).",
+    "gameShardsTick": "Not routed by backend-local: the official client requests `game/shards/tick` only when `options.official` is true; backend-local serves the private-server `gameTick` addition (`GET /api/game/tick`) instead.",
+    "powerCreepsPromo": "Not routed by backend-local: the Global Power Level promotion is a time-limited screeps.com offer."
+  },
+  "adaptations": {
+    "gameMapStats": "Statistics rankings are not implemented: no room ever carries the requested `<stat><interval>` key and `statsMax` is always `{}`. `users` carries the referenced users' complete stored documents (the default storage ignores the requested projection), including private fields such as `email`, instead of public profiles.",
+    "gameRoomOverview": "Room statistics are not implemented: `stats`, `statsMax` and `totals` are always `{}`; only `owner` (`username`, `badge` of the controller owner, or `null`) is filled.",
+    "marketMyOrders": "Single world: the caller's orders are returned as a flat `list` instead of being grouped by shard under `shards`; the official client accepts `list` when `shards` is absent (override: MarketMyOrdersResponse)."
+  },
+  "additions": {
+    "gameTick": "The official web client requests `GET /api/game/tick` for the room renderer's tick duration whenever `options.official` is false (screeps.com uses `game/shards/tick`), and backend-local routes it."
+  },
+  "notes": {
+    "gameAddGlobalIntent": "Inserts `{user, intents: {<name>: [<sanitized intent>]}}` for the next tick and echoes the inserted document (with `_id`, `meta`, `$loki`) next to `ok`.",
+    "gameAddObjectIntent": "Requires a world room inside the borders (`invalid room`, `out of borders`, `not supported`) and refuses `activateSafeMode` while one of the caller's controllers is in safe mode (`safe mode active already`). The handler does not check that the caller owns `_id`; it merges the sanitized intent into the room's pending manual intents. Success is `{ok: 1}`.",
+    "gameChangeFlagColor": "Without `room` nothing is saved and the call still succeeds; an unknown flag name leaves the room's flags unchanged. Success carries the storage result (`modified` or `inserted`).",
+    "gameCheckUniqueFlagName": "`name` is not validated; `name exists` when any of the caller's flags has it.",
+    "gameCreateConstruction": "The success body is `{ok: 1, _id}` without database-driver insert fields; at most `MAX_CONSTRUCTION_SITES` sites per player (`too many`).",
+    "gameCreateFlag": "A flag of the same name in another room is moved; at most `FLAGS_LIMIT` flags (`flags limit exceeded`). Success carries the storage result (`modified` or `inserted`).",
+    "gameCreateInvader": "The success body is `{ok: 1, ...creep}`: the inserted invader document (`type: creep`, `user: '2'`, `body`, `hits`, `hitsMax`, `ticksToLive: 1500`, `name: invader_<room>_<n>`, `userSummoned`, `_id`, `meta`, `$loki`). An unknown `size`/`type` makes the handler throw (HTTP 200 `TypeError: …`); coordinates are not validated.",
+    "gameMapStats": "`rooms` must be an array (`invalid params`) and `statName` must end in digits (`invalid params`, a missing `statName` makes the handler throw). Rooms without a room document are left out of `stats`.",
+    "gamePlaceSpawn": "Placing the first spawn does not change CPU settings. It removes other players' creeps and construction sites in the room, turns their structures into ruins, claims the controller at level 1 with 20000 ticks of safe mode and answers `{ok: 1, newbie: true}`.",
+    "gameRemoveFlag": "Without `room` nothing is saved and the call still succeeds. Success carries the storage result (`modified` or `inserted`).",
+    "gameRemoveInvader": "Only invaders the caller summoned can be removed (`invalid object`). Success is `{ok: 1}`.",
+    "gameRoomTerrain": "Any non-empty `encoded` value selects the encoded form.",
+    "gameRooms": "Public; returns the stored terrain documents of the requested rooms.",
+    "gameSetNotifyWhenAttacked": "The object must be the caller's, or an unowned object in a room whose controller the caller owns (`not owner`, `not controller owner`); an unknown `_id` makes the handler throw (HTTP 200 `TypeError: …`). Success carries the storage result (`modified`).",
+    "gameTick": "`tick` is `null` until two ticks have completed since the server started.",
+    "gameWorldSize": "Width and height are one square size computed from the room documents on the first call and kept until the server restarts.",
+    "marketOrders": "Prices are converted from stored milli-credits to credits.",
+    "marketStats": "Returns the stored history entries of `resourceType`, newest first.",
+    "powerCreepsCancelDelete": "Success is `{ok: 1}`.",
+    "powerCreepsCreate": "The success body is `{ok: 1, ...creep}`: the inserted record (`level: 0`, `hitsMax: 1000`, `store: {}`, `storeCapacity: 100`, `spawnCooldownTime: 0`, `powers: {}`, `_id`, `meta`, `$loki`). The name is cut to 50 characters.",
+    "powerCreepsDelete": "Outside a power experimentation period it schedules the deletion and answers `{ok: 1}`. During an experimentation period (immediate deletion) the stock storage has no `remove`, so the handler throws: HTTP 200 `TypeError: db.users.power_creeps.remove is not a function`, and nothing is deleted.",
+    "powerCreepsExperimentation": "Success carries the storage result (`modified`).",
+    "powerCreepsList": "Records of spawned power creeps are merged with their room objects; records carry the storage fields `meta` and `$loki`.",
+    "powerCreepsRename": "The name is cut to 50 characters. Success is `{ok: 1}`.",
+    "powerCreepsUpgrade": "Success is `{0, 1, ok}`: the storage results of updating the record and the room object."
+  },
+  "evidence": {
+    "gameAddGlobalIntent": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L714-L720"
+    ],
+    "gameAddObjectIntent": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L20-L37",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L509-L527"
+    ],
+    "gameChangeFlagColor": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L139-L184",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L480-L498"
+    ],
+    "gameCheckUniqueFlagName": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L469-L478"
+    ],
+    "gameCreateConstruction": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L529-L581"
+    ],
+    "gameCreateFlag": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L419-L451"
+    ],
+    "gameCreateInvader": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L631-L694"
+    ],
+    "gameMapStats": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L186-L257"
+    ],
+    "gamePlaceSpawn": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L328-L407"
+    ],
+    "gameRemoveFlag": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L500-L507"
+    ],
+    "gameRemoveInvader": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L696-L704"
+    ],
+    "gameRoomOverview": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L583-L602"
+    ],
+    "gameRoomStatus": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L280-L283"
+    ],
+    "gameRoomTerrain": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L263-L278"
+    ],
+    "gameRooms": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L412-L417"
+    ],
+    "gameSetNotifyWhenAttacked": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L604-L624"
+    ],
+    "gameWorldSize": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L706-L712"
+    ],
+    "marketMyOrders": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L45-L51",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C103113"
+    ],
+    "marketOrders": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L37-L43"
+    ],
+    "marketStats": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L53-L56"
+    ],
+    "powerCreepsCancelDelete": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L91-L105"
+    ],
+    "powerCreepsCreate": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L35-L64"
+    ],
+    "powerCreepsDelete": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L66-L89"
+    ],
+    "powerCreepsExperimentation": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L224-L230"
+    ],
+    "powerCreepsList": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L19-L33"
+    ],
+    "powerCreepsRename": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L203-L222"
+    ],
+    "powerCreepsUpgrade": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L107-L201"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/game/tick": {
+        "get": {
+          "operationId": "gameTick",
+          "summary": "Get recent tick duration",
+          "description": "Returns the shortest of the last 30 measured intervals between completed ticks, in milliseconds. Public and read-only. When `options.official` is false the official room renderer requests it instead of `game/shards/tick`, animates with `max(tick, serverData.socketUpdateThrottle || 200) / 1000` seconds per tick and treats a failure as `tick: 0`.",
+          "tags": ["Game"],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Tick duration.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/GameTickResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "500": {
+              "$ref": "#/components/responses/ServerError"
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C182823",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L722-L724",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L726-L735"
+          ]
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "GameTickResponse": {
+          "x-profile-reason": "Community-only: response of the private-server gameTick addition.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "tick": {
+                  "type": ["number", "null"],
+                  "description": "Shortest of the last 30 measured tick durations in milliseconds; `null` until two ticks have completed since the server started."
+                }
+              },
+              "required": ["tick"],
+              "additionalProperties": true
+            }
+          ]
+        },
+        "MarketMyOrdersResponse": {
+          "x-profile-reason": "Single world: orders are not grouped by shard.",
+          "description": "Every order (active or not) owned by the caller as one flat list, prices in credits.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "list": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketOrder"
+                  }
+                }
+              },
+              "additionalProperties": true,
+              "required": ["list"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

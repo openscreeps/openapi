@@ -1,0 +1,674 @@
+{
+  "name": "screepsmod-admin-utils",
+  "description": "Contract of the screepsmod-admin-utils mod on a community server (stock screeps/backend-local): its capabilities reply, room objects, shard and PvP/nuke summaries, start-room choice, spawn placement with an automatic mode, server statistics, battle classification, mod list and optional CORS. Its routes are registered before backend-local's own routes and server-password check.",
+  "package": {
+    "name": "screepsmod-admin-utils",
+    "version": "1.37.1"
+  },
+  "source": "adminUtils",
+  "base": "community",
+  "provides": {
+    "gameRoomObjects": "Stock backend-local has no room-objects route; screepsmod-admin-utils serves the raw room object documents and their users.",
+    "gameShardsInfo": "screepsmod-admin-utils describes the single world as one shard.",
+    "platformExperimentalPvp": "screepsmod-admin-utils serves the PvP-activity summary for its one world.",
+    "platformExperimentalNukes": "screepsmod-admin-utils serves the in-flight nukes of its one world."
+  },
+  "adaptations": {
+    "gameRoomObjects": "The reply is `{objects, users}` without `ok` (override: GameRoomObjectsResponse).",
+    "gameShardsInfo": "The single shard entry has no `users`; its `name` is `null` until a shard name is set, and `tick` is `null` before any tick was recorded (override: GameShardInfo).",
+    "platformExperimentalPvp": "`time` is sent once beside `pvp` instead of inside each shard entry, and `interval` defaults to 1000 and is clamped to 1-10000; `start` is an additional parameter (override: path, PlatformPvpShard).",
+    "platformVersion": "screepsmod-admin-utils replaces `GET /api/version`: it publishes the features mods register, which carry a package version string or no version, the `shardName` setting in `shards` (`null` until set) and any `additionalServerData`, and it is served without the server password (override: path, PlatformVersion).",
+    "userWorldStartRoom": "screepsmod-admin-utils replaces the route: it always returns exactly one plain room name, without shard, and falls back to a random sector-center room; no server password is checked (override: path, UserWorldStartRoomResponse).",
+    "gamePlaceSpawn": "screepsmod-admin-utils replaces the route: `name` is required and `auto` claims the room without placing a spawn; other players' structures are deleted without ruins and their construction sites stay; no server password is checked (override: path, GamePlaceSpawnRequest)."
+  },
+  "additions": {
+    "platformMods": "Lists the installed screepsmod mods; screepsmod-admin-utils' web UI and server tools read it.",
+    "platformServerStats": "Server statistics (players, rooms, creeps, tick timings) that dashboards and server lists poll from community servers.",
+    "platformWarpathBattles": "node-screeps-api exposes `GET /api/warpath/battles` for unofficial servers; screepsmod-admin-utils serves it."
+  },
+  "behaviour": [
+    {
+      "summary": "All routes of the mod are registered on `expressPreConfig`, before backend-local's router and its `SERVER_PASSWORD` check, so they answer without `X-Server-Password`; failures of the routes wrapped by its `errCatch` answer HTTP 500 `{error: <stack trace>}`.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L14",
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/common.js#L34-L41",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L137",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L154-L162"
+      ]
+    },
+    {
+      "summary": "CORS is off unless `serverConfig.cors.origins` in config.yml lists origins. Then requests from those origins get CORS headers for methods `GET,HEAD,PUT,PATCH,POST,DELETE`, allowed headers `Authorization, Content-Type, X-Token, X-Username, X-Server-Password` and exposed headers `X-Token, X-Username, X-Server-Password` (both overridable), and preflight requests are answered by the middleware; other origins get no CORS headers.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/cors/backend.js#L1-L43"
+      ]
+    },
+    {
+      "summary": "`GET /` redirects to `/web`, the mod's web UI (screepsmod-admin-utils-ui), instead of backend-local's landing page.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L32-L33"
+      ]
+    },
+    {
+      "summary": "Registers the feature `{name: \"screepsmod-admin-utils\", version: <package version>}`; config.yml `features` entries replace (by `name`) or add features, and a config.yml `market` section adds the official `market` feature.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L9-L13",
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/extras/backend.js#L1-L11",
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/modPatchMarket/backend.js#L1-L23"
+      ]
+    },
+    {
+      "summary": "Adds socket channels `stats` (`stats:full`, `stats:users` after every tick) and `warpath` (`warpath:battle`, `warpath:battles`); socket plugin changes are not part of this contract.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/stats/socket.js#L1-L17",
+        "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/warpath/socket.js#L1-L21"
+      ]
+    }
+  ],
+  "notes": {
+    "gameRoomObjects": "Unauthenticated. Returns every document of `rooms.objects` in `room` as stored (with the default storage including its `meta` and `$loki` bookkeeping fields; flags are not room objects) and, in `users`, `{_id, username, badge}` of every referenced user plus the Invader (`2`) and Source Keeper (`3`) users. Any `room` value is accepted; an unknown room yields empty `objects`. `shard` is ignored.",
+    "gameShardsInfo": "One entry: `name` (the `shardName` setting), `cpuLimit` 0, `lastTicks` (up to the 30 most recent tick durations in milliseconds), `rooms` (all rooms of the world) and `tick` (their average).",
+    "platformExperimentalPvp": "Lists rooms whose `lastPvpTime` is at least `(start or the current tick) - interval`, keyed by the `shardName` setting (the key is `null` until one is set).",
+    "platformExperimentalNukes": "Every nuke object of the world, keyed by the `shardName` setting (`null` until one is set).",
+    "platformVersion": "`protocol` is 14, `useNativeAuth` is true when no `STEAM_KEY` is set, `users` counts active non-bot players with CPU. `serverData` holds `shards` (`[shardName]`), `welcomeText`, `customObjectTypes`, `historyChunkSize`, `socketUpdateThrottle`, `renderer`, `features` (every feature registered by mods: for example screepsmod-auth's `auth` (1), `auth-tokens` (no version) and `screepsmod-auth` (`2.10.1`), and `screepsmod-admin-utils` (`1.37.1`)) and any keys of `additionalServerData`. `packageVersion` is not sent. The shard name is only what `Game.shard.name` reports: socket channels, room history and requests still carry no shard, and the official client reads `shards` only to decide whether to show shard names.",
+    "userWorldStartRoom": "Returns a random room whose controller the caller owns, otherwise a random room whose coordinates both end in 5 (a sector center such as `W5N5` or `E15S25`), otherwise `W5N5`. `shard` is ignored.",
+    "gamePlaceSpawn": "`name` must be a string of at most 50 characters (`invalid params`). `name: \"auto\"` skips the coordinates and the construction-spot checks, claims the controller with `autoSpawn` and places no spawn; the first spawn construction site the player then creates in that room becomes a complete spawn when the tick is processed. Otherwise coordinates outside 0..49 are `invalid params` (missing coordinates are not rejected). It then checks the account (`blocked`, `no cpu`, `too soon after last respawn`), the room (`invalid room`, `out of borders`, `not supported`), `already playing`, the controller (`invalid room`, `room busy`) and the tile (`invalid location`). On success other players' creeps and structures in the room are deleted (no ruins; their construction sites remain), the controller is claimed at level 1 with 20000 ticks of safe mode, the room is activated and `{ok: 1, newbie: true}` is returned; CPU settings are not changed.",
+    "platformMods": "Unauthenticated; reads `mods.json` on every request and returns the `screepsmod-...` names found in its `mods` entries, in order, as a bare JSON array. Without a readable `mods.json` the request gets no reply.",
+    "platformServerStats": "Unauthenticated; computed on every request. `ticks.avg`, `min`, `max` and `maxDeviation` are `null` while no tick durations are recorded.",
+    "platformWarpathBattles": "Unauthenticated. Rooms with PvP since `(start or the current tick) - interval` (default 1000) are classified with the Voight-Kampff rules and returned as a bare JSON array; rooms without a fight are omitted. A failure leaves the request without a reply."
+  },
+  "evidence": {
+    "gameRoomObjects": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L70-L78"
+    ],
+    "gameShardsInfo": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L79-L92"
+    ],
+    "platformExperimentalPvp": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L113-L120"
+    ],
+    "platformExperimentalNukes": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L121-L125"
+    ],
+    "platformVersion": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L45-L69",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L9-L13",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/common.js#L117-L143"
+    ],
+    "userWorldStartRoom": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L93-L112"
+    ],
+    "gamePlaceSpawn": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/autoSpawn/backend.js#L7-L91",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/autoSpawn/backend.js#L93-L202",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/autoSpawn/engine.js#L1-L39"
+    ],
+    "platformMods": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L34-L44"
+    ],
+    "platformServerStats": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/stats/backend.js#L1-L9",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/stats/utils.js#L5-L72"
+    ],
+    "platformWarpathBattles": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/warpath/index.js#L11-L38",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/warpath/battledetect.js#L20-L80",
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/services/warpath/battledetect.js#L82-L169",
+      "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L1839-L1841"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/version": {
+        "get": {
+          "parameters": []
+        }
+      },
+      "/api/user/world-start-room": {
+        "get": {
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/Shard"
+            },
+            {
+              "$ref": "#/components/parameters/LegacyUsername"
+            }
+          ]
+        }
+      },
+      "/api/game/place-spawn": {
+        "post": {
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/LegacyUsername"
+            }
+          ]
+        }
+      },
+      "/api/experimental/pvp": {
+        "get": {
+          "parameters": [
+            {
+              "name": "interval",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "default": 1000,
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "description": "Ticks to look back from `start` (parsed with `parseInt`, clamped to 1-10000; 1000 when missing or invalid)."
+            },
+            {
+              "name": "start",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Reference tick (default: the current tick)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "ok": {
+                            "type": "integer",
+                            "const": 1
+                          },
+                          "time": {
+                            "type": "integer",
+                            "description": "Current game tick."
+                          },
+                          "pvp": {
+                            "type": "object",
+                            "description": "Keyed by the `shardName` setting (`null` until set).",
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/PlatformPvpShard"
+                            }
+                          }
+                        },
+                        "required": ["ok", "time", "pvp"],
+                        "additionalProperties": true
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/mods": {
+        "get": {
+          "operationId": "platformMods",
+          "summary": "List installed mods",
+          "description": "Names of the installed `screepsmod-...` mods, read from the server's `mods.json`, as a bare JSON array without the `ok` envelope.",
+          "tags": ["Platform"],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Installed mod names.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^screepsmod-[\\w-]+$"
+                    },
+                    "examples": [["screepsmod-auth", "screepsmod-admin-utils"]]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/stats": {
+        "get": {
+          "operationId": "platformServerStats",
+          "summary": "Read server statistics",
+          "description": "Server statistics computed from the database on every request: active players, room and creep counts, recent tick timings and one entry per active non-bot player. Bare JSON object without the `ok` envelope.",
+          "tags": ["Platform"],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Server statistics.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "activeUsers": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "objects": {
+                        "type": "object",
+                        "properties": {
+                          "all": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Owned controllers and creeps."
+                          },
+                          "creeps": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": ["all", "creeps"]
+                      },
+                      "activeRooms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "totalRooms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "ownedRooms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "gametime": {
+                        "type": ["integer", "null"],
+                        "description": "Current game tick."
+                      },
+                      "ticks": {
+                        "type": "object",
+                        "properties": {
+                          "avg": {
+                            "type": ["number", "null"]
+                          },
+                          "min": {
+                            "type": ["number", "null"]
+                          },
+                          "max": {
+                            "type": ["number", "null"]
+                          },
+                          "maxDeviation": {
+                            "type": ["number", "null"]
+                          },
+                          "ticks": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "description": "Recent tick durations in milliseconds, newest first."
+                          },
+                          "stages": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "number"
+                            },
+                            "description": "Average duration of each tick stage in milliseconds."
+                          }
+                        },
+                        "required": ["avg", "min", "max", "maxDeviation", "ticks", "stages"]
+                      },
+                      "users": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "$ref": "#/components/schemas/UserId"
+                            },
+                            "username": {
+                              "type": "string"
+                            },
+                            "gcl": {
+                              "type": "number"
+                            },
+                            "gclLevel": {
+                              "type": "integer"
+                            },
+                            "power": {
+                              "type": "number"
+                            },
+                            "powerLevel": {
+                              "type": "integer"
+                            },
+                            "score": {
+                              "type": "number"
+                            },
+                            "rank": {
+                              "type": "number"
+                            },
+                            "creeps": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "rooms": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "combinedRCL": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "rcl": {
+                              "type": "object",
+                              "description": "Number of owned controllers per level 1-8.",
+                              "additionalProperties": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "cpu": {
+                              "type": "number"
+                            },
+                            "cpuAvailable": {
+                              "type": "number"
+                            },
+                            "lastUsedCpu": {
+                              "type": "number"
+                            },
+                            "lastUsedDirtyTime": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "gcl",
+                            "gclLevel",
+                            "power",
+                            "powerLevel",
+                            "score",
+                            "rank",
+                            "creeps",
+                            "rooms",
+                            "combinedRCL",
+                            "rcl",
+                            "cpu",
+                            "cpuAvailable"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "required": [
+                      "activeUsers",
+                      "objects",
+                      "activeRooms",
+                      "totalRooms",
+                      "ownedRooms",
+                      "gametime",
+                      "ticks",
+                      "users"
+                    ]
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Unhandled failure: `{error: <stack trace>}`.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/warpath/battles": {
+        "get": {
+          "operationId": "platformWarpathBattles",
+          "summary": "List classified battles",
+          "description": "Recent battles of the world with their Warpath conflict classification, defender, attackers, power creeps and stronghold level, as a bare JSON array without the `ok` envelope.",
+          "tags": ["Platform"],
+          "security": [],
+          "parameters": [
+            {
+              "name": "interval",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "default": 1000
+              },
+              "description": "Ticks to look back from `start` (1000 when missing, 0 or invalid)."
+            },
+            {
+              "name": "start",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Reference tick (default: the current tick)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Classified battles.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "room": {
+                          "$ref": "#/components/schemas/RoomName"
+                        },
+                        "shard": {
+                          "type": ["string", "null"],
+                          "description": "The `shardName` setting, `null` until set."
+                        },
+                        "classification": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6,
+                          "description": "Warpath conflict class from 0 to 6; higher classes mean larger or better-defended fights."
+                        },
+                        "defender": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ],
+                          "description": "Username of the room owner or reserver; `false` when none."
+                        },
+                        "attackers": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Usernames of the other creep owners."
+                        },
+                        "lastPvpTime": {
+                          "type": "integer"
+                        },
+                        "powerCreeps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "className": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "type": "integer"
+                              },
+                              "powers": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "power": {
+                                      "type": "string"
+                                    },
+                                    "level": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": ["power", "level"]
+                                }
+                              }
+                            },
+                            "required": ["name", "className", "level", "powers"]
+                          }
+                        },
+                        "stronghold": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Invader core level, 0 without a core."
+                        }
+                      },
+                      "required": [
+                        "room",
+                        "shard",
+                        "classification",
+                        "defender",
+                        "attackers",
+                        "lastPvpTime",
+                        "powerCreeps",
+                        "stronghold"
+                      ],
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "GameRoomObjectsResponse": {
+          "x-plugin-reason": "screepsmod-admin-utils answers `{objects, users}` without the `ok` marker.",
+          "allOf": null,
+          "type": "object",
+          "properties": {
+            "objects": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/GameRoomObject"
+              }
+            },
+            "users": {
+              "$ref": "#/components/schemas/GamePublicUsers"
+            }
+          },
+          "required": ["objects", "users"],
+          "additionalProperties": true,
+          "description": "Every room object of the room plus the public profiles of the referenced users, the Invader and the Source Keeper; no `ok` marker."
+        },
+        "GameShardInfo": {
+          "x-plugin-reason": "screepsmod-admin-utils reports its one shard without `users`, with a `null` name until one is set and a `null` average before any tick.",
+          "properties": {
+            "name": {
+              "$ref": null,
+              "type": ["string", "null"],
+              "description": "The `shardName` setting, `null` until set."
+            },
+            "cpuLimit": {
+              "description": "Always 0."
+            },
+            "rooms": {
+              "description": "Number of rooms of the world."
+            },
+            "users": {
+              "description": "Not sent by screepsmod-admin-utils."
+            },
+            "tick": {
+              "type": ["number", "null"],
+              "description": "Average of `lastTicks` in milliseconds; `null` while none is recorded."
+            }
+          },
+          "required": ["name", "cpuLimit", "lastTicks", "rooms", "tick"]
+        },
+        "PlatformPvpShard": {
+          "x-plugin-reason": "screepsmod-admin-utils sends `time` once beside `pvp` instead of in each shard entry.",
+          "properties": {
+            "time": null
+          },
+          "required": ["rooms"]
+        },
+        "PlatformVersion": {
+          "x-plugin-reason": "screepsmod-admin-utils publishes `config.backend.features` and its `shardName` setting: mod features carry their package version string or no version, and the shard list holds `null` until a name is set.",
+          "properties": {
+            "serverData": {
+              "properties": {
+                "features": {
+                  "items": {
+                    "properties": {
+                      "version": {
+                        "type": null,
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
+                        "description": "Feature version: a number for server features, the mod's package version string (for example `2.10.1`) for mod features, absent for some mod features (screepsmod-auth `auth-tokens`)."
+                      }
+                    },
+                    "required": ["name"]
+                  }
+                },
+                "shards": {
+                  "items": {
+                    "type": ["string", "null"]
+                  },
+                  "description": "`[shardName]`: the `shardName` setting, `null` until one is set. It is only what `Game.shard.name` reports; channels, history and requests carry no shard."
+                }
+              }
+            }
+          }
+        },
+        "UserWorldStartRoomResponse": {
+          "x-plugin-reason": "screepsmod-admin-utils always returns exactly one room name without shard.",
+          "properties": {
+            "room": {
+              "minItems": 1,
+              "items": {
+                "description": "Room name without shard (for example `W5N5`)."
+              }
+            }
+          }
+        },
+        "GamePlaceSpawnRequest": {
+          "x-plugin-reason": "screepsmod-admin-utils requires `name` and treats `auto` as automatic placement.",
+          "required": ["room", "name"],
+          "properties": {
+            "x": {
+              "description": "Required unless `name` is `auto` (then ignored); missing coordinates are not rejected."
+            },
+            "y": {
+              "description": "Required unless `name` is `auto` (then ignored); missing coordinates are not rejected."
+            },
+            "name": {
+              "description": "Spawn name (string, at most 50 characters). `auto` claims the room without placing a spawn; the first spawn construction site placed there becomes a complete spawn."
+            }
+          }
+        }
+      }
+    }
+  }
+}
