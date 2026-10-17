@@ -203,6 +203,7 @@
     "gameCreateInvader": "The standalone success body carries the inserted invader creep document next to `ok`.",
     "gameMapStats": "Standalone rankings for `<stat><interval>` are complete per-player arrays of `{user, value}` sorted descending instead of the single ranking entry documented for screeps.com.",
     "gameRoomDecorations": "No hosted decoration inventory: the decoration list is always empty and is served without authentication.",
+    "gameRoomObjects": "Community private servers serve the route through screepsmod-admin-utils, which answers `{objects, users}` without `ok` (override: GameRoomObjectsResponse).",
     "leaderboardList": "Standalone leaderboard user entries additionally carry the users' lifetime control points `gcl` (override: LeaderboardUser).",
     "marketMyOrders": "Single world: the caller's orders are returned as a flat `list` instead of being grouped by shard under `shards`; the official client accepts `list` when `shards` is absent.",
     "platformSteamNews": "A standalone server has no screeps.com news backend and relays the public Valve news feed instead; when that upstream is unavailable it reports HTTP 502 rather than inventing an empty feed.",
@@ -392,6 +393,9 @@
     ],
     "gameRoomDecorations": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L44-L56"
+    ],
+    "gameRoomObjects": [
+      "https://github.com/screepsmods/screepsmod-admin-utils/blob/2dad36835ad501ba8edac624269d315556d1a6e1/lib/backend.js#L70-L78"
     ],
     "gameRoomOverview": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/game.ts#L54-L58",
@@ -1042,6 +1046,35 @@
             }
           }
         },
+        "GameRoomObjectsResponse": {
+          "x-profile-reason": "screepsmod-admin-utils replaces `GET /api/game/room-objects` and answers `{objects, users}` without the `ok` marker.",
+          "allOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Success marker; absent when screepsmod-admin-utils serves the route."
+                },
+                "objects": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameRoomObject"
+                  }
+                },
+                "users": {
+                  "$ref": "#/components/schemas/GamePublicUsers"
+                }
+              },
+              "additionalProperties": true,
+              "required": [
+                "objects",
+                "users"
+              ]
+            }
+          ]
+        },
         "GameTickResponse": {
           "x-profile-reason": "Standalone-only: response of the private-server gameTick addition.",
           "allOf": [
@@ -1338,7 +1371,8 @@
       "roomMapEvent": "One world: the map channel is `roomMap2:<room>` without a shard.",
       "mapVisualEvent": "One world: the map visual channel is `mapVisual:<user>` without a shard.",
       "userMemoryEvent": "One world: Memory watch channels are `user:<user>/memory/<path>` without a shard.",
-      "userConsoleEvent": "One world: console events carry no `shard`."
+      "userConsoleEvent": "One world: console events carry no `shard`.",
+      "userCodeEvent": "backend-local sends the branch document's save time as stored: a date (an ISO 8601 string) for branches saved by `POST /api/user/clone-branch` (override: UserCode)."
     },
     "evidence": {
       "authOk": [
@@ -1369,6 +1403,11 @@
       ],
       "userConsoleEvent": [
         "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L28-L33"
+      ],
+      "userCodeEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L13-L26",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L82-L119",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L209-L243"
       ]
     },
     "overrides": {
@@ -1548,6 +1587,26 @@
         }
       },
       "schemas": {
+        "UserCode": {
+          "x-profile-reason": "backend-local re-reads the branch document for the event: `POST /api/user/code` stores milliseconds, `POST /api/user/clone-branch` a date, which arrives as an ISO 8601 string.",
+          "properties": {
+            "timestamp": {
+              "type": null,
+              "minimum": null,
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              ],
+              "description": "Save time: milliseconds since the Unix epoch, or an ISO 8601 date-time for branches saved by `POST /api/user/clone-branch`."
+            }
+          }
+        },
         "UserConsole": {
           "x-profile-reason": "One world: console events carry no `shard`.",
           "oneOf": [
