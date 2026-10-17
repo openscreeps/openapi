@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { createRequire } from 'node:module';
 import type { FormatsPlugin } from 'ajv-formats';
+import { composeProfile, type JsonObject } from '../lib/contracts.mjs';
 
 const require = createRequire(import.meta.url);
 const addFormats = require('ajv-formats') as FormatsPlugin;
@@ -45,6 +46,49 @@ test('official capabilities admit optional menuData on feature entries', () => {
     },
   };
   assert.equal(validate(official), true, ajv.errorsText(validate.errors));
+});
+
+test('standalone capabilities admit community mod features and shard names; official does not', async () => {
+  const profile: unknown = JSON.parse(
+    await readFile(new URL('../profiles/standalone.json', import.meta.url), 'utf8'),
+  );
+  const standalone = composeProfile(spec as JsonObject, profile as JsonObject);
+  const composed = new Ajv2020({ strict: false, allErrors: true });
+  addFormats(composed);
+  composed.addSchema({ $id: 'urn:screeps:standalone-test', components: standalone.components });
+  const validate = composed.getSchema<unknown>(
+    'urn:screeps:standalone-test#/components/schemas/PlatformVersion',
+  );
+  assert.ok(validate);
+  // GET /api/version of backend-local with screepsmod-auth and screepsmod-admin-utils.
+  const community = (shard: string | null) => ({
+    ok: 1,
+    protocol: 14,
+    useNativeAuth: false,
+    users: 1,
+    serverData: {
+      shards: [shard],
+      customObjectTypes: {},
+      historyChunkSize: 20,
+      socketUpdateThrottle: 1000,
+      renderer: { resources: {}, metadata: {} },
+      features: [
+        { name: 'auth', version: 1 },
+        { name: 'auth-tokens' },
+        {
+          name: 'screepsmod-auth',
+          version: '2.10.1',
+          authTypes: ['password'],
+          menuData: [{ section: 2, start: 1, item: { label: 'Change Password' } }],
+        },
+        { name: 'screepsmod-admin-utils', version: '1.37.1' },
+      ],
+    },
+  });
+  for (const shard of [null, 'shard0']) {
+    assert.equal(validate(community(shard)), true, composed.errorsText(validate.errors));
+    assert.equal(schema('PlatformVersion')(community(shard)), false);
+  }
 });
 
 test('official Steam ownership contains application IDs, not standalone flags', () => {
