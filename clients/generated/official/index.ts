@@ -11656,7 +11656,7 @@ export class Client extends OpenApiClient<Operations, SecuritySchemeName> {
   /**
    * List code branches
    *
-   * Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`.
+   * Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`. Without `withCode` the entries carry only `_id`, `branch`, `activeWorld` and `activeSim`; with it they also carry `user`, `modules` and `timestamp`.
    *
    * `GET /api/user/branches`
    */

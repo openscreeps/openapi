@@ -2023,7 +2023,7 @@ export interface paths {
         };
         /**
          * List code branches
-         * @description Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`.
+         * @description Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`. Without `withCode` the entries carry only `_id`, `branch`, `activeWorld` and `activeSim`; with it they also carry `user`, `modules` and `timestamp`.
          */
         get: operations["userBranches"];
         put?: never;
@@ -7298,7 +7298,7 @@ export interface components {
             activeWorld?: boolean;
             /** @description Branch runs in the simulator. Absent on branches created by cloning until activated. */
             activeSim?: boolean;
-            /** @description Last code change: Unix milliseconds or a stored date (ISO 8601 string). */
+            /** @description Last code change as stored: Unix milliseconds for a branch last saved by `POST /api/user/code`, a date (ISO 8601 string) for one last saved by `POST /api/user/clone-branch` (both observed on screeps.com). */
             timestamp?: number | string;
         };
         UserCodeGetResponse: {

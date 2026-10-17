@@ -1376,8 +1376,7 @@
       "roomMapEvent": "One world: the map channel is `roomMap2:<room>` without a shard.",
       "mapVisualEvent": "One world: the map visual channel is `mapVisual:<user>` without a shard.",
       "userMemoryEvent": "One world: Memory watch channels are `user:<user>/memory/<path>` without a shard.",
-      "userConsoleEvent": "One world: console events carry no `shard`.",
-      "userCodeEvent": "backend-local sends the branch document's save time as stored: a date (an ISO 8601 string) for branches saved by `POST /api/user/clone-branch` (override: UserCode)."
+      "userConsoleEvent": "One world: console events carry no `shard`."
     },
     "evidence": {
       "authOk": [
@@ -1408,11 +1407,6 @@
       ],
       "userConsoleEvent": [
         "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L28-L33"
-      ],
-      "userCodeEvent": [
-        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L13-L26",
-        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L82-L119",
-        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L209-L243"
       ]
     },
     "overrides": {
@@ -1592,26 +1586,6 @@
         }
       },
       "schemas": {
-        "UserCode": {
-          "x-profile-reason": "backend-local re-reads the branch document for the event: `POST /api/user/code` stores milliseconds, `POST /api/user/clone-branch` a date, which arrives as an ISO 8601 string.",
-          "properties": {
-            "timestamp": {
-              "type": null,
-              "minimum": null,
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              ],
-              "description": "Save time: milliseconds since the Unix epoch, or an ISO 8601 date-time for branches saved by `POST /api/user/clone-branch`."
-            }
-          }
-        },
         "UserConsole": {
           "x-profile-reason": "One world: console events carry no `shard`.",
           "oneOf": [
