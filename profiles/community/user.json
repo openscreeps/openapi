@@ -1,0 +1,340 @@
+{
+  "required": [
+    "authMe",
+    "authSteamTicket",
+    "leaderboardFind",
+    "leaderboardList",
+    "leaderboardSeasons",
+    "registerCheckEmail",
+    "registerCheckUsername",
+    "registerSetUsername",
+    "userBadgeSet",
+    "userBadgeSvg",
+    "userBranches",
+    "userCloneBranch",
+    "userCodeGet",
+    "userCodeSet",
+    "userConsole",
+    "userDeleteBranch",
+    "userEmailSet",
+    "userFind",
+    "userMemoryGet",
+    "userMemorySet",
+    "userMemorySegmentGet",
+    "userMemorySegmentSet",
+    "userMessagesIndex",
+    "userMessagesList",
+    "userMessagesMarkRead",
+    "userMessagesSend",
+    "userMessagesUnreadCount",
+    "userMoneyHistory",
+    "userNotifyPrefsSet",
+    "userOverview",
+    "userRespawn",
+    "userRespawnProhibitedRooms",
+    "userRooms",
+    "userSetActiveBranch",
+    "userSetSteamVisible",
+    "userStats",
+    "userTutorialDone",
+    "userWorldStartRoom",
+    "userWorldStatus"
+  ],
+  "excluded": {
+    "authQueryToken": "Not routed by backend-local: it has no API auth tokens with endpoint or WebSocket permissions to inspect, only full-access session tokens (the screepsmod-auth plugin contract provides it).",
+    "authSignin": "Not routed by backend-local: the stock server has no password accounts; players sign in with a Steam ticket (`POST /api/auth/steam-ticket`) (the screepsmod-auth plugin contract provides password sign-in).",
+    "registerSubmit": "Not routed by backend-local: the stock server has no registration form; `POST /api/auth/steam-ticket` creates an account on first sign-in and `POST /api/register/set-username` names it (the screepsmod-auth plugin contract provides registration).",
+    "scoreboardList": "Not routed by backend-local: the Seasonal World scoreboard is a hosted screeps.com game mode; a private server runs one persistent world.",
+    "seasonsCurrent": "Not routed by backend-local: Seasonal World competitions are hosted by screeps.com; a private server runs one persistent world.",
+    "seasonsList": "Not routed by backend-local: Seasonal World competitions are hosted by screeps.com; a private server runs one persistent world.",
+    "userActivatePtr": "Not routed by backend-local: the Public Test Realm CPU unlock belongs to screeps.com's PTR; a private server has none.",
+    "userCpuShardsSet": "Not routed by backend-local: it runs one world whose CPU is not split across shards (`cpu` is set per account by the operator).",
+    "userDecorationsActivate": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsConvert": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsDeactivate": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsInventory": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory (and advertises no `inventory` feature, so the official client does not offer it).",
+    "userDecorationsPixelize": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsThemes": "Not routed by backend-local: decoration themes belong to the hosted screeps.com decoration economy.",
+    "userName": "Not routed by backend-local: the stock server has only full-access session tokens, whose owner `GET /api/auth/me` already reports (the screepsmod-auth plugin contract provides it)."
+  },
+  "adaptations": {
+    "leaderboardFind": "Leaderboards are not implemented: without `season` the reply is always `{ok: 1, list: []}`, with `season` always the error `result not found`.",
+    "leaderboardList": "Leaderboards are not implemented: the reply is always `{ok: 1, list: [], count: 0, users: {}}`.",
+    "leaderboardSeasons": "Leaderboards are not implemented: the reply always lists the two placeholder seasons `{_id: 'empty1', name: '—'}` and `{_id: 'empty2', name: '—'}`.",
+    "userFind": "When a player without a linked Steam account has called `POST /api/user/set-steam-visible`, `user.steam` is an empty object, which the official schema does not allow (override: UserPublicProfile).",
+    "userMessagesIndex": "Not grouped by conversation: backend-local keys the index by the message's `user` (always the caller), so `messages` holds at most one entry, the caller's newest message under the caller's own `_id`, and `users` holds only the caller.",
+    "userOverview": "Single world and not implemented beyond the room list: the reply is flat `{ok: 1, rooms, stats: {}, totals: {}, gametimes: []}` (no `shards`, no `statsMax`), and the official web client wraps a body without `shards` as one pseudo-shard (override: UserOverviewFlatResponse).",
+    "userRooms": "Single world: owned rooms are returned as a flat `rooms` array instead of grouped under `shards`, without `reservations`; the official web client maps a response without `shards` to one pseudo-shard (override: UserRoomsFlatResponse).",
+    "userStats": "Player statistics are not implemented: a supported `interval` (8, 180 or 1440) always yields `{ok: 1, stats: {}}`.",
+    "userWorldStartRoom": "Single world: the room is always a plain name without a `shard/` prefix (the official web client then falls back to its default shard), and the fallback `W5N5` is returned whether or not that room exists."
+  },
+  "additions": {},
+  "notes": {
+    "authMe": "Returns the backend-local projection only: `_id`, `email`, `emailDirty`, `username`, `cpu`, `badge`, `password` (true when a password is stored, which only mods do), `lastRespawnDate`, `notifyPrefs`, `gcl`, `lastChargeTime`, `blocked`, `customBadge`, `power`, `money` (stored milli-credits / 1000), `steam` (`id`, `displayName`, `ownership`, `steamProfileLinkHidden` as stored; `{}` without a Steam account), `powerExperimentations` and `powerExperimentationTime` (0 when unset). Requires `X-Username` (any non-empty value) besides `X-Token`; the reply carries a new token in `X-Token`.",
+    "authSteamTicket": "Creates the account on first sign-in (100 CPU, no username, a `default` branch with an empty `main`, empty Memory) and answers `{ok: 1, token, steamid}`. With a `STEAM_KEY` the ticket is verified through Steam's AuthenticateUserTicket for app 464350 (`could not authenticate` otherwise; when the Steam Web API interface could not be loaded, for example with an invalid key, the handler throws and the reply is HTTP 200 `TypeError: …`); without one the server verifies encrypted app tickets through greenworks and requires `useNativeAuth: true`. A request for the other mode answers `authentication method is not supported`.",
+    "leaderboardFind": "`mode` and `username` are not read.",
+    "registerCheckEmail": "Answers `exists` for an address already stored (compared lower-cased) and `invalid email` when `email` is missing; there is no format check.",
+    "registerCheckUsername": "Answers `exists` for a name already taken (compared case-insensitively through `usernameLower`) and `invalid username` when `username` is missing; there is no format check.",
+    "registerSetUsername": "Names an account that has none (`username already set` otherwise), typically one created by `POST /api/auth/steam-ticket`. Usernames must match `^[a-zA-Z0-9_-]{3,}$` and be unused case-insensitively (`invalid username` for both); an optional `email` must match the server e-mail rule (`invalid email`) and is stored lower-cased without a uniqueness check. Success is `{ok: 1, modified: 1}`.",
+    "userBadgeSet": "Success is `{ok: 1, modified: 1}`.",
+    "userBadgeSvg": "Users without a badge get an empty `<svg>`; unknown users HTTP 404 `text/plain` `Not Found`; a missing `username` HTTP 500. Rendered badges are cached for an hour.",
+    "userBranches": "Ignores `withCode` and always returns complete branch documents (`user`, `modules`, `timestamp` once set, plus the storage fields `meta` and `$loki`). The `default` branch it creates when missing stores a Date `timestamp` (an ISO 8601 string on the wire).",
+    "userCloneBranch": "Stores the clone's `timestamp` as a Date (an ISO 8601 string in later branch listings) and replies with the current time in milliseconds; an existing `newName` is overwritten. At most 30 branches (`too many branches`); `branch` longer than 30 characters is `invalid branch name`.",
+    "userCodeSet": "Stores the branch `timestamp` in milliseconds and replies with the current time in milliseconds. Module names whose stored form starts with `$` are dropped and an empty `main` is ensured.",
+    "userConsole": "Queues the expression for the player's next run and echoes the inserted console document (`user`, `expression`, `_id`, `meta`, `$loki`) next to `ok`. `expression size is too large` above 1024 JSON characters.",
+    "userDeleteBranch": "Deletes the branch unless it is active in the world or simulation (then nothing is deleted and the call still succeeds); replies with the current time in milliseconds.",
+    "userEmailSet": "The address must match the server e-mail rule (`invalid email`), is stored lower-cased without confirmation and must not be stored already (`email already exists`). Success is `{ok: 1, modified: 1}`.",
+    "userFind": "`id` wins over `username` (matched case-insensitively). An unknown user, or neither parameter, makes the handler throw: the reply is the HTTP 200 error `TypeError: Cannot read properties of null (reading 'steam')` rather than a not-found error.",
+    "userMemoryGet": "`data` is `gz:` plus the base64 gzip of the JSON value at `path`. A path whose value is undefined yields `{ok: 1}` without `data`; a path through a missing intermediate element yields `data: 'Incorrect memory path'`.",
+    "userMemorySegmentGet": "Parses `segment` with `parseInt` (0-99, `invalid segment ID` otherwise). An unwritten segment yields `{ok: 1}` without `data`.",
+    "userMemorySegmentSet": "Parses `segment` with `parseInt` (0-99, `invalid segment ID`); `data` above 100 KiB in its string form is `length limit exceeded`. Success is `{ok: 1}`.",
+    "userMemorySet": "Queues the hidden console expression `Memory['a']['b'] = value` (or `delete Memory['a']['b']` when `value` is absent) exactly as written: any path is accepted, and a missing intermediate element makes the hidden command throw, leaving Memory unchanged although the reply is a success. Without `path` the whole Memory is replaced. Echoes the inserted console document (`user`, `expression`, `hidden: true`, `_id`, `meta`, `$loki`) next to `ok`; `memory size is too large` above 1 MiB of JSON.",
+    "userMessagesList": "Returns the newest 100 messages with `respondent`, oldest first; message documents carry the storage fields `meta` and `$loki`.",
+    "userMessagesMarkRead": "Answers `{ok: 1, 2: {modified: 1}}`: the handler returns the results of two realtime publishes (empty, so absent) and of marking the sender's copy read, keyed by position. Only an incoming message of the caller can be marked (`invalid id`).",
+    "userMessagesSend": "Success is `{ok: 1}`. `text` must be a string of at most 100 KiB (`text too long`); an unknown `respondent` is `invalid respondent`.",
+    "userMoneyHistory": "Pages of 20 money-ledger documents as stored by the engine, newest first.",
+    "userNotifyPrefsSet": "Unsupported `interval` and `errorsInterval` values are ignored. Success is `{ok: 1, modified: 1}`.",
+    "userRespawn": "Requires the system user (`no system user` otherwise). Removes the player's creeps, power creeps and construction sites, turns their structures into ruins owned by the system user, releases their controllers and flags; room statuses are left unchanged. Success is `{ok: 1, modified: 1}`.",
+    "userRespawnProhibitedRooms": "Always returns an empty list: placing a spawn has no respawn-zone restriction.",
+    "userRooms": "Public, sorted by controller level (descending). `reservation` is ignored; an unknown or missing `id` returns an empty list.",
+    "userSetSteamVisible": "Stores `steam.steamProfileLinkHidden` as 0 (visible) or 1, even for accounts without a Steam account. Success is `{ok: 1, modified: 1}`.",
+    "userTutorialDone": "Accepts the call and stores nothing.",
+    "userWorldStartRoom": "Ignores `shard` and returns a random room whose controller the user owns, else `W5N5`.",
+    "userWorldStatus": "`empty` without room objects, `normal` with a spawn in a room whose controller the player owns, `lost` otherwise."
+  },
+  "evidence": {
+    "authMe": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L80-L135"
+    ],
+    "authSteamTicket": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L20-L70",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L137-L178",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L110-L131"
+    ],
+    "leaderboardFind": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L19-L28"
+    ],
+    "leaderboardList": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L14-L17"
+    ],
+    "leaderboardSeasons": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L30-L32"
+    ],
+    "registerCheckEmail": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L15-L27"
+    ],
+    "registerCheckUsername": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L30-L42"
+    ],
+    "registerSetUsername": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L44-L73"
+    ],
+    "userBadgeSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L146-L176"
+    ],
+    "userBadgeSvg": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L467-L490"
+    ],
+    "userBranches": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L56-L80"
+    ],
+    "userCloneBranch": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L209-L244"
+    ],
+    "userCodeSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L82-L120",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/utils.js#L62-L86"
+    ],
+    "userConsole": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L341-L351"
+    ],
+    "userDeleteBranch": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L246-L253"
+    ],
+    "userEmailSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L437-L450"
+    ],
+    "userFind": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L353-L369",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L492-L497"
+    ],
+    "userMemoryGet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L255-L283"
+    ],
+    "userMemorySegmentGet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L318-L327"
+    ],
+    "userMemorySegmentSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L329-L339"
+    ],
+    "userMemorySet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L285-L316"
+    ],
+    "userMessagesIndex": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L88-L104"
+    ],
+    "userMessagesList": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L82-L86"
+    ],
+    "userMessagesMarkRead": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L106-L129"
+    ],
+    "userMessagesSend": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L38-L80"
+    ],
+    "userMoneyHistory": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L452-L463"
+    ],
+    "userNotifyPrefsSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L389-L410"
+    ],
+    "userOverview": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L412-L432",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C104678"
+    ],
+    "userRespawn": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L182-L193",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/utils.js#L115-L168"
+    ],
+    "userRespawnProhibitedRooms": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L178-L180"
+    ],
+    "userRooms": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L380-L387",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C244244",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284710"
+    ],
+    "userSetSteamVisible": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L492-L497"
+    ],
+    "userStats": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L371-L378"
+    ],
+    "userTutorialDone": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L434-L435"
+    ],
+    "userWorldStartRoom": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L19-L28",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C97944"
+    ],
+    "userWorldStatus": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L30-L54"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/user/overview": {
+        "get": {
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/UserOverviewFlatResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/user/rooms": {
+        "get": {
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/UserRoomsFlatResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "UserOverviewFlatResponse": {
+          "x-profile-reason": "backend-local runs one world and implements only the room list of the overview, returned flat instead of grouped by shard.",
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "integer",
+              "const": 1,
+              "description": "Success marker; every JSON success body carries `ok: 1`."
+            },
+            "rooms": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Rooms whose controller the user owns, highest level first."
+            },
+            "stats": {
+              "type": "object",
+              "maxProperties": 0,
+              "description": "Always empty: per-room statistics are not implemented."
+            },
+            "totals": {
+              "type": "object",
+              "maxProperties": 0,
+              "description": "Always empty: statistic totals are not implemented."
+            },
+            "gametimes": {
+              "type": "array",
+              "maxItems": 0,
+              "description": "Always empty: statistic slots are not implemented."
+            }
+          },
+          "required": ["ok", "rooms", "stats", "totals", "gametimes"],
+          "description": "Single-world overview (no `shards` grouping, no `statsMax`) of which only `rooms` is implemented."
+        },
+        "UserPublicProfile": {
+          "x-profile-reason": "backend-local emits `steam: {id}` whenever the profile link is not hidden, so an account without a linked Steam account but with a stored visibility flag yields `steam: {}`.",
+          "properties": {
+            "steam": {
+              "description": "Linked Steam account, present unless the player hid the profile link; an empty object when the player has no Steam id but has set the visibility (`POST /api/user/set-steam-visible`).",
+              "required": null
+            }
+          }
+        },
+        "UserRoomsFlatResponse": {
+          "x-profile-reason": "backend-local runs one world, so claimed rooms are returned as a flat list instead of grouped by shard.",
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "integer",
+              "const": 1,
+              "description": "Success marker; every JSON success body carries `ok: 1`."
+            },
+            "rooms": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Rooms whose controller the user owns, highest controller level first."
+            }
+          },
+          "required": ["ok", "rooms"],
+          "description": "Single-world list of claimed rooms (no `shards` grouping)."
+        }
+      }
+    }
+  }
+}

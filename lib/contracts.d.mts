@@ -21,4 +21,14 @@ export function composeProfile(
   profile: JsonObject,
   extensions?: JsonObject,
 ): JsonObject;
+export function composePlugin(
+  official: JsonObject,
+  base: JsonObject,
+  plugin: JsonObject,
+): JsonObject;
+export function composePlugins(
+  official: JsonObject,
+  base: JsonObject,
+  plugins: readonly JsonObject[],
+): JsonObject;
 export function composeSocketProfile(official: JsonObject, profile: JsonObject): JsonObject;

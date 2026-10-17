@@ -1,0 +1,77 @@
+{
+  "name": "community",
+  "description": "Compatibility profile for the stock Screeps private server: screeps/backend-local (the `@screeps/backend` package that the `screeps` package and screeps-launcher run) without any mods. It selects exactly the official operations backend-local routes (`required`), documents why it does not provide the others (`excluded`), adds the private-server routes it serves that the official client uses only when `options.official` is false (`additions`), and records where its replies or semantics differ from the official contract (`adaptations`, `overrides`). Community mods compose on top of this profile as separate plugin contracts. Official schemas are reused unchanged unless an override with `x-profile-reason` says otherwise.",
+  "info": {
+    "title": "Screeps community server HTTP API",
+    "summary": "Official Screeps World HTTP contract composed with the community (stock backend-local) profile",
+    "description": "Operations the stock Screeps private server (screeps/backend-local without mods, default storage `@screeps/storage`) provides for the official web client and community tools. Composed from the official Screeps World contract and the community compatibility profile; each operation's `x-profile` states whether it is an unchanged official operation (`required`), an official operation with documented differences (`adapted`) or a private-server route (`addition`). One world is served: `shard` values are ignored and replies are never grouped by shard. Success bodies are `{ok: 1}` merged with the handler result; database writes therefore also carry the storage driver's result (`modified` or `inserted` counts) or the inserted document with its LokiJS `meta` and `$loki` fields. Logical failures arrive as `{error}` with HTTP 200, including uncaught handler exceptions (`TypeError: …`); never infer success from the status code. Stock backend-local has no password sign-in or registration: accounts come from `POST /api/auth/steam-ticket` or from mods."
+  },
+  "servers": [
+    {
+      "url": "http://{host}:{port}",
+      "description": "Stock Screeps private server; configure host and port for your deployment.",
+      "variables": {
+        "host": {
+          "default": "localhost",
+          "description": "Private server hostname or IP address."
+        },
+        "port": {
+          "default": "21025",
+          "description": "Private server HTTP port (`GAME_PORT`, 21025 by default)."
+        }
+      }
+    }
+  ],
+  "transport": [
+    {
+      "match": "^/(api/|room-history$)",
+      "parameter": {
+        "$ref": "#/components/parameters/ServerPassword"
+      },
+      "reason": "When `SERVER_PASSWORD` is set, backend-local answers every request it handles after its static `/assets` directory and landing page, which covers its `/api` router and `/room-history`, with `{error: 'incorrect server password'}` unless `X-Server-Password` matches (lib/game/server.js); the official web client sends that header when `options.official` is false and a server password is configured."
+    }
+  ],
+  "overrides": {
+    "components": {
+      "parameters": {
+        "LegacyUsername": {
+          "required": true,
+          "description": "Required with `X-Token`: backend-local authenticates through passport-token, which rejects a request without a username value (HTTP 401 `{error: 'unauthorized'}`) and does not read it otherwise. Send any non-empty value; the official web client sends the token. The `username` and `token` query or body fields are accepted instead of both headers.",
+          "x-profile-reason": "backend-local's token strategy requires a username value next to the token.",
+          "x-sources": [
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L80-L109",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C296024"
+          ]
+        },
+        "ServerPassword": {
+          "name": "X-Server-Password",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Server password (`SERVER_PASSWORD` environment variable) of a password-protected private server, independent of player authentication. Required only when the host sets one; a missing or wrong value returns HTTP 200 `{error: 'incorrect server password'}`.",
+          "x-profile-reason": "Private-server protocol header: backend-local checks it when `SERVER_PASSWORD` is set, and the official client sends it only when `options.official` is false.",
+          "x-sources": [
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L154-L162",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C296024"
+          ]
+        },
+        "Shard": {
+          "description": "Accepted for official-client compatibility. backend-local serves one world and ignores this value.",
+          "x-profile-reason": "Single world: official shard routing does not apply."
+        }
+      },
+      "securitySchemes": {
+        "Token": {
+          "description": "Session token issued by backend-local (`POST /api/auth/steam-ticket`, the socket `auth ok` reply or a sign-in mod): 40 lowercase hex characters (HMAC-SHA1), stored for 60 seconds. Every successful authenticated request issues a new token in the `X-Token` response header; store the latest value. Missing, expired or unknown tokens answer HTTP 401 `{error: 'unauthorized'}`. Never send tokens to untrusted hosts or follow authenticated cross-host redirects.",
+          "x-profile-reason": "backend-local issues its own short-lived session tokens instead of screeps.com account tokens.",
+          "x-sources": [
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/authlib.js#L7-L41",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L94-L109"
+          ]
+        }
+      }
+    }
+  }
+}

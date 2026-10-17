@@ -11656,7 +11656,7 @@ export class Client extends OpenApiClient<Operations, SecuritySchemeName> {
   /**
    * List code branches
    *
-   * Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`.
+   * Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`. Without `withCode` the entries carry only `_id`, `branch`, `activeWorld` and `activeSim`; with it they also carry `user`, `modules` and `timestamp`.
    *
    * `GET /api/user/branches`
    */
@@ -11931,7 +11931,7 @@ export class Client extends OpenApiClient<Operations, SecuritySchemeName> {
   /**
    * Read a RawMemory segment
    *
-   * Returns the contents of a `RawMemory.segments` entry (0-99), or `null` when it was never written. A comma-separated list of ids returns an array of contents in request order (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The official web client reads single segments of the current shard.
+   * Returns the contents of a `RawMemory.segments` entry (0-99). A segment that was never written has no contents: `data` is `null`, or absent when the server's storage reads it as `undefined` (backend-local answers `{data}` as read, and its default LokiJS storage yields `undefined`, which JSON omits). A comma-separated list of ids returns an array of contents in request order (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The official web client reads single segments of the current shard.
    *
    * `GET /api/user/memory-segment`
    */

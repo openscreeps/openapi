@@ -2023,7 +2023,7 @@ export interface paths {
         };
         /**
          * List code branches
-         * @description Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`.
+         * @description Lists the player's code branches with their world/simulator activation flags. If no branch named `default` exists, an empty inactive `default` branch is created first (so this GET may write). The official web client passes `withCode` (true when it needs module contents, e.g. to sync local files) and reads `list`. Without `withCode` the entries carry only `_id`, `branch`, `activeWorld` and `activeSim`; with it they also carry `user`, `modules` and `timestamp`.
          */
         get: operations["userBranches"];
         put?: never;
@@ -2491,7 +2491,7 @@ export interface paths {
         };
         /**
          * Read a RawMemory segment
-         * @description Returns the contents of a `RawMemory.segments` entry (0-99), or `null` when it was never written. A comma-separated list of ids returns an array of contents in request order (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The official web client reads single segments of the current shard.
+         * @description Returns the contents of a `RawMemory.segments` entry (0-99). A segment that was never written has no contents: `data` is `null`, or absent when the server's storage reads it as `undefined` (backend-local answers `{data}` as read, and its default LokiJS storage yields `undefined`, which JSON omits). A comma-separated list of ids returns an array of contents in request order (node-screeps-api). Ids outside 0-99 yield `invalid segment ID`. The official web client reads single segments of the current shard.
          */
         get: operations["userMemorySegmentGet"];
         put?: never;
@@ -6667,6 +6667,10 @@ export interface components {
             useNativeAuth?: boolean;
             users: number;
             currentSeason?: string;
+            /** @description Season entry fee schedule: each key is a Unix time in seconds from which the value, a fee in access keys, applies. The official client passes it to its season access widget. */
+            seasonAccessCost?: {
+                [key: string]: number;
+            };
             decorationConvertationCost?: number;
             decorationPixelizationCost?: number;
             serverData: {
@@ -6692,6 +6696,8 @@ export interface components {
                 features?: ({
                     name: string;
                     version: number;
+                    /** @description HTML hint about the season entry fee schedule, shown by the official client's season access widget (the `persistent-world` feature). */
+                    seasonHint?: string;
                     menuData?: ({
                         section: number;
                         start?: number;
@@ -7298,7 +7304,7 @@ export interface components {
             activeWorld?: boolean;
             /** @description Branch runs in the simulator. Absent on branches created by cloning until activated. */
             activeSim?: boolean;
-            /** @description Last code change: Unix milliseconds or a stored date (ISO 8601 string). */
+            /** @description Last code change as stored: Unix milliseconds for a branch last saved by `POST /api/user/code`, a date (ISO 8601 string) for one last saved by `POST /api/user/clone-branch` (both observed on screeps.com). */
             timestamp?: number | string;
         };
         UserCodeGetResponse: {
@@ -7530,8 +7536,8 @@ export interface components {
              * @constant
              */
             ok: 1;
-            /** @description Segment text, or null for an uninitialized segment. screeps.com returns an array in request order when several comma-separated ids were requested. */
-            data: string | null | (string | null)[];
+            /** @description Segment text; `null` or absent for an uninitialized segment. screeps.com returns an array in request order when several comma-separated ids were requested. */
+            data?: string | null | (string | null)[];
         };
         UserMemorySegmentSetRequest: {
             /** @description Single segment id 0-99 (parsed with `parseInt`). */

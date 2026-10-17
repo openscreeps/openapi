@@ -24,6 +24,10 @@
       "repository": "https://github.com/screepsmods/screepsmod-auth",
       "commit": "9195e87424475139d749df6d8063df677c4f9917"
     },
+    "adminUtils": {
+      "repository": "https://github.com/screepsmods/screepsmod-admin-utils",
+      "commit": "2dad36835ad501ba8edac624269d315556d1a6e1"
+    },
     "officialClient": {
       "entry": "https://screeps.com/a/",
       "bust": "1787842760865",
@@ -79,18 +83,9 @@
     },
     {
       "method": "get",
-      "path": "/api/authmod",
-      "reason": "Private-server authentication-mod (screepsmod-auth) extension; the official client synthesizes its result without an HTTP request and it is not part of the official API."
-    },
-    {
-      "method": "get",
-      "path": "/api/warpath/battles",
-      "reason": "Third-party extension the community client documents as unavailable on official servers; not part of the official API or the private-server protocol."
-    },
-    {
-      "method": "get",
       "path": "/assets/{path}",
-      "reason": "Static asset directory of private-server hosts (backend-local ASSET_DIR); not used by the official client. OpenScreeps serves it as the server extension platformAsset."
+      "origin": "openscreeps",
+      "reason": "OpenScreeps static asset extension (platformAsset) defined by the server api/extensions.json."
     },
     {
       "method": "get",

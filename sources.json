@@ -22,5 +22,9 @@
   "auth": {
     "repository": "https://github.com/screepsmods/screepsmod-auth",
     "commit": "9195e87424475139d749df6d8063df677c4f9917"
+  },
+  "adminUtils": {
+    "repository": "https://github.com/screepsmods/screepsmod-admin-utils",
+    "commit": "2dad36835ad501ba8edac624269d315556d1a6e1"
   }
 }

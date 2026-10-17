@@ -1,0 +1,1170 @@
+{
+  "name": "community",
+  "description": "Compatibility profile for the stock Screeps private server: screeps/backend-local (the `@screeps/backend` package that the `screeps` package and screeps-launcher run) without any mods. It selects exactly the official operations backend-local routes (`required`), documents why it does not provide the others (`excluded`), adds the private-server routes it serves that the official client uses only when `options.official` is false (`additions`), and records where its replies or semantics differ from the official contract (`adaptations`, `overrides`). Community mods compose on top of this profile as separate plugin contracts. Official schemas are reused unchanged unless an override with `x-profile-reason` says otherwise.",
+  "info": {
+    "title": "Screeps community server HTTP API",
+    "summary": "Official Screeps World HTTP contract composed with the community (stock backend-local) profile",
+    "description": "Operations the stock Screeps private server (screeps/backend-local without mods, default storage `@screeps/storage`) provides for the official web client and community tools. Composed from the official Screeps World contract and the community compatibility profile; each operation's `x-profile` states whether it is an unchanged official operation (`required`), an official operation with documented differences (`adapted`) or a private-server route (`addition`). One world is served: `shard` values are ignored and replies are never grouped by shard. Success bodies are `{ok: 1}` merged with the handler result; database writes therefore also carry the storage driver's result (`modified` or `inserted` counts) or the inserted document with its LokiJS `meta` and `$loki` fields. Logical failures arrive as `{error}` with HTTP 200, including uncaught handler exceptions (`TypeError: …`); never infer success from the status code. Stock backend-local has no password sign-in or registration: accounts come from `POST /api/auth/steam-ticket` or from mods."
+  },
+  "servers": [
+    {
+      "url": "http://{host}:{port}",
+      "description": "Stock Screeps private server; configure host and port for your deployment.",
+      "variables": {
+        "host": {
+          "default": "localhost",
+          "description": "Private server hostname or IP address."
+        },
+        "port": {
+          "default": "21025",
+          "description": "Private server HTTP port (`GAME_PORT`, 21025 by default)."
+        }
+      }
+    }
+  ],
+  "transport": [
+    {
+      "match": "^/(api/|room-history$)",
+      "parameter": {
+        "$ref": "#/components/parameters/ServerPassword"
+      },
+      "reason": "When `SERVER_PASSWORD` is set, backend-local answers every request it handles after its static `/assets` directory and landing page, which covers its `/api` router and `/room-history`, with `{error: 'incorrect server password'}` unless `X-Server-Password` matches (lib/game/server.js); the official web client sends that header when `options.official` is false and a server password is configured."
+    }
+  ],
+  "required": [
+    "authMe",
+    "authSteamTicket",
+    "gameAddGlobalIntent",
+    "gameAddObjectIntent",
+    "gameChangeFlagColor",
+    "gameCheckUniqueFlagName",
+    "gameCheckUniqueObjectName",
+    "gameCreateConstruction",
+    "gameCreateFlag",
+    "gameCreateInvader",
+    "gameGenUniqueFlagName",
+    "gameGenUniqueObjectName",
+    "gameMapStats",
+    "gamePlaceSpawn",
+    "gameRemoveFlag",
+    "gameRemoveInvader",
+    "gameRoomOverview",
+    "gameRoomStatus",
+    "gameRoomTerrain",
+    "gameRooms",
+    "gameSetNotifyWhenAttacked",
+    "gameTime",
+    "gameWorldSize",
+    "leaderboardFind",
+    "leaderboardList",
+    "leaderboardSeasons",
+    "marketMyOrders",
+    "marketOrders",
+    "marketOrdersIndex",
+    "marketStats",
+    "platformVersion",
+    "powerCreepsCancelDelete",
+    "powerCreepsCreate",
+    "powerCreepsDelete",
+    "powerCreepsExperimentation",
+    "powerCreepsList",
+    "powerCreepsRename",
+    "powerCreepsUpgrade",
+    "registerCheckEmail",
+    "registerCheckUsername",
+    "registerSetUsername",
+    "userBadgeSet",
+    "userBadgeSvg",
+    "userBranches",
+    "userCloneBranch",
+    "userCodeGet",
+    "userCodeSet",
+    "userConsole",
+    "userDeleteBranch",
+    "userEmailSet",
+    "userFind",
+    "userMemoryGet",
+    "userMemorySegmentGet",
+    "userMemorySegmentSet",
+    "userMemorySet",
+    "userMessagesIndex",
+    "userMessagesList",
+    "userMessagesMarkRead",
+    "userMessagesSend",
+    "userMessagesUnreadCount",
+    "userMoneyHistory",
+    "userNotifyPrefsSet",
+    "userOverview",
+    "userRespawn",
+    "userRespawnProhibitedRooms",
+    "userRooms",
+    "userSetActiveBranch",
+    "userSetSteamVisible",
+    "userStats",
+    "userTutorialDone",
+    "userWorldStartRoom",
+    "userWorldStatus"
+  ],
+  "excluded": {
+    "adminEarlyAccessList": "Not routed by backend-local: internal screeps.com staff tool for the hosted early-access campaign.",
+    "adminEarlyAccessSend": "Not routed by backend-local: internal screeps.com staff tool that e-mails hosted early-access invitations.",
+    "adminTimelineStats": "Not routed by backend-local: internal screeps.com staff statistics of hosted shard infrastructure; the stock server is administered through its CLI.",
+    "arenaActivate": "Not routed by backend-local: Arena is a hosted screeps.com game mode with its own rooms, seasons and activation codes.",
+    "arenaFindInitRoom": "Not routed by backend-local: Arena is a hosted screeps.com game mode; a private world has no Arena room to assign.",
+    "arenaOrderOffer": "Not routed by backend-local: Arena is a hosted screeps.com game mode, and the offer is a Steam key sold by screeps.com.",
+    "arenaOrderPurchase": "Not routed by backend-local: Arena is a hosted screeps.com game mode, and buying access is a screeps.com payment flow.",
+    "arenaStatus": "Not routed by backend-local: Arena is a hosted screeps.com game mode; a private world has no Arena participation status.",
+    "arenaStatusUpdate": "Not routed by backend-local: Arena is a hosted screeps.com game mode; a private world has no Arena activation or respawn state.",
+    "authGithub": "Not routed by backend-local: GitHub OAuth sign-in through the screeps.com GitHub application; the stock server signs players in with Steam tickets only (the screepsmod-auth plugin contract provides a GitHub sign-in when configured).",
+    "authGithubCheckRepoScope": "Not routed by backend-local: it checks the scope of the hosted GitHub OAuth link, which the stock server does not have.",
+    "authQueryToken": "Not routed by backend-local: it has no API auth tokens with endpoint or WebSocket permissions to inspect, only full-access session tokens (the screepsmod-auth plugin contract provides it).",
+    "authSignin": "Not routed by backend-local: the stock server has no password accounts; players sign in with a Steam ticket (`POST /api/auth/steam-ticket`) (the screepsmod-auth plugin contract provides password sign-in).",
+    "authSteam": "Not routed by backend-local: the Steam OpenID web popup is bound to screeps.com; the stock server authenticates Steam users with `POST /api/auth/steam-ticket` (the screepsmod-auth plugin contract provides a Steam OpenID sign-in).",
+    "gameFindObject": "Not routed by backend-local: the stock server has no lookup of a room object by id, so the official room view cannot jump to an object selected by id.",
+    "gameFinish": "Not routed by backend-local: ending a game session belongs to hosted screeps.com game modes; a persistent private world has no finishable session.",
+    "gameHistoryShare": "Not routed by backend-local: history share links (`screeps.com/s/<code>`) are minted and resolved by the hosted screeps.com replay service.",
+    "gameRandomNoviceRoom": "Not routed by backend-local: the stock server keeps no novice-area room suggestions.",
+    "gameRoomDecorations": "Not routed by backend-local: decorations belong to the hosted screeps.com decoration inventory, which the stock server does not have (the route answers HTTP 404).",
+    "gameRoomObjects": "Not routed by backend-local: the stock server publishes room objects only through the `room:<room>` socket channel (the screepsmod-admin-utils plugin contract provides the HTTP route).",
+    "gameShardsInfo": "Not routed by backend-local: it runs one world and keeps no multi-shard directory; the official client calls it only on its shards pages and, when `options.official` is true, before first-spawn placement (the screepsmod-admin-utils plugin contract provides it).",
+    "gameShardsTick": "Not routed by backend-local: the official client requests `game/shards/tick` only when `options.official` is true; backend-local serves the private-server `gameTick` addition (`GET /api/game/tick`) instead.",
+    "platformActivePromotion": "Not routed by backend-local: item-shop promotions belong to the hosted screeps.com store (Xsolla); the stock server sells nothing.",
+    "platformExperimentalNukes": "Not routed by backend-local: experimental screeps.com multi-shard nuke analytics, not used by the official client (the screepsmod-admin-utils plugin contract provides it).",
+    "platformExperimentalPvp": "Not routed by backend-local: experimental screeps.com multi-shard combat analytics, not used by the official client (the screepsmod-admin-utils plugin contract provides it).",
+    "platformOfficialRoomHistory": "Static history host of screeps.com (`HISTORY_URL/<shard>/<room>/<tick>.json`), used by the official client only when `options.official` is true. backend-local mounts its history handler on the `/room-history` prefix, so such a path reaches it, but the handler reads only the `room` and `time` query parameters (the `platformRoomHistory` addition).",
+    "platformServersLike": "Not routed by backend-local: likes belong to the screeps.com-curated community server directory, of which a private server is an entry.",
+    "platformServersList": "Not routed by backend-local: the community server directory is curated by screeps.com; a private server is an entry in it, not a provider of it.",
+    "platformServersUnlike": "Not routed by backend-local: likes belong to the screeps.com-curated community server directory, of which a private server is an entry.",
+    "platformSteamNews": "Not routed by backend-local: the stock server relays no Steam news; the official client treats a missing feed as no news.",
+    "powerCreepsPromo": "Not routed by backend-local: the Global Power Level promotion is a time-limited screeps.com offer.",
+    "registerChangePassword": "Not routed by backend-local: e-mail password recovery needs hosted mail delivery, and the stock server has no password accounts.",
+    "registerConfirm": "Not routed by backend-local: e-mail address confirmation needs hosted mail delivery.",
+    "registerRecover": "Not routed by backend-local: password recovery e-mails need hosted mail delivery, and the stock server has no password accounts.",
+    "registerSubmit": "Not routed by backend-local: the stock server has no registration form; `POST /api/auth/steam-ticket` creates an account on first sign-in and `POST /api/register/set-username` names it (the screepsmod-auth plugin contract provides registration).",
+    "replaysAdd": "Not routed by backend-local: the hosted screeps.com replay sharing service stores offline Survival simulations.",
+    "replaysHistoryShare": "Not routed by backend-local: history share links (`screeps.com/s/<code>`) are resolved by screeps.com, and the official client resolves them only on official servers.",
+    "replaysHistoryShareChunk": "Not routed by backend-local: the official client requests it only when `options.official` is true and a share code is present; otherwise it reads `/room-history?room=&time=` (the `platformRoomHistory` addition).",
+    "replaysList": "Not routed by backend-local: the hosted screeps.com replay sharing service; a private world stores no uploaded replays.",
+    "scoreboardList": "Not routed by backend-local: the Seasonal World scoreboard is a hosted screeps.com game mode; a private server runs one persistent world.",
+    "seasonsAccessGrant": "Not routed by backend-local: granting Seasonal World access consumes screeps.com Access Keys.",
+    "seasonsAccessGranted": "Not routed by backend-local: Seasonal World access is a hosted screeps.com competition gated by Access Keys.",
+    "seasonsCurrent": "Not routed by backend-local: Seasonal World competitions are hosted by screeps.com; a private server runs one persistent world.",
+    "seasonsCurrentLastPost": "Not routed by backend-local: the Season Chronicle is editorial content of the hosted Seasonal World.",
+    "seasonsList": "Not routed by backend-local: Seasonal World competitions are hosted by screeps.com; a private server runs one persistent world.",
+    "seasonsUserRanks": "Not routed by backend-local: final ranks of hosted Seasonal World competitions.",
+    "storeSteamCart": "Not routed by backend-local: Steam checkout of screeps.com item-shop packages (payments); the stock server sells nothing.",
+    "storeSteamCatalog": "Not routed by backend-local: Steam item-shop catalog of screeps.com packages (payments); the stock server sells nothing.",
+    "storeSteamInventory": "Not routed by backend-local: Steam inventory integration of items minted by screeps.com.",
+    "storeSteamPullDecorations": "Not routed by backend-local: it moves Steam items into the hosted screeps.com decoration inventory.",
+    "storeSteamPullResources": "Not routed by backend-local: it moves Steam items into hosted screeps.com account resources.",
+    "storeSteamPushDecorations": "Not routed by backend-local: it moves hosted screeps.com decorations into the Steam inventory.",
+    "storeSteamPushResources": "Not routed by backend-local: it moves hosted screeps.com account resources into the Steam inventory.",
+    "storeXsollaCancelSubscription": "Not routed by backend-local: Xsolla billing of screeps.com CPU subscriptions (payments).",
+    "storeXsollaCatalog": "Not routed by backend-local: Xsolla item-shop catalog of screeps.com packages (payments); the stock server sells nothing.",
+    "storeXsollaCoupon": "Not routed by backend-local: it redeems screeps.com Xsolla coupons (payments).",
+    "storeXsollaToken": "Not routed by backend-local: it opens an Xsolla payment session for screeps.com purchases (payments).",
+    "storeXsollaUser": "Not routed by backend-local: it reads the screeps.com Xsolla CPU subscription (payments).",
+    "supportReportProblem": "Not routed by backend-local: it creates a screeps.com Zendesk support ticket (hosted support service).",
+    "supportSsoJwt": "Not routed by backend-local: Zendesk single sign-on for the screeps.com forums and support desk (hosted service).",
+    "survivalActiveGame": "Not routed by backend-local: Survival is a hosted screeps.com game mode with per-player `survival_<id>` rooms; a private world hosts no Survival games.",
+    "survivalCreate": "Not routed by backend-local: Survival is a hosted screeps.com game mode with per-player `survival_<id>` rooms; a private world hosts no Survival games.",
+    "survivalGame": "Not routed by backend-local: Survival is a hosted screeps.com game mode with per-player `survival_<id>` rooms; a private world hosts no Survival games.",
+    "survivalReplay": "Not routed by backend-local: Survival replays are stored by the hosted screeps.com replay service.",
+    "userActivateCpuUnlocks": "Not routed by backend-local: CPU unlocks are purchased screeps.com items; the stock server sets each account's `cpu` administratively.",
+    "userActivatePtr": "Not routed by backend-local: the Public Test Realm CPU unlock belongs to screeps.com's PTR; a private server has none.",
+    "userActivateShardAccess": "Not routed by backend-local: access keys for restricted screeps.com shards do not exist on a single-world server.",
+    "userAuthTokenCreate": "Not routed by backend-local: persistent API auth tokens with permissions and rate limits are a hosted screeps.com service; the stock server issues only short-lived session tokens (the screepsmod-auth plugin contract provides API tokens).",
+    "userAuthTokenDelete": "Not routed by backend-local: persistent API auth tokens with permissions and rate limits are a hosted screeps.com service; the stock server issues only short-lived session tokens (the screepsmod-auth plugin contract provides API tokens).",
+    "userAuthTokenList": "Not routed by backend-local: persistent API auth tokens with permissions and rate limits are a hosted screeps.com service; the stock server issues only short-lived session tokens (the screepsmod-auth plugin contract provides API tokens).",
+    "userConvertCreditsSubscription": "Not routed by backend-local: converting credits into a paid screeps.com subscription is a hosted payment service.",
+    "userCpuLimitSet": "Not routed by backend-local: credit-charged CPU limit changes belong to the hosted subscription economy; the stock server sets each account's `cpu` administratively.",
+    "userCpuShardsSet": "Not routed by backend-local: it runs one world whose CPU is not split across shards (`cpu` is set per account by the operator).",
+    "userDecorationsActivate": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsConvert": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsDeactivate": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsInventory": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory (and advertises no `inventory` feature, so the official client does not offer it).",
+    "userDecorationsPixelize": "Not routed by backend-local: the pixel/decoration economy is hosted by screeps.com; the stock server has no decoration inventory.",
+    "userDecorationsThemes": "Not routed by backend-local: decoration themes belong to the hosted screeps.com decoration economy.",
+    "userEarlyPreviewActivate": "Not routed by backend-local: hosted World launch activation codes; a private world has no early-preview gate.",
+    "userEarlyPreviewRequest": "Not routed by backend-local: applications for the hosted early-preview program.",
+    "userFindShared": "Not routed by backend-local: the official client calls `user/find-shared` only when `options.official` is true; on private servers the replay viewer uses `GET /api/user/find` (userFind, required).",
+    "userGithubRepoSet": "Not routed by backend-local: GitHub code synchronization runs on screeps.com infrastructure through the hosted GitHub OAuth link.",
+    "userGithubRepos": "Not routed by backend-local: it lists repositories through the hosted GitHub OAuth link.",
+    "userIvmSet": "Not routed by backend-local: it selects between screeps.com's isolated and legacy runtime pools; the stock server runs player code in its single configured runtime.",
+    "userMoneyHistoryDetails": "Not routed by backend-local: the stock server offers no counterparty details for market entries of the money history.",
+    "userName": "Not routed by backend-local: the stock server has only full-access session tokens, whose owner `GET /api/auth/me` already reports (the screepsmod-auth plugin contract provides it).",
+    "userNoRateLimit": "Not routed by backend-local: it resets hosted per-token API rate limits behind reCAPTCHA; the stock server has no API tokens or rate limits (the screepsmod-auth plugin contract provides it).",
+    "userPasswordSet": "Not routed by backend-local: the stock server has no password accounts (the screepsmod-auth plugin contract provides password changes).",
+    "userUnlinkGithub": "Not routed by backend-local: it removes the hosted GitHub OAuth identity link, which the stock server never creates (the screepsmod-auth plugin contract provides it).",
+    "userUnlinkSteam": "Not routed by backend-local: on the stock server the Steam identity is the account created by `POST /api/auth/steam-ticket` and cannot be unlinked (the screepsmod-auth plugin contract provides it)."
+  },
+  "adaptations": {
+    "gameMapStats": "Statistics rankings are not implemented: no room ever carries the requested `<stat><interval>` key and `statsMax` is always `{}`. `users` carries the referenced users' complete stored documents (the default storage ignores the requested projection), including private fields such as `email`, instead of public profiles.",
+    "gameRoomOverview": "Room statistics are not implemented: `stats`, `statsMax` and `totals` are always `{}`; only `owner` (`username`, `badge` of the controller owner, or `null`) is filled.",
+    "leaderboardFind": "Leaderboards are not implemented: without `season` the reply is always `{ok: 1, list: []}`, with `season` always the error `result not found`.",
+    "leaderboardList": "Leaderboards are not implemented: the reply is always `{ok: 1, list: [], count: 0, users: {}}`.",
+    "leaderboardSeasons": "Leaderboards are not implemented: the reply always lists the two placeholder seasons `{_id: 'empty1', name: '—'}` and `{_id: 'empty2', name: '—'}`.",
+    "marketMyOrders": "Single world: the caller's orders are returned as a flat `list` instead of being grouped by shard under `shards`; the official client accepts `list` when `shards` is absent (override: MarketMyOrdersResponse).",
+    "userFind": "When a player without a linked Steam account has called `POST /api/user/set-steam-visible`, `user.steam` is an empty object, which the official schema does not allow (override: UserPublicProfile).",
+    "userMessagesIndex": "Not grouped by conversation: backend-local keys the index by the message's `user` (always the caller), so `messages` holds at most one entry, the caller's newest message under the caller's own `_id`, and `users` holds only the caller.",
+    "userOverview": "Single world and not implemented beyond the room list: the reply is flat `{ok: 1, rooms, stats: {}, totals: {}, gametimes: []}` (no `shards`, no `statsMax`), and the official web client wraps a body without `shards` as one pseudo-shard (override: UserOverviewFlatResponse).",
+    "userRooms": "Single world: owned rooms are returned as a flat `rooms` array instead of grouped under `shards`, without `reservations`; the official web client maps a response without `shards` to one pseudo-shard (override: UserRoomsFlatResponse).",
+    "userStats": "Player statistics are not implemented: a supported `interval` (8, 180 or 1440) always yields `{ok: 1, stats: {}}`.",
+    "userWorldStartRoom": "Single world: the room is always a plain name without a `shard/` prefix (the official web client then falls back to its default shard), and the fallback `W5N5` is returned whether or not that room exists."
+  },
+  "additions": {
+    "gameTick": "The official web client requests `GET /api/game/tick` for the room renderer's tick duration whenever `options.official` is false (screeps.com uses `game/shards/tick`), and backend-local routes it.",
+    "platformAsset": "The official web client loads world-map images from `http://<host>:<port>/assets/map/` (zoom levels under `zoom1/` and `zoom2/`) and resolves renderer resources' `{ASSETS_URL}` to `/assets/` whenever `options.official` is false, and backend-local serves its `ASSET_DIR` there.",
+    "platformRoomHistory": "The official web client fetches room history from `/room-history?room=&time=` whenever `options.official` is false (private-server branch), and backend-local routes it to its configurable history provider."
+  },
+  "notes": {
+    "authMe": "Returns the backend-local projection only: `_id`, `email`, `emailDirty`, `username`, `cpu`, `badge`, `password` (true when a password is stored, which only mods do), `lastRespawnDate`, `notifyPrefs`, `gcl`, `lastChargeTime`, `blocked`, `customBadge`, `power`, `money` (stored milli-credits / 1000), `steam` (`id`, `displayName`, `ownership`, `steamProfileLinkHidden` as stored; `{}` without a Steam account), `powerExperimentations` and `powerExperimentationTime` (0 when unset). Requires `X-Username` (any non-empty value) besides `X-Token`; the reply carries a new token in `X-Token`.",
+    "authSteamTicket": "Creates the account on first sign-in (100 CPU, no username, a `default` branch with an empty `main`, empty Memory) and answers `{ok: 1, token, steamid}`. With a `STEAM_KEY` the ticket is verified through Steam's AuthenticateUserTicket for app 464350 (`could not authenticate` otherwise; when the Steam Web API interface could not be loaded, for example with an invalid key, the handler throws and the reply is HTTP 200 `TypeError: …`); without one the server verifies encrypted app tickets through greenworks and requires `useNativeAuth: true`. A request for the other mode answers `authentication method is not supported`.",
+    "gameAddGlobalIntent": "Inserts `{user, intents: {<name>: [<sanitized intent>]}}` for the next tick and echoes the inserted document (with `_id`, `meta`, `$loki`) next to `ok`.",
+    "gameAddObjectIntent": "Requires a world room inside the borders (`invalid room`, `out of borders`, `not supported`) and refuses `activateSafeMode` while one of the caller's controllers is in safe mode (`safe mode active already`). The handler does not check that the caller owns `_id`; it merges the sanitized intent into the room's pending manual intents. Success is `{ok: 1}`.",
+    "gameChangeFlagColor": "Without `room` nothing is saved and the call still succeeds; an unknown flag name leaves the room's flags unchanged. Success carries the storage result (`modified` or `inserted`).",
+    "gameCheckUniqueFlagName": "`name` is not validated; `name exists` when any of the caller's flags has it.",
+    "gameCreateConstruction": "The success body is `{ok: 1, _id}` without database-driver insert fields; at most `MAX_CONSTRUCTION_SITES` sites per player (`too many`).",
+    "gameCreateFlag": "A flag of the same name in another room is moved; at most `FLAGS_LIMIT` flags (`flags limit exceeded`). Success carries the storage result (`modified` or `inserted`).",
+    "gameCreateInvader": "The success body is `{ok: 1, ...creep}`: the inserted invader document (`type: creep`, `user: '2'`, `body`, `hits`, `hitsMax`, `ticksToLive: 1500`, `name: invader_<room>_<n>`, `userSummoned`, `_id`, `meta`, `$loki`). An unknown `size`/`type` makes the handler throw (HTTP 200 `TypeError: …`); coordinates are not validated.",
+    "gameMapStats": "`rooms` must be an array (`invalid params`) and `statName` must end in digits (`invalid params`, a missing `statName` makes the handler throw). Rooms without a room document are left out of `stats`.",
+    "gamePlaceSpawn": "Placing the first spawn does not change CPU settings. It removes other players' creeps and construction sites in the room, turns their structures into ruins, claims the controller at level 1 with 20000 ticks of safe mode and answers `{ok: 1, newbie: true}`.",
+    "gameRemoveFlag": "Without `room` nothing is saved and the call still succeeds. Success carries the storage result (`modified` or `inserted`).",
+    "gameRemoveInvader": "Only invaders the caller summoned can be removed (`invalid object`). Success is `{ok: 1}`.",
+    "gameRoomTerrain": "Any non-empty `encoded` value selects the encoded form.",
+    "gameRooms": "Public; returns the stored terrain documents of the requested rooms.",
+    "gameSetNotifyWhenAttacked": "The object must be the caller's, or an unowned object in a room whose controller the caller owns (`not owner`, `not controller owner`); an unknown `_id` makes the handler throw (HTTP 200 `TypeError: …`). Success carries the storage result (`modified`).",
+    "gameTick": "`tick` is `null` until two ticks have completed since the server started.",
+    "gameWorldSize": "Width and height are one square size computed from the room documents on the first call and kept until the server restarts.",
+    "leaderboardFind": "`mode` and `username` are not read.",
+    "marketOrders": "Prices are converted from stored milli-credits to credits.",
+    "marketStats": "Returns the stored history entries of `resourceType`, newest first.",
+    "platformAsset": "Room map images (`map/<room>.png`, `map/zoom2/<room>.png`) are written by the CLI's map tools (for example `map.updateRoomImageAssets`); a world generated otherwise may have none.",
+    "platformRoomHistory": "Stock backend-local keeps no room history: its default provider answers every request with HTTP 500 `text/html` `not implemented`. A mod that stores history replaces `config.backend.onGetRoomHistory`; whatever it returns is sent as the body.",
+    "platformVersion": "Returns `protocol: 14`, `useNativeAuth`, `users` (active non-bot accounts with CPU), `serverData` (`welcomeText`, `customObjectTypes`, `historyChunkSize`, `socketUpdateThrottle`, `renderer`, as configured by mods) and `packageVersion` (the installed `screeps` package version, when resolvable). Stock backend-local sends neither `serverData.features` nor `serverData.shards`, so the official client falls back to its market/auth feature set and shows no shard names.",
+    "powerCreepsCancelDelete": "Success is `{ok: 1}`.",
+    "powerCreepsCreate": "The success body is `{ok: 1, ...creep}`: the inserted record (`level: 0`, `hitsMax: 1000`, `store: {}`, `storeCapacity: 100`, `spawnCooldownTime: 0`, `powers: {}`, `_id`, `meta`, `$loki`). The name is cut to 50 characters.",
+    "powerCreepsDelete": "Outside a power experimentation period it schedules the deletion and answers `{ok: 1}`. During an experimentation period (immediate deletion) the stock storage has no `remove`, so the handler throws: HTTP 200 `TypeError: db.users.power_creeps.remove is not a function`, and nothing is deleted.",
+    "powerCreepsExperimentation": "Success carries the storage result (`modified`).",
+    "powerCreepsList": "Records of spawned power creeps are merged with their room objects; records carry the storage fields `meta` and `$loki`.",
+    "powerCreepsRename": "The name is cut to 50 characters. Success is `{ok: 1}`.",
+    "powerCreepsUpgrade": "Success is `{0, 1, ok}`: the storage results of updating the record and the room object.",
+    "registerCheckEmail": "Answers `exists` for an address already stored (compared lower-cased) and `invalid email` when `email` is missing; there is no format check.",
+    "registerCheckUsername": "Answers `exists` for a name already taken (compared case-insensitively through `usernameLower`) and `invalid username` when `username` is missing; there is no format check.",
+    "registerSetUsername": "Names an account that has none (`username already set` otherwise), typically one created by `POST /api/auth/steam-ticket`. Usernames must match `^[a-zA-Z0-9_-]{3,}$` and be unused case-insensitively (`invalid username` for both); an optional `email` must match the server e-mail rule (`invalid email`) and is stored lower-cased without a uniqueness check. Success is `{ok: 1, modified: 1}`.",
+    "userBadgeSet": "Success is `{ok: 1, modified: 1}`.",
+    "userBadgeSvg": "Users without a badge get an empty `<svg>`; unknown users HTTP 404 `text/plain` `Not Found`; a missing `username` HTTP 500. Rendered badges are cached for an hour.",
+    "userBranches": "Ignores `withCode` and always returns complete branch documents (`user`, `modules`, `timestamp` once set, plus the storage fields `meta` and `$loki`). The `default` branch it creates when missing stores a Date `timestamp` (an ISO 8601 string on the wire).",
+    "userCloneBranch": "Stores the clone's `timestamp` as a Date (an ISO 8601 string in later branch listings) and replies with the current time in milliseconds; an existing `newName` is overwritten. At most 30 branches (`too many branches`); `branch` longer than 30 characters is `invalid branch name`.",
+    "userCodeSet": "Stores the branch `timestamp` in milliseconds and replies with the current time in milliseconds. Module names whose stored form starts with `$` are dropped and an empty `main` is ensured.",
+    "userConsole": "Queues the expression for the player's next run and echoes the inserted console document (`user`, `expression`, `_id`, `meta`, `$loki`) next to `ok`. `expression size is too large` above 1024 JSON characters.",
+    "userDeleteBranch": "Deletes the branch unless it is active in the world or simulation (then nothing is deleted and the call still succeeds); replies with the current time in milliseconds.",
+    "userEmailSet": "The address must match the server e-mail rule (`invalid email`), is stored lower-cased without confirmation and must not be stored already (`email already exists`). Success is `{ok: 1, modified: 1}`.",
+    "userFind": "`id` wins over `username` (matched case-insensitively). An unknown user, or neither parameter, makes the handler throw: the reply is the HTTP 200 error `TypeError: Cannot read properties of null (reading 'steam')` rather than a not-found error.",
+    "userMemoryGet": "`data` is `gz:` plus the base64 gzip of the JSON value at `path`. A path whose value is undefined yields `{ok: 1}` without `data`; a path through a missing intermediate element yields `data: 'Incorrect memory path'`.",
+    "userMemorySegmentGet": "Parses `segment` with `parseInt` (0-99, `invalid segment ID` otherwise). An unwritten segment yields `{ok: 1}` without `data`.",
+    "userMemorySegmentSet": "Parses `segment` with `parseInt` (0-99, `invalid segment ID`); `data` above 100 KiB in its string form is `length limit exceeded`. Success is `{ok: 1}`.",
+    "userMemorySet": "Queues the hidden console expression `Memory['a']['b'] = value` (or `delete Memory['a']['b']` when `value` is absent) exactly as written: any path is accepted, and a missing intermediate element makes the hidden command throw, leaving Memory unchanged although the reply is a success. Without `path` the whole Memory is replaced. Echoes the inserted console document (`user`, `expression`, `hidden: true`, `_id`, `meta`, `$loki`) next to `ok`; `memory size is too large` above 1 MiB of JSON.",
+    "userMessagesList": "Returns the newest 100 messages with `respondent`, oldest first; message documents carry the storage fields `meta` and `$loki`.",
+    "userMessagesMarkRead": "Answers `{ok: 1, 2: {modified: 1}}`: the handler returns the results of two realtime publishes (empty, so absent) and of marking the sender's copy read, keyed by position. Only an incoming message of the caller can be marked (`invalid id`).",
+    "userMessagesSend": "Success is `{ok: 1}`. `text` must be a string of at most 100 KiB (`text too long`); an unknown `respondent` is `invalid respondent`.",
+    "userMoneyHistory": "Pages of 20 money-ledger documents as stored by the engine, newest first.",
+    "userNotifyPrefsSet": "Unsupported `interval` and `errorsInterval` values are ignored. Success is `{ok: 1, modified: 1}`.",
+    "userRespawn": "Requires the system user (`no system user` otherwise). Removes the player's creeps, power creeps and construction sites, turns their structures into ruins owned by the system user, releases their controllers and flags; room statuses are left unchanged. Success is `{ok: 1, modified: 1}`.",
+    "userRespawnProhibitedRooms": "Always returns an empty list: placing a spawn has no respawn-zone restriction.",
+    "userRooms": "Public, sorted by controller level (descending). `reservation` is ignored; an unknown or missing `id` returns an empty list.",
+    "userSetSteamVisible": "Stores `steam.steamProfileLinkHidden` as 0 (visible) or 1, even for accounts without a Steam account. Success is `{ok: 1, modified: 1}`.",
+    "userTutorialDone": "Accepts the call and stores nothing.",
+    "userWorldStartRoom": "Ignores `shard` and returns a random room whose controller the user owns, else `W5N5`.",
+    "userWorldStatus": "`empty` without room objects, `normal` with a spawn in a room whose controller the player owns, `lost` otherwise."
+  },
+  "evidence": {
+    "authMe": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L80-L135"
+    ],
+    "authSteamTicket": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L20-L70",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L137-L178",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L110-L131"
+    ],
+    "gameAddGlobalIntent": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L714-L720"
+    ],
+    "gameAddObjectIntent": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L20-L37",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L509-L527"
+    ],
+    "gameChangeFlagColor": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L139-L184",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L480-L498"
+    ],
+    "gameCheckUniqueFlagName": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L469-L478"
+    ],
+    "gameCreateConstruction": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L529-L581"
+    ],
+    "gameCreateFlag": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L419-L451"
+    ],
+    "gameCreateInvader": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L631-L694"
+    ],
+    "gameMapStats": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L186-L257"
+    ],
+    "gamePlaceSpawn": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L328-L407"
+    ],
+    "gameRemoveFlag": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L500-L507"
+    ],
+    "gameRemoveInvader": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L696-L704"
+    ],
+    "gameRoomOverview": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L583-L602"
+    ],
+    "gameRoomStatus": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L280-L283"
+    ],
+    "gameRoomTerrain": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L263-L278"
+    ],
+    "gameRooms": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L412-L417"
+    ],
+    "gameSetNotifyWhenAttacked": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L604-L624"
+    ],
+    "gameWorldSize": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L706-L712"
+    ],
+    "leaderboardFind": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L19-L28"
+    ],
+    "leaderboardList": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L14-L17"
+    ],
+    "leaderboardSeasons": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/leaderboard.js#L30-L32"
+    ],
+    "marketMyOrders": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L45-L51",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C103113"
+    ],
+    "marketOrders": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L37-L43"
+    ],
+    "marketStats": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/market.js#L53-L56"
+    ],
+    "platformVersion": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L31-L72",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C5918",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C320915"
+    ],
+    "powerCreepsCancelDelete": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L91-L105"
+    ],
+    "powerCreepsCreate": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L35-L64"
+    ],
+    "powerCreepsDelete": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L66-L89"
+    ],
+    "powerCreepsExperimentation": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L224-L230"
+    ],
+    "powerCreepsList": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L19-L33"
+    ],
+    "powerCreepsRename": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L203-L222"
+    ],
+    "powerCreepsUpgrade": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/power-creeps.js#L107-L201"
+    ],
+    "registerCheckEmail": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L15-L27"
+    ],
+    "registerCheckUsername": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L30-L42"
+    ],
+    "registerSetUsername": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/register.js#L44-L73"
+    ],
+    "userBadgeSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L146-L176"
+    ],
+    "userBadgeSvg": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L467-L490"
+    ],
+    "userBranches": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L56-L80"
+    ],
+    "userCloneBranch": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L209-L244"
+    ],
+    "userCodeSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L82-L120",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/utils.js#L62-L86"
+    ],
+    "userConsole": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L341-L351"
+    ],
+    "userDeleteBranch": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L246-L253"
+    ],
+    "userEmailSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L437-L450"
+    ],
+    "userFind": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L353-L369",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L492-L497"
+    ],
+    "userMemoryGet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L255-L283"
+    ],
+    "userMemorySegmentGet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L318-L327"
+    ],
+    "userMemorySegmentSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L329-L339"
+    ],
+    "userMemorySet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L285-L316"
+    ],
+    "userMessagesIndex": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L88-L104"
+    ],
+    "userMessagesList": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L82-L86"
+    ],
+    "userMessagesMarkRead": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L106-L129"
+    ],
+    "userMessagesSend": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user-messages.js#L38-L80"
+    ],
+    "userMoneyHistory": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L452-L463"
+    ],
+    "userNotifyPrefsSet": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L389-L410"
+    ],
+    "userOverview": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L412-L432",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C104678"
+    ],
+    "userRespawn": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L182-L193",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/utils.js#L115-L168"
+    ],
+    "userRespawnProhibitedRooms": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L178-L180"
+    ],
+    "userRooms": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L380-L387",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C244244",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C284710"
+    ],
+    "userSetSteamVisible": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L492-L497"
+    ],
+    "userStats": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L371-L378"
+    ],
+    "userTutorialDone": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L434-L435"
+    ],
+    "userWorldStartRoom": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L19-L28",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C97944"
+    ],
+    "userWorldStatus": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/user.js#L30-L54"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/game/tick": {
+        "get": {
+          "operationId": "gameTick",
+          "summary": "Get recent tick duration",
+          "description": "Returns the shortest of the last 30 measured intervals between completed ticks, in milliseconds. Public and read-only. When `options.official` is false the official room renderer requests it instead of `game/shards/tick`, animates with `max(tick, serverData.socketUpdateThrottle || 200) / 1000` seconds per tick and treats a failure as `tick: 0`.",
+          "tags": [
+            "Game"
+          ],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Tick duration.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/GameTickResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "500": {
+              "$ref": "#/components/responses/ServerError"
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C182823",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L722-L724",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/game.js#L726-L735"
+          ]
+        }
+      },
+      "/api/user/overview": {
+        "get": {
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/UserOverviewFlatResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/user/rooms": {
+        "get": {
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/UserRoomsFlatResponse"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ApiError"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/assets/{path}": {
+        "get": {
+          "operationId": "platformAsset",
+          "summary": "Read a static private-server asset",
+          "description": "Static files of the server's `ASSET_DIR` (Express static serving), public and served before the server password check. The official web client reads world-map room images from `/assets/map/<room>.png` and `/assets/map/zoom2/<room>.png` (with a `bust` query) and renderer resources from `/assets/<path>` when `options.official` is false. A missing file answers HTTP 404 with Express's HTML `Cannot GET` page.",
+          "tags": [
+            "Platform"
+          ],
+          "security": [],
+          "parameters": [
+            {
+              "name": "path",
+              "in": "path",
+              "required": true,
+              "x-openscreeps-wildcard": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "File path below `ASSET_DIR`, possibly spanning several `/`-separated segments (for example `map/W1N1.png`)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "File contents with the media type of its extension (`image/png` for map images).",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "No such file.",
+              "content": {
+                "text/html": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C105338",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C140626",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C180825",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C246599",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L139",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/cli/map.js#L611-L657"
+          ]
+        }
+      },
+      "/room-history": {
+        "get": {
+          "operationId": "platformRoomHistory",
+          "summary": "Read private-server room-history chunk",
+          "description": "Room-history chunk endpoint of the private-server protocol. When `options.official` is false the official web client requests `http://<host>:<port>/room-history?room=<room>&time=<tick>` with `time` aligned to `serverData.historyChunkSize`, treats any non-200 status as missing and fills `room` when absent. backend-local passes `room` and `time` unvalidated to `config.backend.onGetRoomHistory` and sends its result, or its error with HTTP 500.",
+          "tags": [
+            "Platform"
+          ],
+          "security": [],
+          "parameters": [
+            {
+              "name": "room",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Room name."
+            },
+            {
+              "name": "time",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Base game tick, normally aligned to the advertised historyChunkSize."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "History chunk (base tick plus tick-keyed object diffs, without the `ok` envelope), only when a mod supplies a history provider.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PlatformHistory"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "No history: the stock provider answers `not implemented` for every request; a mod's provider may report its own error text.",
+              "content": {
+                "text/html": {
+                  "schema": {
+                    "type": "string"
+                  },
+                  "example": "not implemented"
+                }
+              }
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C313108",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L31-L44",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L178-L187"
+          ]
+        }
+      }
+    },
+    "components": {
+      "parameters": {
+        "LegacyUsername": {
+          "required": true,
+          "description": "Required with `X-Token`: backend-local authenticates through passport-token, which rejects a request without a username value (HTTP 401 `{error: 'unauthorized'}`) and does not read it otherwise. Send any non-empty value; the official web client sends the token. The `username` and `token` query or body fields are accepted instead of both headers.",
+          "x-profile-reason": "backend-local's token strategy requires a username value next to the token.",
+          "x-sources": [
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L80-L109",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C296024"
+          ]
+        },
+        "ServerPassword": {
+          "name": "X-Server-Password",
+          "in": "header",
+          "required": false,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Server password (`SERVER_PASSWORD` environment variable) of a password-protected private server, independent of player authentication. Required only when the host sets one; a missing or wrong value returns HTTP 200 `{error: 'incorrect server password'}`.",
+          "x-profile-reason": "Private-server protocol header: backend-local checks it when `SERVER_PASSWORD` is set, and the official client sends it only when `options.official` is false.",
+          "x-sources": [
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L154-L162",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C296024"
+          ]
+        },
+        "Shard": {
+          "description": "Accepted for official-client compatibility. backend-local serves one world and ignores this value.",
+          "x-profile-reason": "Single world: official shard routing does not apply."
+        }
+      },
+      "schemas": {
+        "GameTickResponse": {
+          "x-profile-reason": "Community-only: response of the private-server gameTick addition.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "tick": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Shortest of the last 30 measured tick durations in milliseconds; `null` until two ticks have completed since the server started."
+                }
+              },
+              "required": [
+                "tick"
+              ],
+              "additionalProperties": true
+            }
+          ]
+        },
+        "MarketMyOrdersResponse": {
+          "x-profile-reason": "Single world: orders are not grouped by shard.",
+          "description": "Every order (active or not) owned by the caller as one flat list, prices in credits.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/Ok"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "list": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketOrder"
+                  }
+                }
+              },
+              "additionalProperties": true,
+              "required": [
+                "list"
+              ]
+            }
+          ]
+        },
+        "UserOverviewFlatResponse": {
+          "x-profile-reason": "backend-local runs one world and implements only the room list of the overview, returned flat instead of grouped by shard.",
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "integer",
+              "const": 1,
+              "description": "Success marker; every JSON success body carries `ok: 1`."
+            },
+            "rooms": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Rooms whose controller the user owns, highest level first."
+            },
+            "stats": {
+              "type": "object",
+              "maxProperties": 0,
+              "description": "Always empty: per-room statistics are not implemented."
+            },
+            "totals": {
+              "type": "object",
+              "maxProperties": 0,
+              "description": "Always empty: statistic totals are not implemented."
+            },
+            "gametimes": {
+              "type": "array",
+              "maxItems": 0,
+              "description": "Always empty: statistic slots are not implemented."
+            }
+          },
+          "required": [
+            "ok",
+            "rooms",
+            "stats",
+            "totals",
+            "gametimes"
+          ],
+          "description": "Single-world overview (no `shards` grouping, no `statsMax`) of which only `rooms` is implemented."
+        },
+        "UserPublicProfile": {
+          "x-profile-reason": "backend-local emits `steam: {id}` whenever the profile link is not hidden, so an account without a linked Steam account but with a stored visibility flag yields `steam: {}`.",
+          "properties": {
+            "steam": {
+              "description": "Linked Steam account, present unless the player hid the profile link; an empty object when the player has no Steam id but has set the visibility (`POST /api/user/set-steam-visible`).",
+              "required": null
+            }
+          }
+        },
+        "UserRoomsFlatResponse": {
+          "x-profile-reason": "backend-local runs one world, so claimed rooms are returned as a flat list instead of grouped by shard.",
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "integer",
+              "const": 1,
+              "description": "Success marker; every JSON success body carries `ok: 1`."
+            },
+            "rooms": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Rooms whose controller the user owns, highest controller level first."
+            }
+          },
+          "required": [
+            "ok",
+            "rooms"
+          ],
+          "description": "Single-world list of claimed rooms (no `shards` grouping)."
+        }
+      },
+      "securitySchemes": {
+        "Token": {
+          "description": "Session token issued by backend-local (`POST /api/auth/steam-ticket`, the socket `auth ok` reply or a sign-in mod): 40 lowercase hex characters (HMAC-SHA1), stored for 60 seconds. Every successful authenticated request issues a new token in the `X-Token` response header; store the latest value. Missing, expired or unknown tokens answer HTTP 401 `{error: 'unauthorized'}`. Never send tokens to untrusted hosts or follow authenticated cross-host redirects.",
+          "x-profile-reason": "backend-local issues its own short-lived session tokens instead of screeps.com account tokens.",
+          "x-sources": [
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/authlib.js#L7-L41",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L94-L109"
+          ]
+        }
+      }
+    }
+  },
+  "socket": {
+    "info": {
+      "title": "Screeps community server socket API",
+      "description": "Socket protocol of the stock Screeps private server (screeps/backend-local without mods) as the official web client uses it when `options.official` is false. Composed from the official Screeps World socket contract and the community compatibility profile; each message's `x-profile` states whether it is unchanged (`required`) or has documented differences (`adapted`). Channel names carry no shard. The socket does not check the server password. Session tokens are short-lived: every `auth ok` and every authenticated HTTP response issues a replacement that must be stored."
+    },
+    "servers": {
+      "community": {
+        "host": "{host}:{port}",
+        "pathname": "/socket",
+        "protocol": "ws",
+        "description": "SockJS endpoint `/socket` of the private server; the raw WebSocket transport is `/socket/websocket`. Use `wss` when a proxy terminates TLS.",
+        "variables": {
+          "host": {
+            "default": "localhost",
+            "description": "Private server hostname or IP address."
+          },
+          "port": {
+            "default": "21025",
+            "description": "Private server HTTP port (`GAME_PORT`, 21025 by default)."
+          }
+        }
+      }
+    },
+    "excluded": {
+      "package": "backend-local greets with `time` and `protocol` only; `package` announces official desktop client releases.",
+      "serverDown": "Maintenance notices are part of the hosted service; backend-local never sends `server down`.",
+      "cannotSubscribe": "backend-local ignores subscriptions it does not serve and never sends `cannot subscribe` lines.",
+      "userSteamPurchaseEvent": "Steam purchases are a hosted account service; backend-local publishes no `steam-purchase` events."
+    },
+    "adaptations": {
+      "authOk": "backend-local tokens are session tokens: `auth ok` issues a new one, stored for 60 seconds, that replaces the stored token.",
+      "roomEvent": "One world: the room channel is `room:<room>` without a shard; room events carry no `decorations`, and their `users` entries are the users' complete stored documents.",
+      "roomErrorEvent": "One world: the room error channel is `err@room:<room>` without a shard.",
+      "roomMapEvent": "One world: the map channel is `roomMap2:<room>` without a shard.",
+      "mapVisualEvent": "One world: the map visual channel is `mapVisual:<user>` without a shard.",
+      "userMemoryEvent": "One world: Memory watch channels are `user:<user>/memory/<path>` without a shard.",
+      "userConsoleEvent": "One world: console events carry no `shard`."
+    },
+    "evidence": {
+      "authOk": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/authlib.js#L7-L41",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L124-L136"
+      ],
+      "roomEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L148",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L170-L208",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L74-L133"
+      ],
+      "roomErrorEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L34-L46",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L158-L168"
+      ],
+      "roomMapEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/map.js#L34-L35",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/map.js#L49"
+      ],
+      "mapVisualEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L103",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L157"
+      ],
+      "userMemoryEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L80",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L112"
+      ],
+      "userConsoleEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L28-L33"
+      ]
+    },
+    "overrides": {
+      "messages": {
+        "authOk": {
+          "description": "Unframed protocol line `auth ok <token>`, sent uncompressed. The token is a newly issued session token (40 hex characters) that expires after 60 seconds unless an authenticated HTTP request rotates it again; store it in place of the sent token for later `auth` commands and HTTP requests. The official client replaces its stored token with it, then sends the subscriptions it queued."
+        },
+        "roomEvent": {
+          "summary": "Detailed, incremental updates of one room (`room:<room>`).",
+          "description": "Requires authentication. The first event after subscribing is the full room; later events are diffs against what this connection already received (see `RoomObjectsDiff`), sent at most once per tick. Each user receives at most two room subscriptions per update across all connections; subscriptions beyond that receive `err@room:` events instead and resume when selected again. Rooms that do not exist are ignored silently.",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^room:[A-Za-z0-9_-]+$",
+                "description": "`room:<room>`."
+              },
+              {
+                "$ref": "#/components/schemas/RoomEvent"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "diff",
+              "payload": [
+                "room:W8N3",
+                {
+                  "objects": {
+                    "5bbcab1d9099fc012e632f4a": {
+                      "energy": 2990
+                    }
+                  },
+                  "gameTime": 1234,
+                  "info": {
+                    "mode": "world"
+                  },
+                  "visual": ""
+                }
+              ]
+            }
+          ]
+        },
+        "roomErrorEvent": {
+          "summary": "A room update was withheld (`err@room:<room>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^err@room:[A-Za-z0-9_-]+$",
+                "description": "`err@room:<room>`."
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "limit",
+              "payload": [
+                "err@room:W8N3",
+                "subscribe limit reached"
+              ]
+            }
+          ]
+        },
+        "roomMapEvent": {
+          "summary": "Low-detail positions of one room for the world map (`roomMap2:<room>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^roomMap2:[A-Za-z0-9_-]+$",
+                "description": "`roomMap2:<room>`."
+              },
+              {
+                "$ref": "#/components/schemas/RoomMap"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "view",
+              "payload": [
+                "roomMap2:W8N3",
+                {
+                  "w": [
+                    [
+                      10,
+                      10
+                    ]
+                  ],
+                  "s": [
+                    [
+                      20,
+                      30
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "mapVisualEvent": {
+          "summary": "The subscribing user's map visuals of the previous tick (`mapVisual:<user>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^mapVisual:[^/]+$",
+                "description": "`mapVisual:<user id>`."
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Newline-terminated `MapVisualItem` JSON lines, or `null`.",
+                "x-ndjson-item": {
+                  "$ref": "#/components/schemas/MapVisualItem"
+                }
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "none",
+              "payload": [
+                "mapVisual:5a1b2c3d4e5f60718293a4b5",
+                null
+              ]
+            }
+          ]
+        },
+        "userMemoryEvent": {
+          "summary": "The value at one Memory path (`user:<user>/memory/<path>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^user:[^/]+/memory/.+$",
+                "description": "`user:<user id>/memory/<dot.separated.path>`."
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "number",
+              "payload": [
+                "user:5a1b2c3d4e5f60718293a4b5/memory/stats.tick",
+                "1234"
+              ]
+            }
+          ]
+        },
+        "userConsoleEvent": {
+          "examples": [
+            {
+              "name": "output",
+              "payload": [
+                "user:5a1b2c3d4e5f60718293a4b5/console",
+                {
+                  "messages": {
+                    "log": [
+                      "tick"
+                    ],
+                    "results": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schemas": {
+        "UserConsole": {
+          "x-profile-reason": "One world: console events carry no `shard`.",
+          "oneOf": [
+            {
+              "title": "Output",
+              "type": "object",
+              "required": [
+                "messages"
+              ],
+              "properties": {
+                "messages": {
+                  "type": "object",
+                  "required": [
+                    "log",
+                    "results"
+                  ],
+                  "properties": {
+                    "log": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "`console.log` output."
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Results of console expressions (`POST /api/user/console`)."
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "title": "Error",
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          ],
+          "examples": [
+            {
+              "messages": {
+                "log": [
+                  "tick"
+                ],
+                "results": []
+              }
+            },
+            {
+              "error": "Error: boom\n    at main:1:7"
+            }
+          ]
+        },
+        "RoomEvent": {
+          "x-profile-reason": "Room events of backend-local carry no `decorations`, and `users` holds complete stored user documents.",
+          "description": "One room update. The first event after subscribing carries `users` (including the built-in users) and `info`, plus `flags` when the subscribing user has flags in the room; later events carry `objects`, `gameTime` and `visual`, `info` for world rooms (`W1N1`-style names), `flags` when the subscribing user has flags, and `users` when objects reference users not sent before. `users` entries are the referenced users' complete stored documents (the default storage ignores the requested `username`/`badge` projection), including private fields such as `email`. The official client shallow-merges `users` into the users it holds.",
+          "properties": {
+            "decorations": null
+          }
+        }
+      }
+    }
+  }
+}

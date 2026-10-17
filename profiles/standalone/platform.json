@@ -7,20 +7,25 @@
     "platformOfficialRoomHistory": "Static history host of screeps.com (`HISTORY_URL/<shard>/<room>/<tick>.json`). The official client uses it only when `options.official` is true; standalone servers provide the `/room-history` addition instead."
   },
   "adaptations": {
-    "platformSteamNews": "A standalone server has no screeps.com news backend and relays the public Valve news feed instead; when that upstream is unavailable it reports HTTP 502 rather than inventing an empty feed."
+    "platformSteamNews": "A standalone server has no screeps.com news backend and relays the public Valve news feed instead; when that upstream is unavailable it reports HTTP 502 rather than inventing an empty feed.",
+    "platformVersion": "OpenScreeps declares itself: `serverData.features` is always present and lists the official client's fallback features followed by an `openscreeps` marker, so clients can tell an OpenScreeps server from other private servers (override: PlatformVersion)."
   },
   "additions": {
     "platformRoomHistory": "The official web client fetches room history from `/room-history?room=&time=` whenever `options.official` is false (private-server branch), so every standalone server must serve it."
   },
   "notes": {
-    "platformVersion": "Standalone servers serve one world: `serverData.shards` and official hosted `features` (seasons, decorations, inventory) may be absent, in which case the official client falls back to its market/auth feature set.",
+    "platformVersion": "Standalone servers serve one world. `serverData.features` is always `[market, auth, openscreeps]`: `market` (version 1, with the Market menu entry after World) and `auth` (version 1) are exactly the features the official client assumes when `features` is absent, so listing them keeps its behaviour unchanged; `{name: 'openscreeps', version: 1}` (marker version 1) identifies an OpenScreeps server, and a server without it is not OpenScreeps. `serverData.shards` is absent, so the official client shows no shard names; socket channels, room history and requests carry no shard, because the official client qualifies them only when `options.official` is true.",
     "platformSteamNews": "Relays Valve ISteamNews/GetNewsForApp for the Screeps app (one item), cached for five minutes with concurrent requests coalesced.",
     "platformActivePromotion": "No hosted item shop: the response is `{ok: 1}` without promotion fields.",
     "platformRoomHistory": "`time` must identify a retained chunk base; at most `historyChunkSize` frames are returned and a missing chunk yields HTTP 404."
   },
   "evidence": {
     "platformVersion": [
-      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L15-L31"
+      "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/services/host.service.ts#L15-L31",
+      "https://screeps.com/a/app2/main.js?bust=1787842760865#L220545C1",
+      "https://screeps.com/a/app2/main.js?bust=1787842760865#L220585C13",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C5918",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C320915"
     ],
     "platformSteamNews": [
       "https://github.com/openscreeps/server/blob/3954fd26f107a4b508ccaf6b5f64e4aa951d9e91/src/api/platform.ts#L11-L23",
@@ -113,6 +118,31 @@
             "https://screeps.com/a/build.min.js?bust=1787842760865#L1C313108",
             "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L178-L187"
           ]
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "PlatformVersion": {
+          "x-profile-reason": "OpenScreeps always lists `serverData.features`, ending with the `openscreeps` marker that identifies it.",
+          "properties": {
+            "serverData": {
+              "properties": {
+                "features": {
+                  "description": "Server features: the official client's fallback features `market` (version 1, Market menu entry after World) and `auth` (version 1), then the OpenScreeps marker `{name: 'openscreeps', version: 1}`. Clients identify an OpenScreeps server by the marker (its `version` is the marker version); a server whose features lack it is not OpenScreeps.",
+                  "contains": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "const": "openscreeps" },
+                      "version": { "const": 1 }
+                    },
+                    "required": ["name", "version"]
+                  }
+                }
+              },
+              "required": ["customObjectTypes", "historyChunkSize", "renderer", "features"]
+            }
+          }
         }
       }
     }

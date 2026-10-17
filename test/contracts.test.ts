@@ -4,6 +4,13 @@ import { test } from 'node:test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { createRequire } from 'node:module';
 import type { FormatsPlugin } from 'ajv-formats';
+import {
+  composePlugin,
+  composePlugins,
+  composeProfile,
+  listOperations,
+  type JsonObject,
+} from '../lib/contracts.mjs';
 
 const require = createRequire(import.meta.url);
 const addFormats = require('ajv-formats') as FormatsPlugin;
@@ -45,6 +52,198 @@ test('official capabilities admit optional menuData on feature entries', () => {
     },
   };
   assert.equal(validate(official), true, ajv.errorsText(validate.errors));
+});
+
+const readJson = async (path: string): Promise<JsonObject> =>
+  JSON.parse(await readFile(new URL(`../${path}`, import.meta.url), 'utf8')) as JsonObject;
+const official = spec as JsonObject;
+const community = composeProfile(official, await readJson('profiles/community.json'));
+const standalone = composeProfile(official, await readJson('profiles/standalone.json'));
+const adminUtils = await readJson('plugins/screepsmod-admin-utils.json');
+const auth = await readJson('plugins/screepsmod-auth.json');
+const versionSchema = (document: JsonObject) => {
+  const composed = new Ajv2020({ strict: false, allErrors: true });
+  addFormats(composed);
+  composed.addSchema({ $id: 'urn:screeps:composed', components: document.components });
+  const validate = composed.getSchema<unknown>(
+    'urn:screeps:composed#/components/schemas/PlatformVersion',
+  );
+  assert.ok(validate);
+  return validate;
+};
+const fallbackFeatures = [
+  {
+    name: 'market',
+    version: 1,
+    menuData: [
+      {
+        section: 0,
+        after: 'World',
+        item: { label: 'Market', routerLink: '/market', svg: 'market' },
+      },
+    ],
+  },
+  { name: 'auth', version: 1 },
+];
+const serverData = {
+  customObjectTypes: {},
+  historyChunkSize: 20,
+  socketUpdateThrottle: 1000,
+  renderer: { resources: {}, metadata: {} },
+};
+
+test('community + screepsmod-admin-utils admits the admin-utils version reply; official and plain community do not', () => {
+  const withPlugin = composePlugin(official, community, adminUtils);
+  // GET /api/version of backend-local with screepsmod-auth and screepsmod-admin-utils.
+  const reply = (shard: string | null) => ({
+    ok: 1,
+    protocol: 14,
+    useNativeAuth: false,
+    users: 1,
+    serverData: {
+      ...serverData,
+      shards: [shard],
+      features: [
+        { name: 'auth', version: 1 },
+        { name: 'auth-tokens' },
+        {
+          name: 'screepsmod-auth',
+          version: '2.10.1',
+          authTypes: ['password'],
+          menuData: [{ section: 2, start: 1, item: { label: 'Change Password' } }],
+        },
+        { name: 'screepsmod-admin-utils', version: '1.37.1' },
+      ],
+    },
+  });
+  const plugin = versionSchema(withPlugin);
+  for (const shard of [null, 'shard0']) {
+    assert.equal(plugin(reply(shard)), true, JSON.stringify(plugin.errors));
+    assert.equal(schema('PlatformVersion')(reply(shard)), false);
+    assert.equal(versionSchema(community)(reply(shard)), false);
+  }
+  const operation = listOperations(withPlugin).find(
+    (entry) => entry.operationId === 'platformVersion',
+  );
+  assert.equal((operation?.operation['x-profile'] as JsonObject).status, 'required');
+  assert.deepEqual(
+    (operation?.operation['x-plugins'] as JsonObject[]).map(({ name, status }) => [name, status]),
+    [['screepsmod-admin-utils', 'adapted']],
+  );
+});
+
+test('standalone capabilities require the openscreeps marker after the official fallback features', () => {
+  const validate = versionSchema(standalone);
+  const reply = (features: unknown[]) => ({
+    ok: 1,
+    protocol: 14,
+    users: 0,
+    serverData: { ...serverData, features },
+  });
+  const openscreeps = reply([...fallbackFeatures, { name: 'openscreeps', version: 1 }]);
+  assert.equal(validate(openscreeps), true, JSON.stringify(validate.errors));
+  assert.equal(schema('PlatformVersion')(openscreeps), true, 'the official contract admits it');
+  assert.equal(
+    validate(reply(fallbackFeatures)),
+    false,
+    'servers without the marker are not OpenScreeps',
+  );
+  assert.equal(
+    validate({ ok: 1, protocol: 14, users: 0, serverData }),
+    false,
+    'features are required',
+  );
+});
+
+test('plugins compose in order onto the community profile and mark what they provide, adapt and add', () => {
+  const stacked = composePlugins(official, community, [auth, adminUtils]);
+  const byId = new Map(
+    listOperations(stacked).map((entry) => [entry.operationId, entry.operation]),
+  );
+  const plugins = (id: string) => byId.get(id)?.['x-plugins'] as JsonObject[] | undefined;
+  assert.equal(byId.has('authSignin'), true);
+  assert.equal((byId.get('authSignin')?.['x-profile'] as JsonObject).status, 'plugin');
+  assert.equal(plugins('authSignin')?.[0]?.status, 'provided');
+  assert.equal(plugins('registerCheckUsername')?.[0]?.status, 'adapted');
+  assert.equal(plugins('platformServerStats')?.[0]?.status, 'addition');
+  assert.equal(byId.get('gameTime')?.['x-plugins'], undefined, 'untouched base operations');
+  const info = stacked.info as JsonObject;
+  assert.deepEqual(
+    (info['x-plugins'] as JsonObject[]).map((entry) => entry.name),
+    ['screepsmod-auth', 'screepsmod-admin-utils'],
+  );
+  assert.equal(info['x-profile'], 'community');
+  assert.equal(
+    listOperations(stacked).length,
+    listOperations(composePlugins(official, community, [adminUtils, auth])).length,
+  );
+});
+
+test('plugin composition rejects unknown ids, unjustified overrides, collisions and the wrong base', () => {
+  const plugin = (extra: JsonObject): JsonObject => ({
+    name: 'test-plugin',
+    description: 'Plugin used by the composition tests.',
+    package: { name: 'test-plugin', version: '1.0.0' },
+    source: 'auth',
+    base: 'community',
+    ...extra,
+  });
+  const evidence = [
+    'https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L1',
+  ];
+  const fails = (extra: JsonObject, expected: RegExp, base: JsonObject = community) =>
+    assert.throws(() => composePlugin(official, base, plugin(extra)), expected);
+  assert.doesNotThrow(() => composePlugin(official, community, plugin({})));
+  fails(
+    { provides: { notAnOperation: 'x' }, evidence: { notAnOperation: evidence } },
+    /provided notAnOperation is not an official operation/,
+  );
+  fails(
+    { adaptations: { notAnOperation: 'x' } },
+    /adaptation notAnOperation is neither a base operation nor provided/,
+  );
+  fails(
+    { notes: { gameTime: 'x' } },
+    /notes\.gameTime targets no provided, adapted or added operation/,
+  );
+  fails(
+    { provides: { gameTime: 'x' }, evidence: { gameTime: evidence } },
+    /provides gameTime, which the base already serves; adapt it instead/,
+  );
+  fails({ provides: { authSignin: 'x' } }, /authSignin needs evidence/);
+  fails(
+    { overrides: { paths: { '/api/game/time': { get: { description: 'Changed.' } } } } },
+    /override get \/api\/game\/time patches gameTime without an adaptation reason/,
+  );
+  fails(
+    {
+      adaptations: { gameTime: 'x' },
+      evidence: { gameTime: evidence },
+      overrides: { components: { schemas: { GameTimeResponse: { description: 'Changed.' } } } },
+    },
+    /component override schemas\/GameTimeResponse needs x-plugin-reason/,
+  );
+  fails(
+    {
+      overrides: {
+        components: { schemas: { ApiError: { description: 'Changed.', 'x-plugin-reason': 'x' } } },
+      },
+    },
+    /uses overridden #\/components\/schemas\/ApiError but has no adaptation reason/,
+  );
+  fails(
+    { adaptations: { gameTime: 'x' }, evidence: { gameTime: evidence } },
+    /adaptation gameTime changes nothing/,
+  );
+  fails({ additions: { gameTime: 'x' } }, /addition gameTime reuses an official operationId/);
+  fails({ base: 'standalone' }, /applies to profile standalone, but the base is profile community/);
+  fails({}, /applies to profile community, but the base is profile standalone/, standalone);
+  fails(
+    { name: 'screepsmod-auth' },
+    /screepsmod-auth is already applied/,
+    composePlugin(official, community, auth),
+  );
+  fails({ unknown: true }, /unknown key unknown/);
 });
 
 test('official Steam ownership contains application IDs, not standalone flags', () => {

@@ -1,0 +1,286 @@
+{
+  "socket": {
+    "info": {
+      "title": "Screeps community server socket API",
+      "description": "Socket protocol of the stock Screeps private server (screeps/backend-local without mods) as the official web client uses it when `options.official` is false. Composed from the official Screeps World socket contract and the community compatibility profile; each message's `x-profile` states whether it is unchanged (`required`) or has documented differences (`adapted`). Channel names carry no shard. The socket does not check the server password. Session tokens are short-lived: every `auth ok` and every authenticated HTTP response issues a replacement that must be stored."
+    },
+    "servers": {
+      "community": {
+        "host": "{host}:{port}",
+        "pathname": "/socket",
+        "protocol": "ws",
+        "description": "SockJS endpoint `/socket` of the private server; the raw WebSocket transport is `/socket/websocket`. Use `wss` when a proxy terminates TLS.",
+        "variables": {
+          "host": {
+            "default": "localhost",
+            "description": "Private server hostname or IP address."
+          },
+          "port": {
+            "default": "21025",
+            "description": "Private server HTTP port (`GAME_PORT`, 21025 by default)."
+          }
+        }
+      }
+    },
+    "excluded": {
+      "package": "backend-local greets with `time` and `protocol` only; `package` announces official desktop client releases.",
+      "serverDown": "Maintenance notices are part of the hosted service; backend-local never sends `server down`.",
+      "cannotSubscribe": "backend-local ignores subscriptions it does not serve and never sends `cannot subscribe` lines.",
+      "userSteamPurchaseEvent": "Steam purchases are a hosted account service; backend-local publishes no `steam-purchase` events."
+    },
+    "adaptations": {
+      "authOk": "backend-local tokens are session tokens: `auth ok` issues a new one, stored for 60 seconds, that replaces the stored token.",
+      "roomEvent": "One world: the room channel is `room:<room>` without a shard; room events carry no `decorations`, and their `users` entries are the users' complete stored documents.",
+      "roomErrorEvent": "One world: the room error channel is `err@room:<room>` without a shard.",
+      "roomMapEvent": "One world: the map channel is `roomMap2:<room>` without a shard.",
+      "mapVisualEvent": "One world: the map visual channel is `mapVisual:<user>` without a shard.",
+      "userMemoryEvent": "One world: Memory watch channels are `user:<user>/memory/<path>` without a shard.",
+      "userConsoleEvent": "One world: console events carry no `shard`."
+    },
+    "evidence": {
+      "authOk": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/authlib.js#L7-L41",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/server.js#L124-L136"
+      ],
+      "roomEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L148",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L170-L208",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L74-L133"
+      ],
+      "roomErrorEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L34-L46",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/rooms.js#L158-L168"
+      ],
+      "roomMapEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/map.js#L34-L35",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/map.js#L49"
+      ],
+      "mapVisualEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L103",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L157"
+      ],
+      "userMemoryEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L80",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L112"
+      ],
+      "userConsoleEvent": [
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/socket/user.js#L28-L33"
+      ]
+    },
+    "overrides": {
+      "messages": {
+        "authOk": {
+          "description": "Unframed protocol line `auth ok <token>`, sent uncompressed. The token is a newly issued session token (40 hex characters) that expires after 60 seconds unless an authenticated HTTP request rotates it again; store it in place of the sent token for later `auth` commands and HTTP requests. The official client replaces its stored token with it, then sends the subscriptions it queued."
+        },
+        "roomEvent": {
+          "summary": "Detailed, incremental updates of one room (`room:<room>`).",
+          "description": "Requires authentication. The first event after subscribing is the full room; later events are diffs against what this connection already received (see `RoomObjectsDiff`), sent at most once per tick. Each user receives at most two room subscriptions per update across all connections; subscriptions beyond that receive `err@room:` events instead and resume when selected again. Rooms that do not exist are ignored silently.",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^room:[A-Za-z0-9_-]+$",
+                "description": "`room:<room>`."
+              },
+              {
+                "$ref": "#/components/schemas/RoomEvent"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "diff",
+              "payload": [
+                "room:W8N3",
+                {
+                  "objects": {
+                    "5bbcab1d9099fc012e632f4a": {
+                      "energy": 2990
+                    }
+                  },
+                  "gameTime": 1234,
+                  "info": {
+                    "mode": "world"
+                  },
+                  "visual": ""
+                }
+              ]
+            }
+          ]
+        },
+        "roomErrorEvent": {
+          "summary": "A room update was withheld (`err@room:<room>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^err@room:[A-Za-z0-9_-]+$",
+                "description": "`err@room:<room>`."
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "limit",
+              "payload": ["err@room:W8N3", "subscribe limit reached"]
+            }
+          ]
+        },
+        "roomMapEvent": {
+          "summary": "Low-detail positions of one room for the world map (`roomMap2:<room>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^roomMap2:[A-Za-z0-9_-]+$",
+                "description": "`roomMap2:<room>`."
+              },
+              {
+                "$ref": "#/components/schemas/RoomMap"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "view",
+              "payload": [
+                "roomMap2:W8N3",
+                {
+                  "w": [[10, 10]],
+                  "s": [[20, 30]]
+                }
+              ]
+            }
+          ]
+        },
+        "mapVisualEvent": {
+          "summary": "The subscribing user's map visuals of the previous tick (`mapVisual:<user>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^mapVisual:[^/]+$",
+                "description": "`mapVisual:<user id>`."
+              },
+              {
+                "type": ["string", "null"],
+                "description": "Newline-terminated `MapVisualItem` JSON lines, or `null`.",
+                "x-ndjson-item": {
+                  "$ref": "#/components/schemas/MapVisualItem"
+                }
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "none",
+              "payload": ["mapVisual:5a1b2c3d4e5f60718293a4b5", null]
+            }
+          ]
+        },
+        "userMemoryEvent": {
+          "summary": "The value at one Memory path (`user:<user>/memory/<path>`).",
+          "payload": {
+            "items": [
+              {
+                "type": "string",
+                "pattern": "^user:[^/]+/memory/.+$",
+                "description": "`user:<user id>/memory/<dot.separated.path>`."
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "examples": [
+            {
+              "name": "number",
+              "payload": ["user:5a1b2c3d4e5f60718293a4b5/memory/stats.tick", "1234"]
+            }
+          ]
+        },
+        "userConsoleEvent": {
+          "examples": [
+            {
+              "name": "output",
+              "payload": [
+                "user:5a1b2c3d4e5f60718293a4b5/console",
+                {
+                  "messages": {
+                    "log": ["tick"],
+                    "results": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schemas": {
+        "UserConsole": {
+          "x-profile-reason": "One world: console events carry no `shard`.",
+          "oneOf": [
+            {
+              "title": "Output",
+              "type": "object",
+              "required": ["messages"],
+              "properties": {
+                "messages": {
+                  "type": "object",
+                  "required": ["log", "results"],
+                  "properties": {
+                    "log": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "`console.log` output."
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Results of console expressions (`POST /api/user/console`)."
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "title": "Error",
+              "type": "object",
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          ],
+          "examples": [
+            {
+              "messages": {
+                "log": ["tick"],
+                "results": []
+              }
+            },
+            {
+              "error": "Error: boom\n    at main:1:7"
+            }
+          ]
+        },
+        "RoomEvent": {
+          "x-profile-reason": "Room events of backend-local carry no `decorations`, and `users` holds complete stored user documents.",
+          "description": "One room update. The first event after subscribing carries `users` (including the built-in users) and `info`, plus `flags` when the subscribing user has flags in the room; later events carry `objects`, `gameTime` and `visual`, `info` for world rooms (`W1N1`-style names), `flags` when the subscribing user has flags, and `users` when objects reference users not sent before. `users` entries are the referenced users' complete stored documents (the default storage ignores the requested `username`/`badge` projection), including private fields such as `email`. The official client shallow-merges `users` into the users it holds.",
+          "properties": {
+            "decorations": null
+          }
+        }
+      }
+    }
+  }
+}

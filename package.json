@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Official Screeps HTTP and socket contracts, standalone compatibility profile, and generated TypeScript clients",
+  "description": "Official Screeps HTTP and socket contracts, standalone and community compatibility profiles, community mod plugin contracts, and generated TypeScript clients",
   "license": "ISC",
   "engines": {
     "node": ">=24.21.0"
@@ -12,6 +12,8 @@
     "./official": "./openapi.json",
     "./socket": "./asyncapi.json",
     "./profiles/standalone": "./profiles/standalone.json",
+    "./profiles/community": "./profiles/community.json",
+    "./plugins/*": "./plugins/*.json",
     "./contracts": {
       "types": "./lib/contracts.d.mts",
       "import": "./lib/contracts.mjs"
@@ -33,6 +35,7 @@
     "asyncapi.json",
     "asyncapi.yaml",
     "profiles/",
+    "plugins/",
     "lib/",
     "spec/",
     "socket/",

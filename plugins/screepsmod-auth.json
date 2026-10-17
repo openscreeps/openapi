@@ -1,0 +1,581 @@
+{
+  "name": "screepsmod-auth",
+  "description": "Contract of the screepsmod-auth mod on a community server (stock screeps/backend-local): password sign-in and registration without reCAPTCHA or e-mail confirmation, password changes, persistent API tokens with optional restrictions and rate limits, Steam/GitHub sign-in when configured, and its own availability checks. Its middleware and routes are registered before backend-local's own routes and server-password check.",
+  "package": {
+    "name": "screepsmod-auth",
+    "version": "2.10.1"
+  },
+  "source": "auth",
+  "base": "community",
+  "provides": {
+    "authSignin": "Stock backend-local has no password sign-in; screepsmod-auth adds it, issuing backend-local session tokens.",
+    "registerSubmit": "Stock backend-local registers players only through Steam; screepsmod-auth adds password registration.",
+    "userName": "screepsmod-auth serves the restricted-token username lookup for its API tokens.",
+    "userPasswordSet": "screepsmod-auth adds password changes (its `/authmod/password/` page and the official account page use it).",
+    "userAuthTokenList": "screepsmod-auth stores persistent API tokens and lists them like the official account page expects.",
+    "userAuthTokenCreate": "screepsmod-auth creates persistent API tokens (full or restricted to endpoints, socket channels and memory segments).",
+    "userAuthTokenDelete": "screepsmod-auth deletes persistent API tokens.",
+    "authQueryToken": "screepsmod-auth reports the permissions of a persistent API token, as node-screeps-api queries before choosing its user lookup.",
+    "userNoRateLimit": "screepsmod-auth lifts its rate limits for one API token for two hours.",
+    "authSteam": "screepsmod-auth adds Steam OpenID sign-in (and account linking) in a browser popup when the server has a Steam Web API key.",
+    "authGithub": "screepsmod-auth adds GitHub OAuth sign-in (and account linking) in a browser popup when the server has GitHub OAuth credentials.",
+    "userUnlinkSteam": "screepsmod-auth removes a linked Steam identity.",
+    "userUnlinkGithub": "screepsmod-auth removes a linked GitHub identity."
+  },
+  "adaptations": {
+    "authSignin": "Failed credentials answer HTTP 401 with the plain text `Unauthorized`, banned accounts HTTP 403 `{error: \"banned\"}`, and HTTP Basic credentials are accepted instead of the JSON body (override: path, Basic security scheme).",
+    "registerSubmit": "Only `username` and `password` are needed; no field is validated and a missing `username` fails with an HTTP 500 HTML error page (override: path).",
+    "userName": "An account without a username answers HTTP 404 `{error: \"User not found\"}` (override: path).",
+    "userPasswordSet": "`oldPassword` is required only when the account already has a password (override: path).",
+    "userAuthTokenCreate": "An invalid `description` or `memorySegments` answers HTTP 400 with `{ok: 0, error}` (override: path).",
+    "authQueryToken": "The reply nests the whole token record, including its `_id`, under `token`, lists endpoints and socket groups in the mod's own notation, and unknown tokens answer HTTP 200 `{error: \"token not found\"}` (override: AuthQueryTokenResponse).",
+    "userNoRateLimit": "Requires a signed-in session instead of a reCAPTCHA response; an unknown token prefix answers HTTP 404 `{ok: 0}` and a failed exemption HTTP 400 `{ok: 0}` (override: path).",
+    "registerCheckUsername": "screepsmod-auth answers the check before backend-local: a taken name is `User Exists` (exact, case-sensitive match), never `exists` or `invalid username`, and no server password is checked (override: path).",
+    "registerCheckEmail": "screepsmod-auth answers the check before backend-local: a ban-marked address is `banned: <fields>`, a taken one `User Exists` (exact match), never `exists` or `invalid email`, and no server password is checked (override: path).",
+    "userCodeSet": "screepsmod-auth also accepts HTTP Basic credentials for code uploads and rejects banned accounts with HTTP 403 `{error: \"banned\"}` (override: path, Basic security scheme)."
+  },
+  "additions": {
+    "authModInfo": "node-screeps-api calls `GET /api/authmod` on unofficial servers to identify the authentication mod and whether password registration is open."
+  },
+  "behaviour": [
+    {
+      "summary": "Every request carrying a valid backend-local session token in `X-Token` (on any route, before routing) receives a fresh session token in the `X-Token` and `X-Username` response headers; authenticated backend-local routes then issue another. Session tokens are 40 hex characters (HMAC-SHA1), valid for 60 s after issue; persistent API tokens are never rotated.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L219-L248",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/authlib.js#L7-L11",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/api/auth.js#L94-L109"
+      ]
+    },
+    {
+      "summary": "Before routing, a token sent as `X-Token` or as the `_token` query parameter is copied into `X-Token` and `X-Username`, so backend-local's token authentication no longer needs `X-Username`. Wherever backend-local authenticates, persistent API tokens (UUIDs created by `userAuthTokenCreate`) are accepted alongside session tokens. A restricted token may call only its listed endpoints (others answer HTTP 403 `{error: \"forbidden\"}`), only the memory segments it lists, and subscribe only to its console, memory and room socket channels.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L50-L57",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L127-L206",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/index.js#L48-L92",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L32-L46"
+      ]
+    },
+    {
+      "summary": "An authenticated request (valid `X-Token` session token, or HTTP Basic credentials on `POST /api/user/code`) passes backend-local's server-password check without `X-Server-Password`. The mod's own routes are registered before that check and never require the server password, but password registration is disabled while `SERVER_PASSWORD` is set.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L79-L84",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L228",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L270-L284",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L41-L45",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L137",
+        "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L154-L162"
+      ]
+    },
+    {
+      "summary": "With `rateLimitEnabled` (off by default), requests authenticated by a persistent API token are counted per token: a global bucket (120 per minute) and per-endpoint buckets of the official limits. Each counted reply carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (Unix seconds); an exhausted bucket answers HTTP 429 `text/plain` `Rate limit exceeded, retry after <ms>ms`. Session-token requests and the token-management routes are never limited.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L14-L21",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L415-L444",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/ratelimit.js#L2-L20",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/ratelimit.js#L82-L87",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/config.js#L5-L9"
+      ]
+    },
+    {
+      "summary": "Serves the static password-change page under `/authmod/` (`/authmod/password/`) and registers the server features `auth` (version 1), `auth-tokens` (no version) and `screepsmod-auth` (its package version, `authTypes`, Change Password menu entry); stock backend-local publishes no features, screepsmod-admin-utils lists them in `GET /api/version`.",
+      "evidence": [
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L398",
+        "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/menu.js#L1-L30"
+      ]
+    }
+  ],
+  "notes": {
+    "authSignin": "`email` is matched exactly against stored usernames and e-mail addresses (case-sensitive), so a username signs in too; `recaptcha` and `steamTicket` are ignored. Passwords are verified as PBKDF2-SHA256 hashes; accounts without a password (Steam or GitHub sign-ups) cannot sign in. Success is `{ok: 1, token}` with a 40-hex backend-local session token valid for 60 s.",
+    "registerSubmit": "Stores the account as submitted: no username, e-mail or password rules, no reCAPTCHA, no e-mail confirmation and no token (sign in afterwards). The account gets the configured `registerCpu` (100 by default), is blocked when `preventSpawning` is set, and gets a `default` branch from `modules` (default `{main: \"\"}`) and empty Memory. Existing username (exact match) or e-mail: `{error}` holding the whole error stack, beginning `Error: User already exists`; a ban-marked e-mail: `banned: <fields>`; while `SERVER_PASSWORD` is set: `Registration is automatically disabled. A server password has been set.` `recaptcha`, `tutorialDone` and `branches` are ignored.",
+    "userName": "Accepts session tokens and persistent API tokens (including restricted tokens that list `GET /api/user/name`).",
+    "userPasswordSet": "A missing `password` answers `{ok: 0, error: \"Password required\"}`; the new password is stored as a PBKDF2-SHA256 hash without length or strength rules. Defect of the mod: when the account has a password and `oldPassword` is wrong, it answers HTTP 401 `{error: \"Unauthorized\"}` but then still overwrites the stored password and salt with undefined values (the account can no longer sign in with a password) and replies a second time, which throws `ERR_HTTP_HEADERS_SENT` and crashes the backend process. Never send a wrong `oldPassword` to a screepsmod-auth server.",
+    "userAuthTokenList": "Lists every persistent token of the account with `token` masked to its first 8 characters (`xxxxxxxx-****-****-****-************`), `full`, `description` (`null` when none), for restricted tokens `endpoints` (`/api/game/` shortened to `/api/`), `websockets` (`console`, `rooms`) and `memorySegments` (strings), and `noRatelimitUntil` only while an exemption lasts.",
+    "userAuthTokenCreate": "`type: \"selected\"` creates a restricted token, any other value a full one. Restricted tokens keep only the endpoints the mod supports (`GET /api/user/name`, `GET /api/user/money-history`, `GET`/`POST /api/user/memory`, `GET`/`POST /api/user/memory-segment`, `GET /api/game/market/orders-index`, `orders`, `my-orders`, `stats`; the official client's `/api/market/...` keys are accepted), `websockets.console`/`rooms`, and `memorySegments` as ids 0-99 separated by commas or spaces (blank = all). The reply's `token` is a UUID.",
+    "userAuthTokenDelete": "Deletes the caller's token whose `_id` is `tokenId`; succeeds with `{ok: 1}` even when no token matched.",
+    "authQueryToken": "Unauthenticated. Looks the token up by its full value.",
+    "userNoRateLimit": "`token` is a prefix of one of the caller's tokens; the matching token is meant to be exempt from rate limits for two hours. Observed on screeps 4.3.0 with the default storage: a matching prefix answered HTTP 400 `{ok: 0}` and the exemption was not applied.",
+    "authSteam": "Requires the server's Steam Web API key (`STEAM_KEY`). The popup's final page posts `{username, token, steamid}` (a session token) to the opener; a `token` query parameter (stored in a cookie) links the Steam identity to that account, otherwise an account is found or created (100 CPU, `default` branch). Ban-marked identities get an HTTP 403 page posting `{error: \"banned: ...\"}`.",
+    "authGithub": "Without `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` every request answers HTTP 503 `GitHub OAuth is not configured.`. Otherwise the popup's final page posts `{username, token}` to the opener, linking to the account of a `token` query parameter or finding/creating an account; `repoScope` is ignored.",
+    "userUnlinkSteam": "Removes `steam` from the account; always `{ok: 1}`.",
+    "userUnlinkGithub": "Removes `github` from the account; always `{ok: 1}`.",
+    "registerCheckUsername": "Looks up `username` exactly as given.",
+    "registerCheckEmail": "Looks up `email` exactly as given; storage errors answer `{error: <message>}`.",
+    "userCodeSet": "With an `Authorization: Basic` header (username or e-mail and password) and no `X-Token`, the mod authenticates the upload itself and passes it to backend-local with a fresh session token.",
+    "authModInfo": "Unauthenticated."
+  },
+  "evidence": {
+    "authSignin": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L208-L216",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L249-L258",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/index.js#L136-L144",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/auth.js#L14-L46",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/authlib.js#L7-L11"
+    ],
+    "registerSubmit": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L27-L79",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/config.js#L5-L9"
+    ],
+    "userName": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L259-L269"
+    ],
+    "userPasswordSet": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L285-L307",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/auth.js#L14-L30"
+    ],
+    "userAuthTokenList": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L308-L315",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L357-L382"
+    ],
+    "userAuthTokenCreate": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L316-L333",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/index.js#L7-L46",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/index.js#L183-L230"
+    ],
+    "userAuthTokenDelete": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L334-L343",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/index.js#L271-L275"
+    ],
+    "authQueryToken": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L384-L397",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L357-L382"
+    ],
+    "userNoRateLimit": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L344-L356"
+    ],
+    "authSteam": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/steam/index.js#L19-L66"
+    ],
+    "authGithub": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/github/index.js#L23-L76"
+    ],
+    "userUnlinkSteam": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/steam/index.js#L67-L71"
+    ],
+    "userUnlinkGithub": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/github/index.js#L17-L21"
+    ],
+    "registerCheckUsername": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L8-L12",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L137"
+    ],
+    "registerCheckEmail": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/register.js#L13-L26",
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L137"
+    ],
+    "userCodeSet": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L95-L112",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L270-L284"
+    ],
+    "authModInfo": [
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L72-L77",
+      "https://github.com/screepsmods/screepsmod-auth/blob/9195e87424475139d749df6d8063df677c4f9917/lib/backend.js#L399",
+      "https://github.com/screepers/node-screeps-api/blob/0f861874ff119b7ba37d0d1a4beb90f096209f4e/src/ScreepsHttpClient.ts#L363-L368"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/api/auth/signin": {
+        "post": {
+          "security": [
+            {},
+            {
+              "Basic": []
+            }
+          ],
+          "requestBody": {
+            "required": false,
+            "description": "JSON credentials; may be omitted when HTTP Basic credentials are sent."
+          },
+          "responses": {
+            "401": {
+              "description": "Missing or wrong credentials: the authentication middleware ends the response with the text `Unauthorized` and no `Content-Type` header.",
+              "content": {
+                "text/plain": {
+                  "schema": {
+                    "type": "string",
+                    "const": "Unauthorized"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "The account is banned: `{error: \"banned\"}`.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/register/submit": {
+        "post": {
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "username": {
+                      "type": "string",
+                      "description": "Stored as given (and lower-cased as `usernameLower`); no format rule."
+                    },
+                    "email": {
+                      "type": "string",
+                      "description": "Optional; stored as given, no format rule."
+                    },
+                    "password": {
+                      "type": "string",
+                      "description": "Stored as a PBKDF2-SHA256 hash; no length rule."
+                    },
+                    "modules": {
+                      "$ref": "#/components/schemas/UserCodeModules"
+                    },
+                    "recaptcha": {
+                      "type": "string",
+                      "description": "Ignored."
+                    },
+                    "tutorialDone": {
+                      "type": "boolean",
+                      "description": "Ignored."
+                    },
+                    "branches": {
+                      "type": "array",
+                      "description": "Ignored.",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "required": ["username", "password"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "500": {
+              "description": "A missing or non-string `username` throws before the handler's error envelope; Express answers with its HTML error page.",
+              "content": {
+                "text/html": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/user/name": {
+        "get": {
+          "responses": {
+            "404": {
+              "description": "The account has no username: `{error: \"User not found\"}`.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/user/password": {
+        "post": {
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "oldPassword": {
+                      "description": "Current password; checked only when the account already has a password."
+                    }
+                  },
+                  "required": ["password"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/user/auth-token": {
+        "post": {
+          "responses": {
+            "400": {
+              "description": "Invalid `description` (not a string) or `memorySegments`: `{ok: 0, error}`.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/user/noratelimit": {
+        "post": {
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "recaptcha": null,
+                    "token": {
+                      "description": "Prefix of one of the caller's API tokens (the account page sends its first 8 characters)."
+                    }
+                  },
+                  "required": ["token"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "400": {
+              "description": "The exemption failed: `{ok: 0, error}`, `error` absent when the storage error has no message.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "ok": {
+                        "type": "integer",
+                        "const": 0
+                      },
+                      "error": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["ok"],
+                    "additionalProperties": true
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "No token of the caller starts with `token`: `{ok: 0}`.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "ok": {
+                        "type": "integer",
+                        "const": 0
+                      }
+                    },
+                    "required": ["ok"],
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/register/check-username": {
+        "get": {
+          "parameters": [
+            {
+              "name": "username",
+              "in": "query",
+              "required": true,
+              "description": "Username to look up (exact, case-sensitive).",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "`{ok: 1}` when no account has exactly this username, otherwise `{error: \"User Exists\"}` (HTTP 200)."
+            }
+          }
+        }
+      },
+      "/api/register/check-email": {
+        "get": {
+          "parameters": [
+            {
+              "name": "email",
+              "in": "query",
+              "required": true,
+              "description": "E-mail address to look up (exact match).",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "`{ok: 1}` when the address is free; otherwise HTTP 200 `{error}`: `banned: <fields>` for a ban-marked address, `User Exists` when an account has exactly this address."
+            }
+          }
+        }
+      },
+      "/api/user/code": {
+        "post": {
+          "security": [
+            {
+              "Token": []
+            },
+            {
+              "Basic": []
+            }
+          ],
+          "responses": {
+            "403": {
+              "description": "The account is banned: `{error: \"banned\"}`.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ApiError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/authmod": {
+        "get": {
+          "operationId": "authModInfo",
+          "summary": "Identify the authentication mod",
+          "description": "Reports screepsmod-auth and the sign-in methods it offers: `name`, `version` (package version), `allowRegistration` (false while `SERVER_PASSWORD` is set), `steam` (always true), `github` and `gitlab` (true when their OAuth credentials are configured).",
+          "tags": ["Auth"],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Authentication mod information.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "ok": {
+                        "type": "integer",
+                        "const": 1
+                      },
+                      "name": {
+                        "type": "string",
+                        "const": "screepsmod-auth"
+                      },
+                      "version": {
+                        "type": "string",
+                        "examples": ["2.10.1"]
+                      },
+                      "allowRegistration": {
+                        "type": "boolean"
+                      },
+                      "steam": {
+                        "type": "boolean"
+                      },
+                      "github": {
+                        "type": "boolean"
+                      },
+                      "gitlab": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "ok",
+                      "name",
+                      "version",
+                      "allowRegistration",
+                      "steam",
+                      "github",
+                      "gitlab"
+                    ],
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "AuthQueryTokenResponse": {
+          "x-plugin-reason": "screepsmod-auth nests the token record, including its `_id`, under `token` instead of sending `_id` beside it.",
+          "properties": {
+            "_id": null
+          },
+          "required": ["ok", "token"]
+        },
+        "AuthQueryTokenResult": {
+          "x-plugin-reason": "screepsmod-auth returns its stored token record: `_id`, the full `token`, `description` `null` when none, socket groups `console`/`rooms`, memory segment ids as strings and an active rate-limit exemption.",
+          "properties": {
+            "_id": {
+              "type": "string",
+              "description": "Token id."
+            },
+            "token": {
+              "type": "string",
+              "description": "The token (a UUID)."
+            },
+            "description": {
+              "type": ["string", "null"],
+              "description": "Description given at creation; `null` when none."
+            },
+            "endpoints": {
+              "description": "Restricted tokens only: permitted endpoints as `METHOD /api/path`, with `/api/game/` shortened to `/api/`."
+            },
+            "websockets": {
+              "items": {
+                "type": "string",
+                "enum": ["console", "rooms"]
+              },
+              "description": "Restricted tokens only: permitted socket channel groups."
+            },
+            "memorySegments": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Restricted tokens only, when limited: permitted memory segment ids."
+            },
+            "noRatelimitUntil": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Unix milliseconds until which the token is exempt from rate limits; present only while the exemption lasts."
+            }
+          },
+          "required": ["_id", "token", "full"]
+        }
+      },
+      "securitySchemes": {
+        "Basic": {
+          "type": "http",
+          "scheme": "basic",
+          "description": "HTTP Basic credentials (username or e-mail address, password) checked by screepsmod-auth; accepted by `POST /api/auth/signin` and `POST /api/user/code`.",
+          "x-plugin-reason": "screepsmod-auth authenticates these routes with HTTP Basic credentials as well."
+        },
+        "Token": {
+          "description": "Backend-local session token (40 hex characters from `authSignin`, Steam or GitHub sign-in; valid for 60 s and replaced in the `X-Token` response header of every request that carries it) or a persistent screepsmod-auth API token (a UUID from `userAuthTokenCreate`; never rotated, optionally restricted and rate limited). Also accepted as the `_token` query parameter. Never send tokens to untrusted hosts or follow authenticated cross-host redirects.",
+          "x-plugin-reason": "screepsmod-auth rotates session tokens on every request and accepts its persistent API tokens wherever session tokens are accepted."
+        }
+      },
+      "parameters": {
+        "LegacyUsername": {
+          "required": false,
+          "description": "Legacy header: the official web client sends the token value here as well as in X-Token. Optional: screepsmod-auth copies `X-Token` (or `_token`) into it before backend-local authenticates.",
+          "x-plugin-reason": "screepsmod-auth fills `X-Username` from the token, so backend-local no longer needs it."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "required": ["platformVersion"],
+  "excluded": {
+    "platformActivePromotion": "Not routed by backend-local: item-shop promotions belong to the hosted screeps.com store (Xsolla); the stock server sells nothing.",
+    "platformExperimentalNukes": "Not routed by backend-local: experimental screeps.com multi-shard nuke analytics, not used by the official client (the screepsmod-admin-utils plugin contract provides it).",
+    "platformExperimentalPvp": "Not routed by backend-local: experimental screeps.com multi-shard combat analytics, not used by the official client (the screepsmod-admin-utils plugin contract provides it).",
+    "platformOfficialRoomHistory": "Static history host of screeps.com (`HISTORY_URL/<shard>/<room>/<tick>.json`), used by the official client only when `options.official` is true. backend-local mounts its history handler on the `/room-history` prefix, so such a path reaches it, but the handler reads only the `room` and `time` query parameters (the `platformRoomHistory` addition).",
+    "platformServersList": "Not routed by backend-local: the community server directory is curated by screeps.com; a private server is an entry in it, not a provider of it.",
+    "platformSteamNews": "Not routed by backend-local: the stock server relays no Steam news; the official client treats a missing feed as no news."
+  },
+  "adaptations": {},
+  "additions": {
+    "platformAsset": "The official web client loads world-map images from `http://<host>:<port>/assets/map/` (zoom levels under `zoom1/` and `zoom2/`) and resolves renderer resources' `{ASSETS_URL}` to `/assets/` whenever `options.official` is false, and backend-local serves its `ASSET_DIR` there.",
+    "platformRoomHistory": "The official web client fetches room history from `/room-history?room=&time=` whenever `options.official` is false (private-server branch), and backend-local routes it to its configurable history provider."
+  },
+  "notes": {
+    "platformAsset": "Room map images (`map/<room>.png`, `map/zoom2/<room>.png`) are written by the CLI's map tools (for example `map.updateRoomImageAssets`); a world generated otherwise may have none.",
+    "platformRoomHistory": "Stock backend-local keeps no room history: its default provider answers every request with HTTP 500 `text/html` `not implemented`. A mod that stores history replaces `config.backend.onGetRoomHistory`; whatever it returns is sent as the body.",
+    "platformVersion": "Returns `protocol: 14`, `useNativeAuth`, `users` (active non-bot accounts with CPU), `serverData` (`welcomeText`, `customObjectTypes`, `historyChunkSize`, `socketUpdateThrottle`, `renderer`, as configured by mods) and `packageVersion` (the installed `screeps` package version, when resolvable). Stock backend-local sends neither `serverData.features` nor `serverData.shards`, so the official client falls back to its market/auth feature set and shows no shard names."
+  },
+  "evidence": {
+    "platformVersion": [
+      "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L31-L72",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C5918",
+      "https://screeps.com/a/build.min.js?bust=1787842760865#L1C320915"
+    ]
+  },
+  "overrides": {
+    "paths": {
+      "/assets/{path}": {
+        "get": {
+          "operationId": "platformAsset",
+          "summary": "Read a static private-server asset",
+          "description": "Static files of the server's `ASSET_DIR` (Express static serving), public and served before the server password check. The official web client reads world-map room images from `/assets/map/<room>.png` and `/assets/map/zoom2/<room>.png` (with a `bust` query) and renderer resources from `/assets/<path>` when `options.official` is false. A missing file answers HTTP 404 with Express's HTML `Cannot GET` page.",
+          "tags": ["Platform"],
+          "security": [],
+          "parameters": [
+            {
+              "name": "path",
+              "in": "path",
+              "required": true,
+              "x-openscreeps-wildcard": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "File path below `ASSET_DIR`, possibly spanning several `/`-separated segments (for example `map/W1N1.png`)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "File contents with the media type of its extension (`image/png` for map images).",
+              "content": {
+                "*/*": {
+                  "schema": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "No such file.",
+              "content": {
+                "text/html": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C105338",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C140626",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C180825",
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C246599",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L139",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/cli/map.js#L611-L657"
+          ]
+        }
+      },
+      "/room-history": {
+        "get": {
+          "operationId": "platformRoomHistory",
+          "summary": "Read private-server room-history chunk",
+          "description": "Room-history chunk endpoint of the private-server protocol. When `options.official` is false the official web client requests `http://<host>:<port>/room-history?room=<room>&time=<tick>` with `time` aligned to `serverData.historyChunkSize`, treats any non-200 status as missing and fills `room` when absent. backend-local passes `room` and `time` unvalidated to `config.backend.onGetRoomHistory` and sends its result, or its error with HTTP 500.",
+          "tags": ["Platform"],
+          "security": [],
+          "parameters": [
+            {
+              "name": "room",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "$ref": "#/components/schemas/RoomName"
+              },
+              "description": "Room name."
+            },
+            {
+              "name": "time",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "description": "Base game tick, normally aligned to the advertised historyChunkSize."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "History chunk (base tick plus tick-keyed object diffs, without the `ok` envelope), only when a mod supplies a history provider.",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PlatformHistory"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "No history: the stock provider answers `not implemented` for every request; a mod's provider may report its own error text.",
+              "content": {
+                "text/html": {
+                  "schema": {
+                    "type": "string"
+                  },
+                  "example": "not implemented"
+                }
+              }
+            }
+          },
+          "x-sources": [
+            "https://screeps.com/a/build.min.js?bust=1787842760865#L1C313108",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L31-L44",
+            "https://github.com/screeps/backend-local/blob/9d079282303ec04e577ac2bb97f64312b25e4ccd/lib/game/server.js#L178-L187"
+          ]
+        }
+      }
+    }
+  }
+}

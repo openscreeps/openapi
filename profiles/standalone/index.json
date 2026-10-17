@@ -1,6 +1,6 @@
 {
   "name": "standalone",
-  "description": "Compatibility profile for a standalone, single-world Screeps server (for example OpenScreeps) that the official web client and community tools can use as a private server. It selects official operations (`required`), documents why the rest are not provided (`excluded`), adds the private-server protocol operations the official client uses only when `options.official` is false (`additions`), and records precise standalone differences (`adaptations`, `overrides`). Official schemas are reused unchanged unless an override with `x-profile-reason` says otherwise.",
+  "description": "Compatibility profile of OpenScreeps, a standalone, single-world Screeps server that the official web client and community tools can use as a private server. It selects official operations (`required`), documents why the rest are not provided (`excluded`), adds the private-server protocol operations the official client uses only when `options.official` is false (`additions`), and records precise standalone differences (`adaptations`, `overrides`). Official schemas are reused unchanged unless an override with `x-profile-reason` says otherwise.",
   "info": {
     "title": "Screeps standalone server HTTP API",
     "summary": "Official Screeps World HTTP contract composed with the standalone compatibility profile",

@@ -1,0 +1,41 @@
+{
+  "required": [],
+  "excluded": {
+    "adminEarlyAccessList": "Not routed by backend-local: internal screeps.com staff tool for the hosted early-access campaign.",
+    "adminEarlyAccessSend": "Not routed by backend-local: internal screeps.com staff tool that e-mails hosted early-access invitations.",
+    "adminTimelineStats": "Not routed by backend-local: internal screeps.com staff statistics of hosted shard infrastructure; the stock server is administered through its CLI.",
+    "authGithub": "Not routed by backend-local: GitHub OAuth sign-in through the screeps.com GitHub application; the stock server signs players in with Steam tickets only (the screepsmod-auth plugin contract provides a GitHub sign-in when configured).",
+    "authGithubCheckRepoScope": "Not routed by backend-local: it checks the scope of the hosted GitHub OAuth link, which the stock server does not have.",
+    "authSteam": "Not routed by backend-local: the Steam OpenID web popup is bound to screeps.com; the stock server authenticates Steam users with `POST /api/auth/steam-ticket` (the screepsmod-auth plugin contract provides a Steam OpenID sign-in).",
+    "registerChangePassword": "Not routed by backend-local: e-mail password recovery needs hosted mail delivery, and the stock server has no password accounts.",
+    "registerConfirm": "Not routed by backend-local: e-mail address confirmation needs hosted mail delivery.",
+    "registerRecover": "Not routed by backend-local: password recovery e-mails need hosted mail delivery, and the stock server has no password accounts.",
+    "supportReportProblem": "Not routed by backend-local: it creates a screeps.com Zendesk support ticket (hosted support service).",
+    "supportSsoJwt": "Not routed by backend-local: Zendesk single sign-on for the screeps.com forums and support desk (hosted service).",
+    "userActivateCpuUnlocks": "Not routed by backend-local: CPU unlocks are purchased screeps.com items; the stock server sets each account's `cpu` administratively.",
+    "userActivateShardAccess": "Not routed by backend-local: access keys for restricted screeps.com shards do not exist on a single-world server.",
+    "userAuthTokenCreate": "Not routed by backend-local: persistent API auth tokens with permissions and rate limits are a hosted screeps.com service; the stock server issues only short-lived session tokens (the screepsmod-auth plugin contract provides API tokens).",
+    "userAuthTokenDelete": "Not routed by backend-local: persistent API auth tokens with permissions and rate limits are a hosted screeps.com service; the stock server issues only short-lived session tokens (the screepsmod-auth plugin contract provides API tokens).",
+    "userAuthTokenList": "Not routed by backend-local: persistent API auth tokens with permissions and rate limits are a hosted screeps.com service; the stock server issues only short-lived session tokens (the screepsmod-auth plugin contract provides API tokens).",
+    "userConvertCreditsSubscription": "Not routed by backend-local: converting credits into a paid screeps.com subscription is a hosted payment service.",
+    "userCpuLimitSet": "Not routed by backend-local: credit-charged CPU limit changes belong to the hosted subscription economy; the stock server sets each account's `cpu` administratively.",
+    "userEarlyPreviewActivate": "Not routed by backend-local: hosted World launch activation codes; a private world has no early-preview gate.",
+    "userEarlyPreviewRequest": "Not routed by backend-local: applications for the hosted early-preview program.",
+    "userFindShared": "Not routed by backend-local: the official client calls `user/find-shared` only when `options.official` is true; on private servers the replay viewer uses `GET /api/user/find` (userFind, required).",
+    "userGithubRepoSet": "Not routed by backend-local: GitHub code synchronization runs on screeps.com infrastructure through the hosted GitHub OAuth link.",
+    "userGithubRepos": "Not routed by backend-local: it lists repositories through the hosted GitHub OAuth link.",
+    "userIvmSet": "Not routed by backend-local: it selects between screeps.com's isolated and legacy runtime pools; the stock server runs player code in its single configured runtime.",
+    "userMoneyHistoryDetails": "Not routed by backend-local: the stock server offers no counterparty details for market entries of the money history.",
+    "userNoRateLimit": "Not routed by backend-local: it resets hosted per-token API rate limits behind reCAPTCHA; the stock server has no API tokens or rate limits (the screepsmod-auth plugin contract provides it).",
+    "userPasswordSet": "Not routed by backend-local: the stock server has no password accounts (the screepsmod-auth plugin contract provides password changes).",
+    "userUnlinkGithub": "Not routed by backend-local: it removes the hosted GitHub OAuth identity link, which the stock server never creates (the screepsmod-auth plugin contract provides it).",
+    "userUnlinkSteam": "Not routed by backend-local: on the stock server the Steam identity is the account created by `POST /api/auth/steam-ticket` and cannot be unlinked (the screepsmod-auth plugin contract provides it)."
+  },
+  "adaptations": {},
+  "additions": {},
+  "notes": {},
+  "evidence": {},
+  "overrides": {
+    "paths": {}
+  }
+}
