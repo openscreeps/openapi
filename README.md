@@ -87,7 +87,7 @@ Contracts are layered; each layer states every difference from the one below wit
 
 1. **Official** ([`openapi.json`](openapi.json), [`asyncapi.json`](asyncapi.json)): screeps.com.
 2. **Profiles** (`profiles/<name>/` built into `profiles/<name>.json`): one server implementation each, composed with the official contracts.
-   - **standalone** ([`profiles/standalone.json`](profiles/standalone.json)): OpenScreeps' own contract; `openscreeps/server` composes it with its extensions. Its `GET /api/version` lists `serverData.features` as the official client's fallback features (`market`, `auth`) plus `{name: 'openscreeps', version: 1}`, by which clients identify an OpenScreeps server.
+   - **standalone** ([`profiles/standalone.json`](profiles/standalone.json)): OpenScreeps' own contract; `openscreeps/server` composes it with its extensions. Its `GET /api/version` lists `serverData.features` as the official client's fallback features (`market`, `auth`) plus `{name: 'openscreeps', version: 1}`, by which clients identify an OpenScreeps server. OpenScreeps issues short-lived session tokens, which every authenticated reply replaces, and persistent API tokens (`userAuthTokenCreate`), which never expire and are never replaced.
    - **community** ([`profiles/community.json`](profiles/community.json)): the stock Screeps private server without mods.
 3. **Plugins** ([`plugins/<name>.json`](plugins)): community server mods, composed in order on a composed profile document: [`screepsmod-auth`](plugins/screepsmod-auth.json) and [`screepsmod-admin-utils`](plugins/screepsmod-admin-utils.json) on `community`. A typical community server is `composePlugins(official, composeProfile(official, community), [screepsmodAuth, screepsmodAdminUtils])`.
 
@@ -182,7 +182,7 @@ The smoke command runs the checked TypeScript harness (`node scripts/smoke.ts`) 
 
 The official catalog contains **163 operations**, reconciled against 240 request sites
 in the official web client and the pinned reference sources. The standalone profile
-requires 85 official operations, explicitly excludes 78, and adds two private-server
+requires 89 official operations, explicitly excludes 74, and adds two private-server
 compatibility routes; the server adds its own extension contracts. The community profile
 requires 72, excludes 91 and adds three; with screepsmod-auth and screepsmod-admin-utils
 the composed community server has 96 operations.
@@ -201,7 +201,7 @@ official room objects of 31 types from 2,429 non-empty rooms on five shards and 
 first room events, with zero failures; the smoke validates every complete room object it
 receives against the union and its own variant. Room and map visual strings are typed per
 line as `RoomVisualItem` and `MapVisualItem` (examples produced by the upstream serializers).
-The standalone server separately exercises all 92 composed operations over real HTTP.
+The standalone server separately exercises all 96 composed operations over real HTTP.
 The official socket contract holds 26 messages; the standalone socket profile composes 22.
 The community server composed with both plugins was exercised against a running world
 (screeps 4.3.0 with screepsmod-auth and screepsmod-admin-utils): 37 requests over 26 plugin

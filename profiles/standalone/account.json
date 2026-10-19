@@ -1,5 +1,11 @@
 {
-  "required": ["userMoneyHistoryDetails", "userPasswordSet"],
+  "required": [
+    "userAuthTokenCreate",
+    "userAuthTokenDelete",
+    "userAuthTokenList",
+    "userMoneyHistoryDetails",
+    "userPasswordSet"
+  ],
   "excluded": {
     "adminEarlyAccessList": "Internal screeps.com staff tool for the hosted early-access campaign; a standalone server has no hosted applicant list.",
     "adminEarlyAccessSend": "Internal screeps.com staff tool that e-mails hosted early-access invitations; no hosted mail campaign on a standalone server.",
@@ -14,9 +20,6 @@
     "supportSsoJwt": "Zendesk single sign-on for the screeps.com forums/support desk; hosted service (also gated on an active subscription).",
     "userActivateCpuUnlocks": "Consumes purchased CPU unlock items (hosted payments/inventory); a standalone server sets CPU limits administratively.",
     "userActivateShardAccess": "Spends access keys for restricted screeps.com shards; multi-shard access does not exist on a single-world server.",
-    "userAuthTokenCreate": "Persistent API auth-token management is a hosted screeps.com service (per-token permissions and rate limits); standalone servers issue session tokens through `POST /api/auth/signin`, and community tools authenticate to unofficial servers with credentials only.",
-    "userAuthTokenDelete": "Persistent API auth-token management is a hosted screeps.com service (per-token permissions and rate limits); standalone servers issue session tokens through `POST /api/auth/signin`, and community tools authenticate to unofficial servers with credentials only.",
-    "userAuthTokenList": "Persistent API auth-token management is a hosted screeps.com service (per-token permissions and rate limits); standalone servers issue session tokens through `POST /api/auth/signin`, and community tools authenticate to unofficial servers with credentials only.",
     "userConvertCreditsSubscription": "Converts credits into a paid screeps.com subscription; hosted payments/subscriptions.",
     "userCpuLimitSet": "Credits-charged CPU limit changes tied to the hosted subscription/credits economy; a standalone server sets CPU limits administratively.",
     "userEarlyPreviewActivate": "Hosted World launch activation codes; a standalone world has no early-preview gate.",
@@ -25,14 +28,19 @@
     "userGithubRepoSet": "GitHub code synchronization runs on screeps.com infrastructure via the hosted GitHub OAuth link; not available without it.",
     "userGithubRepos": "Lists repositories through the hosted GitHub OAuth link; not available without it.",
     "userIvmSet": "Selects between screeps.com's isolated and shared legacy VM runtime pools; a standalone server runs player code in its single operator-configured runtime.",
-    "userNoRateLimit": "reCAPTCHA-gated reset of hosted per-token API rate limits; standalone servers have no persistent API tokens or reCAPTCHA.",
+    "userNoRateLimit": "reCAPTCHA-gated reset of hosted per-token API rate limits; OpenScreeps does not rate-limit its persistent API tokens and has no reCAPTCHA.",
     "userUnlinkGithub": "Removes the hosted GitHub OAuth identity link, which standalone servers do not create.",
     "userUnlinkSteam": "Part of the hosted web identity-linking flow (`GET /api/auth/steam` popup); on a standalone server the Steam identity is the account created by `POST /api/auth/steam-ticket` and is managed by the administrator."
   },
-  "adaptations": {},
+  "adaptations": {
+    "userAuthTokenCreate": "OpenScreeps creates full-access tokens only: a `type` other than `full` answers `{error: \"restricted tokens are not supported\"}` and creates no token. The official contract does not establish how screeps.com enforces restricted endpoints, websockets and Memory segments, and a full-access token would grant more than the request asks for."
+  },
   "additions": {},
   "notes": {
-    "userPasswordSet": "Standalone servers sign players in with username or e-mail plus password (`POST /api/auth/signin`); this operation changes that local password. OpenScreeps revokes the account's tokens and authenticated socket sessions whenever a password changes, so the client must sign in again afterwards.",
+    "userAuthTokenCreate": "`type` absent or `full` creates a full-access token; `endpoints`, `websockets` and `memorySegments` are then ignored, as the official form posts them with every request. An optional `description` must be a string of at most 100 characters (`invalid params` otherwise). The reply's `token` is a random UUID, shown only this once: the server stores a SHA-256 hash of it and its first 8 characters. The token never expires and is never rotated: responses to requests that it authenticates carry no `X-Token`, and the socket's `auth ok` returns it unchanged. It is accepted wherever session tokens are: the `X-Token` header, `Authorization: Bearer`, the `token` query parameter and the socket `auth` command. An account holds at most 100 tokens (`too many tokens`). Deleting the account removes its tokens.",
+    "userAuthTokenDelete": "`tokenId` is the `_id` of one of the caller's tokens from `GET /api/user/auth-token`; an unknown id or a token of another account answers `{error: \"token not found\"}`. The deletion takes effect at once: later requests with the token answer HTTP 401, and socket sessions authenticated with it are closed.",
+    "userAuthTokenList": "Lists the caller's persistent API tokens, oldest first. Each entry holds `_id`, `token` (the first 8 characters of the token), `full` (always `true`) and `description` (`null` when none). Entries never carry `noRatelimitUntil`: OpenScreeps does not rate-limit API tokens.",
+    "userPasswordSet": "Standalone servers sign players in with username or e-mail plus password (`POST /api/auth/signin`); this operation changes that local password. OpenScreeps revokes the account's session tokens and closes its authenticated socket sessions whenever a password changes, so the client must sign in again afterwards. Persistent API tokens (`POST /api/user/auth-token`) stay valid until they are deleted.",
     "userMoneyHistoryDetails": "A single world serves the details from its own money ledger (the entries listed by `GET /api/user/money-history`), resolving the counterparties of a market deal by `tick`, `roomName` and `targetRoomName`; the official market history page calls it without an `options.official` branch."
   },
   "evidence": {

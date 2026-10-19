@@ -52,8 +52,8 @@
       },
       "securitySchemes": {
         "Token": {
-          "description": "Session token issued by the standalone server (for example by `authSignin` or `authSteamTicket`). Successful authenticated responses may rotate it in the X-Token response header; store the latest value. Never send tokens to untrusted hosts or follow authenticated cross-host redirects.",
-          "x-profile-reason": "Standalone servers issue their own session tokens instead of screeps.com account tokens."
+          "description": "Session token issued by the standalone server (for example by `authSignin` or `authSteamTicket`), or a persistent API token from `userAuthTokenCreate`. Successful responses to requests authenticated with a session token may rotate it in the X-Token response header; store the latest value. API tokens never expire and are never rotated. Never send tokens to untrusted hosts or follow authenticated cross-host redirects.",
+          "x-profile-reason": "Standalone servers issue their own short-lived session tokens and persistent API tokens instead of screeps.com account tokens."
         }
       }
     }

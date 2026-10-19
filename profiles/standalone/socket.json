@@ -2,7 +2,7 @@
   "socket": {
     "info": {
       "title": "Screeps standalone server socket API",
-      "description": "Socket protocol of a standalone, single-world Screeps server (for example OpenScreeps) as the official web client uses it when `options.official` is false and as the official private server (screeps/backend-local) implements it. Composed from the official Screeps World socket contract and the standalone compatibility profile; each message's `x-profile` states whether it is unchanged (`required`) or has documented standalone differences (`adapted`). Channel names carry no shard. Session tokens are short-lived: every `auth ok` and every authenticated HTTP response can issue a replacement that must be stored."
+      "description": "Socket protocol of a standalone, single-world Screeps server (for example OpenScreeps) as the official web client uses it when `options.official` is false and as the official private server (screeps/backend-local) implements it. Composed from the official Screeps World socket contract and the standalone compatibility profile; each message's `x-profile` states whether it is unchanged (`required`) or has documented standalone differences (`adapted`). Channel names carry no shard. Session tokens are short-lived: every `auth ok` and every HTTP response to a session-token request can issue a replacement that must be stored. Persistent API tokens are never replaced."
     },
     "servers": {
       "standalone": {
@@ -29,7 +29,7 @@
       "userSteamPurchaseEvent": "Steam purchases are a hosted account service; private servers do not publish `steam-purchase` events."
     },
     "adaptations": {
-      "authOk": "Standalone tokens are session tokens: `auth ok` issues a new one with a short lifetime that replaces the stored token.",
+      "authOk": "For a standalone session token, `auth ok` issues a new session token with a short lifetime that replaces the stored token. A persistent API token is returned unchanged, as on screeps.com.",
       "roomEvent": "One world: the room channel is `room:<room>` without a shard, and room events carry no `decorations`.",
       "roomErrorEvent": "One world: the room error channel is `err@room:<room>` without a shard.",
       "roomMapEvent": "One world: the map channel is `roomMap2:<room>` without a shard.",
@@ -71,7 +71,7 @@
     "overrides": {
       "messages": {
         "authOk": {
-          "description": "Unframed protocol line `auth ok <token>`, sent uncompressed. The token is a newly issued session token that expires after about a minute unless used; store it in place of the sent token for later `auth` commands and HTTP requests. The official client replaces its stored token with it, then sends the subscriptions it queued."
+          "description": "Unframed protocol line `auth ok <token>`, sent uncompressed. After `auth` with a session token, the token is a newly issued session token that expires after about a minute unless used; store it in place of the sent token for later `auth` commands and HTTP requests. After `auth` with a persistent API token, the token is the sent API token, unchanged. The official client replaces its stored token with it, then sends the subscriptions it queued."
         },
         "roomEvent": {
           "summary": "Detailed, incremental updates of one room (`room:<room>`).",
